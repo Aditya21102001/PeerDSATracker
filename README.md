@@ -159,6 +159,73 @@ session may belong to whoever compromised the account.
 That is fine locally and honest about what it is, but a production deployment must replace it, or
 reset links sit in logs where operators can read them.
 
+## Deployment
+
+| Service | Host | Notes |
+|---|---|---|
+| frontend | Vercel | static build, root directory `frontend`, `vercel.json` rewrites `/api/*` |
+| backend | Render | Docker (Render has **no native Java**), free instance |
+| analytics | Render | native Python runtime, free instance |
+| database | Neon | a **separate** project from the dev one |
+
+The browser only ever talks to the Vercel origin: `vercel.json` rewrites `/api/:path*` to the Render
+backend server-side, so there is no CORS and no preflight. Vercel checks the filesystem *before*
+applying rewrites, so the SPA catch-all (`/(.*) -> /index.html`) never shadows a hashed asset.
+
+Set `CORS_ALLOWED_ORIGINS` on the backend to the Vercel domain anyway. A same-origin `POST` still
+carries an `Origin` header, and whether Vercel forwards it upstream is undocumented; if it does,
+Spring's `CorsFilter` would answer **403**. `allowCredentials(true)` makes a `*` wildcard illegal, so
+the exact domain has to be named.
+
+### Deploy order
+
+The backend needs the frontend's URL and vice versa. Both backend values are runtime env vars, so
+they are patched last (a restart, not a rebuild).
+
+1. **Neon** — create the prod project in Render's region. Collect the pooled + unpooled URLs.
+2. **Analytics → Render** — set `INTERNAL_TOKEN`. Note its public URL.
+3. **Backend → Render** — set the Neon vars, a fresh `JWT_SECRET`, the same `INTERNAL_TOKEN`,
+   `ANALYTICS_BASE_URL` from step 2, and `RESET_ENABLED=false`. Flyway runs V1–V6 and seeds the
+   474 problems on first boot. Note the backend URL.
+4. **Frontend → Vercel** — root directory `frontend`; point the rewrite at step 3's URL.
+5. **Patch the backend** — `FRONTEND_BASE_URL` and `CORS_ALLOWED_ORIGINS` = the Vercel domain.
+
+`ANALYTICS_BASE_URL` must be the analytics service's **public** `https://…onrender.com` URL. Render's
+`fromService` only yields `host`/`port`, never a scheme — and the public URL is what wakes a
+spun-down instance.
+
+### Free-tier consequences (accepted, not bugs)
+
+- Services **spin down after 15 minutes idle**; the next request waits ~1–3 min for a JVM cold start
+  on 0.1 CPU.
+- **Neither `@Scheduled` job fires while the backend sleeps.** This is survivable: streaks are
+  already corrected at read time by `StreakService.effectiveCurrentStreak` and inline in the
+  leaderboard SQL, so `StreakScheduler` is cleanup rather than a correctness requirement. Platform
+  sync becomes manual, via the button on `/profile`.
+- **`ANALYTICS_READ_TIMEOUT` defaults to 60s.** Render *queues* a request to a spun-down service
+  rather than refusing it: the TCP connect succeeds at the edge instantly, but the response is
+  withheld for 30–60s while the instance wakes. The old 30s read timeout failed every first call
+  after idle.
+- 750 free instance-hours per workspace per month. Keeping one service warm with an external pinger
+  costs ~730h; keeping *both* warm exceeds the cap and suspends them mid-month.
+
+### `MANAGEMENT_HEALTH_DB_ENABLED=false`
+
+Set on the Render backend. Render allows a health check **5 seconds**; a DB-backed health indicator
+could block on the 30s Hikari `connection-timeout` while Neon's compute is cold.
+
+Measured honestly: `DataSourceHealthContributorAutoConfiguration` *does* match on this classpath, but
+`/actuator/health` still answers in **~17 ms** while real DB requests take 1–2 s — so it is not
+touching the database, and the stall could not be reproduced locally. The flag stays as cheap
+insurance, not as a fix for an observed bug.
+
+### Password reset is disabled in production
+
+`RESET_ENABLED=false` on the backend (both endpoints return **404**) and `resetEnabled: false` in
+`environment.prod.ts` (the routes and their lazy chunks are tree-shaken out; the "Forgot?" link is
+hidden). Without a mailer, `/forgot` would tell a user "a reset link is on its way" and send nothing,
+while the working link lands in the log stream. Turn both on the same day a mailer exists.
+
 ## Testing
 
 ```bash

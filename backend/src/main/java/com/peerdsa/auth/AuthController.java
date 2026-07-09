@@ -10,8 +10,10 @@ import com.peerdsa.auth.dto.AuthDtos.TokenResponse;
 import com.peerdsa.user.User;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -26,14 +28,28 @@ public class AuthController {
     private final AuthService authService;
     private final PasswordResetService passwordReset;
     private final com.peerdsa.streak.StreakService streaks;
+    private final boolean resetEnabled;
 
     public AuthController(
             AuthService authService,
             PasswordResetService passwordReset,
-            com.peerdsa.streak.StreakService streaks) {
+            com.peerdsa.streak.StreakService streaks,
+            @Value("${app.reset.enabled}") boolean resetEnabled) {
         this.authService = authService;
         this.passwordReset = passwordReset;
         this.streaks = streaks;
+        this.resetEnabled = resetEnabled;
+    }
+
+    /**
+     * With no mailer configured, a reset link only reaches the application log. Rather
+     * than tell a user "a reset link is on its way" and never send one, the endpoints
+     * report 404: the feature is absent, not broken.
+     */
+    private void requireResetEnabled() {
+        if (!resetEnabled) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Password reset is not available");
+        }
     }
 
     @PostMapping("/signup")
@@ -65,12 +81,14 @@ public class AuthController {
      */
     @PostMapping("/forgot")
     public ResponseEntity<Void> forgot(@Valid @RequestBody ForgotRequest request) {
+        requireResetEnabled();
         passwordReset.requestReset(request.email());
         return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/reset")
     public ResponseEntity<Void> reset(@Valid @RequestBody ResetRequest request) {
+        requireResetEnabled();
         passwordReset.reset(request.token(), request.password());
         return ResponseEntity.noContent().build();
     }

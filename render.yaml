@@ -1,0 +1,83 @@
+# Render blueprint. Both services run on the free instance: 512 MB RAM, 0.1 CPU,
+# spun down after 15 minutes of inactivity.
+#
+# Values marked `sync: false` are never committed -- Render prompts for them when the
+# blueprint is first created, and leaves them alone on later syncs.
+
+services:
+  # ------------------------------------------------------- Spring Boot backend
+  # Render has no native Java runtime, so this ships as a Docker image.
+  - name: peerdsa-backend
+    type: web
+    runtime: docker
+    plan: free
+    region: ohio # keep in the same region as the Neon database
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /actuator/health
+    autoDeployTrigger: commit
+    envVars:
+      # Tuned for 512 MB / 0.1 CPU. See backend/Dockerfile for the reasoning.
+      # If the container is OOM-killed (exit 137), drop MaxRAMPercentage to 40.
+      - key: JAVA_OPTS
+        value: "-XX:MaxRAMPercentage=50.0 -XX:MaxMetaspaceSize=128m -XX:+UseSerialGC -XX:TieredStopAtLevel=1 -XX:+ExitOnOutOfMemoryError -Djava.security.egd=file:/dev/./urandom"
+
+      # /actuator/health otherwise includes a database indicator that blocks on the
+      # 30s Hikari connection-timeout while Neon's compute is cold, and reports 503.
+      # Render allows a health check only 5 seconds, so the deploy would fail.
+      - key: MANAGEMENT_HEALTH_DB_ENABLED
+        value: "false"
+
+      # No mailer: /api/auth/forgot and /reset return 404 while this is false.
+      - key: RESET_ENABLED
+        value: "false"
+
+      - key: STREAK_ZONE
+        value: Asia/Kolkata
+
+      # --- set in the dashboard, never committed ---
+      - key: NEON_POOLED_URL # app datasource, the "-pooler" host
+        sync: false
+      - key: NEON_UNPOOLED_URL # Flyway, the direct host (PgBouncer breaks its advisory lock)
+        sync: false
+      - key: NEON_USER
+        sync: false
+      - key: NEON_PASSWORD
+        sync: false
+      - key: JWT_SECRET # generate fresh; never reuse the local one
+        sync: false
+      - key: INTERNAL_TOKEN # must match peerdsa-analytics exactly
+        sync: false
+
+      # `fromService` can only yield host/port/hostport, never a URL with a scheme.
+      # Paste the analytics service's public https://...onrender.com URL: the public
+      # URL is also what wakes it from spin-down.
+      - key: ANALYTICS_BASE_URL
+        sync: false
+
+      # Both are patched after the Vercel domain exists. Runtime env vars, so this is
+      # a restart, not a rebuild.
+      - key: FRONTEND_BASE_URL
+        sync: false
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
+
+  # ---------------------------------------------------------- FastAPI analytics
+  # Stateless and DB-less. Guarded by the X-Internal-Token shared secret, which is
+  # what makes a public URL acceptable (free instances cannot be private services).
+  - name: peerdsa-analytics
+    type: web
+    runtime: python
+    plan: free
+    region: ohio
+    rootDir: analytics
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    autoDeployTrigger: commit
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.13.4"
+      - key: INTERNAL_TOKEN # must match peerdsa-backend exactly
+        sync: false

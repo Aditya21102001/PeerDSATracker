@@ -1,0 +1,20 @@
+# The build context is backend/, so frontend/, analytics/ and the repo-root .env
+# are already outside it. This trims what remains.
+
+target/
+*.class
+
+.git/
+.gitignore
+
+*.md
+.env
+.env.*
+
+# JVM crash dumps
+hs_err_pid*.log
+replay_pid*.log
+
+.idea/
+.vscode/
+*.iml

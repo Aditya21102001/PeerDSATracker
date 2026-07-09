@@ -1,6 +1,7 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
+import { environment } from '../../../environments/environment';
 import { AuthStore } from '../../core/services/auth.store';
 
 @Component({
@@ -23,7 +24,9 @@ import { AuthStore } from '../../core/services/auth.store';
 
         <div class="row">
           <label for="password">Password</label>
-          <a class="forgot" routerLink="/forgot">Forgot?</a>
+          @if (resetEnabled) {
+            <a class="forgot" routerLink="/forgot">Forgot?</a>
+          }
         </div>
         <input id="password" type="password" formControlName="password" autocomplete="current-password" />
 
@@ -48,6 +51,9 @@ export class Signin {
 
   protected readonly busy = signal(false);
   protected readonly error = signal<string | null>(null);
+
+  /** Hidden in production: there is no mailer, so the link would go nowhere. */
+  protected readonly resetEnabled = environment.resetEnabled;
 
   protected readonly form = this.fb.nonNullable.group({
     email: ['', [Validators.required, Validators.email]],

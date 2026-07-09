@@ -51,6 +51,11 @@ app:
     access-ttl: PT15M
     refresh-ttl: P30D
   reset:
+    # OFF in production until a real mailer exists. ResetLinkDeliverer writes the
+    # link to the log, so an enabled /forgot would promise an email it cannot send
+    # and would leak working reset links to anyone who can read the log stream.
+    # When false, /forgot and /reset return 404.
+    enabled: ${RESET_ENABLED:true}
     ttl: PT30M
     # Per user, per hour. Exceeding it silently does nothing (still a 204).
     max-per-hour: 5
@@ -60,12 +65,21 @@ app:
     zone: ${STREAK_ZONE:UTC}
     reset-cron: "0 15 0 * * *"
   cors:
-    # Only needed when the browser calls the API directly; `ng serve` proxies /api
-    # through its own origin, so dev normally makes no cross-origin requests.
-    allowed-origins: http://localhost:4300,http://localhost:4200
+    # `ng serve` and Vercel's rewrite both proxy /api through the app's own origin,
+    # so the browser makes no cross-origin request. Set anyway: a same-origin POST
+    # still carries an Origin header, and if the proxy forwards it, Spring's
+    # CorsFilter would reject the request with 403. allowCredentials(true) means a
+    # `*` wildcard is illegal, so the exact domain must be named.
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4300,http://localhost:4200}
   analytics:
     base-url: ${ANALYTICS_BASE_URL:http://localhost:8000}
     internal-token: ${INTERNAL_TOKEN:dev-internal-token}
+    connect-timeout: ${ANALYTICS_CONNECT_TIMEOUT:5s}
+    # Render queues a request to a spun-down service rather than refusing it: the
+    # TCP connect succeeds at the edge immediately, but the response is withheld
+    # for 30-60s while the instance wakes. A 30s read timeout would fail every
+    # first call after idle.
+    read-timeout: ${ANALYTICS_READ_TIMEOUT:60s}
   sync:
     # Every 6 hours. Codeforces asks for ~1 request / 2s; LeetCode's unofficial
     # endpoint is soft rate-limited with no published budget.

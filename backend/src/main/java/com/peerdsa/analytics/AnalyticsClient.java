@@ -26,7 +26,9 @@ public class AnalyticsClient {
     public AnalyticsClient(
             RestClient.Builder builder,
             @Value("${app.analytics.base-url}") String baseUrl,
-            @Value("${app.analytics.internal-token}") String internalToken) {
+            @Value("${app.analytics.internal-token}") String internalToken,
+            @Value("${app.analytics.connect-timeout}") Duration connectTimeout,
+            @Value("${app.analytics.read-timeout}") Duration readTimeout) {
 
         // Spring Boot 4's default JDK HttpClient negotiates HTTP/2, which over plaintext
         // means an h2c upgrade (Upgrade: h2c + HTTP2-Settings). uvicorn's h11 server does
@@ -34,12 +36,13 @@ public class AnalyticsClient {
         // the call with "field required, input: null". Pin HTTP/1.1.
         HttpClient httpClient = HttpClient.newBuilder()
                 .version(HttpClient.Version.HTTP_1_1)
-                .connectTimeout(Duration.ofSeconds(5))
+                .connectTimeout(connectTimeout)
                 .build();
 
         var requestFactory = new JdkClientHttpRequestFactory(httpClient);
-        // Fetching a LeetCode/Codeforces profile is a real network round trip.
-        requestFactory.setReadTimeout(Duration.ofSeconds(30));
+        // Generous: this covers both a real LeetCode/Codeforces round trip and, in
+        // production, a cold start of the analytics service itself.
+        requestFactory.setReadTimeout(readTimeout);
 
         this.client = builder
                 .baseUrl(baseUrl)

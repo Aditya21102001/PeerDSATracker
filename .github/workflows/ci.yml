@@ -28,6 +28,43 @@ jobs:
         working-directory: backend
         run: mvn -B -ntp verify
 
+  # The Dockerfile is what Render builds. It cannot be tested on a machine without
+  # Docker, so this job is the only thing standing between a typo and a failed deploy.
+  docker:
+    name: backend image builds
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build the backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: backend
+          push: false
+          load: true
+          tags: peerdsa-backend:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Prove the entrypoint honours Render's PORT contract and that the app is not
+      # OOM-killed under a 512 MB limit. No database is reachable, so Flyway fails and
+      # the app exits -- what we assert is that the JVM started and read PORT, not that
+      # the context came up.
+      - name: Container starts and reads $PORT
+        run: |
+          docker run --rm --memory=512m --env PORT=10000 \
+            --env NEON_POOLED_URL=jdbc:postgresql://127.0.0.1:1/none \
+            --env NEON_UNPOOLED_URL=jdbc:postgresql://127.0.0.1:1/none \
+            --env NEON_USER=none --env NEON_PASSWORD=none \
+            --env JWT_SECRET=ci-secret-that-is-at-least-32-bytes-long-ok \
+            peerdsa-backend:ci 2>&1 | tee /tmp/out.txt || true
+          grep -q "Tomcat initialized with port 10000" /tmp/out.txt \
+            || { echo "::error::container did not bind Render's \$PORT"; tail -40 /tmp/out.txt; exit 1; }
+          grep -qi "OutOfMemory\|Killed" /tmp/out.txt \
+            && { echo "::error::JVM ran out of memory in a 512MB container"; exit 1; } || true
+          echo "OK: JVM started, bound \$PORT, no OOM under 512MB"
+
   frontend:
     name: frontend (Angular 22)
     runs-on: ubuntu-latest

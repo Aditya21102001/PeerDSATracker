@@ -1,5 +1,25 @@
 import { Routes } from '@angular/router';
+import { environment } from '../environments/environment';
 import { authGuard, guestGuard } from './core/guards/auth.guard';
+
+// Password reset has no mailer yet. When disabled these routes are absent entirely,
+// so the lazy chunks never ship and a stale bookmark falls through to the wildcard.
+// The backend 404s /api/auth/forgot and /reset to match.
+const resetRoutes: Routes = environment.resetEnabled
+  ? [
+      {
+        path: 'forgot',
+        canActivate: [guestGuard],
+        loadComponent: () => import('./features/auth/forgot').then((m) => m.Forgot),
+      },
+      {
+        // Deliberately not guest-only: a signed-in user following a reset link from
+        // their inbox should still land on the form.
+        path: 'reset',
+        loadComponent: () => import('./features/auth/reset').then((m) => m.Reset),
+      },
+    ]
+  : [];
 
 // Every feature route is lazy-loaded via loadComponent, so the initial bundle
 // carries only the shell plus whichever route the user landed on.
@@ -20,17 +40,7 @@ export const routes: Routes = [
     canActivate: [guestGuard],
     loadComponent: () => import('./features/auth/signup').then((m) => m.Signup),
   },
-  {
-    path: 'forgot',
-    canActivate: [guestGuard],
-    loadComponent: () => import('./features/auth/forgot').then((m) => m.Forgot),
-  },
-  {
-    // Deliberately not guest-only: a signed-in user following a reset link from their
-    // inbox should still land on the form.
-    path: 'reset',
-    loadComponent: () => import('./features/auth/reset').then((m) => m.Reset),
-  },
+  ...resetRoutes,
   {
     path: 'sheet',
     canActivate: [authGuard],
