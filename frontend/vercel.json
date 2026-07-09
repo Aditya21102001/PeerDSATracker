@@ -7,7 +7,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://peerdsa-backend.onrender.com/api/:path*"
+      "destination": "https://peerdsatracker.onrender.com/api/:path*"
     },
     {
       "source": "/(.*)",

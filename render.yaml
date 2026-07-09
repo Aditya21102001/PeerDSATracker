@@ -21,6 +21,8 @@ envVarGroups:
 services:
   # ------------------------------------------------------- Spring Boot backend
   # Render has no native Java runtime, so this ships as a Docker image.
+  # NOTE: the live services were created manually and are named `peerdsatracker` and
+  # `peerdsatracker-1`. This blueprint would create new ones under these names.
   - name: peerdsa-backend
     type: web
     runtime: docker
