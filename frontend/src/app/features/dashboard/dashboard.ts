@@ -80,10 +80,11 @@ import { HeatmapCalendar } from '../../shared/heatmap-calendar';
 
         <section class="card">
           <h2>Insights</h2>
-          @if (insightsDown()) {
+          @if (insightsLoading()) {
+            <p class="muted">Waking the analytics service… this takes about a minute after idle.</p>
+          } @else if (insightsDown()) {
             <p class="muted">
-              Analytics service is offline. Everything else works — this panel needs the Python
-              service on port 8000.
+              Analytics is unavailable right now. Everything else on this page still works.
             </p>
           } @else {
             @if (weakness(); as w) {
@@ -164,6 +165,8 @@ export class Dashboard {
   protected readonly recommendations = signal<Recommendation[]>([]);
   /** The analytics service is optional; the dashboard must render without it. */
   protected readonly insightsDown = signal(false);
+  /** True while InsightsService is retrying through a Render cold start. */
+  protected readonly insightsLoading = signal(true);
 
   protected readonly earnedCount = computed(() => this.badges().filter((b) => b.earned).length);
 
@@ -192,15 +195,21 @@ export class Dashboard {
       },
     });
 
-    // Kept out of the forkJoin above: a 503 from the analytics service must not
-    // take the whole dashboard down with it.
-    this.insights.weakness().subscribe({
-      next: (w) => this.weakness.set(w),
-      error: () => this.insightsDown.set(true),
-    });
-    this.insights.reviseNext().subscribe({
-      next: (r) => this.recommendations.set(r.recommendations.slice(0, 5)),
-      error: () => this.insightsDown.set(true),
+    // Kept out of the forkJoin above: a 503 from the analytics service must not take
+    // the whole dashboard down with it. InsightsService retries through a cold start.
+    forkJoin({
+      weakness: this.insights.weakness(),
+      reviseNext: this.insights.reviseNext(),
+    }).subscribe({
+      next: (data) => {
+        this.weakness.set(data.weakness);
+        this.recommendations.set(data.reviseNext.recommendations.slice(0, 5));
+        this.insightsLoading.set(false);
+      },
+      error: () => {
+        this.insightsDown.set(true);
+        this.insightsLoading.set(false);
+      },
     });
   }
 
