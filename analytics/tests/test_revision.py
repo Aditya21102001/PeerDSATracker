@@ -1,3 +1,10 @@
+"""Pins the priority blend and the interval ladder in `revision.recommend`.
+
+`test_low_priority_lets_the_interval_grow` also pins the ladder itself (7 -> 16). If it fails after
+a change to `LADDER`, the Java side (`RevisionSchedule.INTERVALS_DAYS`) has almost certainly drifted
+out of sync with it.
+"""
+
 from datetime import datetime, timedelta, timezone
 
 from app.schemas import Candidate, ReviseNextRequest, TopicStat

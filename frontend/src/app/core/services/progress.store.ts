@@ -2,6 +2,14 @@ import { Service, computed, inject, signal } from '@angular/core';
 import { Problem, ProblemStatus, SheetProgress } from '../models/api.models';
 import { ProblemQuery, SheetService } from './sheet.service';
 
+/**
+ * Signal-backed state for the sheet page: the current page of problems, the progress
+ * counters, and optimistic status/star mutations.
+ *
+ * The server owns the counters. After a successful mutation they are re-fetched rather than
+ * recomputed here, because a solve also moves XP, the streak and badges — none of which this
+ * store can derive.
+ */
 @Service()
 export class ProgressStore {
   private readonly sheet = inject(SheetService);

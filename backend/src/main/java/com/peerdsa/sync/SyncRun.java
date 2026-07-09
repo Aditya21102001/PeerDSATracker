@@ -10,10 +10,16 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
 
+/**
+ * Audit record of one platform sync attempt. Written even when a handle cannot be resolved:
+ * that outcome is a {@link Status#FAILED} run, not an exception, and the previously cached
+ * stats on the account are left untouched.
+ */
 @Entity
 @Table(name = "sync_runs")
 public class SyncRun {
 
+    /** Run lifecycle; {@code SUCCESS} and {@code FAILED} are the terminal states. */
     public enum Status {
         PENDING,
         RUNNING,
@@ -21,6 +27,10 @@ public class SyncRun {
         FAILED
     }
 
+    /**
+     * What kicked off the run. On Render's free tier the backend sleeps, so {@code SCHEDULED}
+     * runs rarely fire and {@code MANUAL} (the /profile button) is the norm.
+     */
     public enum TriggerSource {
         SCHEDULED,
         MANUAL

@@ -16,6 +16,11 @@ import jakarta.persistence.Table;
 import java.util.HashSet;
 import java.util.Set;
 
+/**
+ * A single A2Z-sheet problem (474 in the seed) and the leaf of the content hierarchy
+ * {@link SheetStep} -> {@link SheetSubStep} -> {@link Problem}. Also tagged with the
+ * {@link Topic}s that the analytics weakness report groups by.
+ */
 @Entity
 @Table(name = "problems")
 public class Problem {

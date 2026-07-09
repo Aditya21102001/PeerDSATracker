@@ -9,14 +9,14 @@ import {
   WeaknessReport,
 } from '../models/api.models';
 
-/**
- * Everything backed by the FastAPI service. All of it can 503 when that service is
- * down, so callers must degrade rather than break the page.
- */
 /** Render's free tier spins a service down after 15 min idle; waking it takes ~30-60s. */
 const WAKE_RETRIES = 2;
 const WAKE_DELAY_MS = 12_000;
 
+/**
+ * Everything backed by the FastAPI service. All of it can 503 when that service is
+ * down, so callers must degrade rather than break the page.
+ */
 @Service()
 export class InsightsService {
   private readonly http = inject(HttpClient);

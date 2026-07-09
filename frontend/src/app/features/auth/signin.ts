@@ -57,6 +57,12 @@ import { AuthStore } from '../../core/services/auth.store';
   `,
   styleUrl: './auth.scss',
 })
+/**
+ * Sign-in form, reached only through guestGuard so a signed-in visitor is redirected away.
+ *
+ * On success login() has merely stored the tokens — unlike signup it does not load the
+ * profile — and we hand off to /dashboard.
+ */
 export class Signin {
   private readonly fb = inject(FormBuilder);
   private readonly auth = inject(AuthStore);

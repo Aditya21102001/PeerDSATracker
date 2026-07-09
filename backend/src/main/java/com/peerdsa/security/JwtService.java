@@ -11,6 +11,10 @@ import java.util.Date;
 import javax.crypto.SecretKey;
 import org.springframework.stereotype.Service;
 
+/**
+ * Mints and verifies the short-lived access-token JWTs, signed with HS256. The signing secret must
+ * be at least 32 bytes (256 bits), enforced at construction so a too-weak key fails fast.
+ */
 @Service
 public class JwtService {
 

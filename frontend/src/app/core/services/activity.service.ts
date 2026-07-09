@@ -3,6 +3,12 @@ import { Service, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { BadgeView, HeatmapDay, StreakSummary, XpView } from '../models/api.models';
 
+/**
+ * The dashboard's read-only feed: streak, heatmap, XP/level and badges.
+ *
+ * `heatmap` returns only days the user was active — a broken streak writes no row at all —
+ * so gaps in the response are normal and must render as empty cells.
+ */
 @Service()
 export class ActivityService {
   private readonly http = inject(HttpClient);

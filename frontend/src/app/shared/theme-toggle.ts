@@ -54,6 +54,13 @@ import { ThemeService } from '../core/services/theme.service';
     }
   `,
 })
+/**
+ * The single theme switch for the whole app. One instance lives in the app shell so every
+ * page — sign-in included — can flip the theme.
+ *
+ * The label names the theme it switches *to*, not the current one, so the action stays
+ * unambiguous when read aloud.
+ */
 export class ThemeToggle {
   protected readonly theme = inject(ThemeService);
 

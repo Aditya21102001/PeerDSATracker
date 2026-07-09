@@ -18,6 +18,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * REST surface for linking platform accounts and triggering or reviewing syncs. All writes
+ * flow through {@link SyncService}, the single database writer.
+ */
 @RestController
 @RequestMapping("/api/sync")
 public class SyncController {
@@ -28,8 +32,10 @@ public class SyncController {
         this.sync = sync;
     }
 
+    /** Body for linking a platform account or re-pointing an existing one at a new handle. */
     public record LinkRequest(@NotNull Platform platform, @NotBlank String handle) {}
 
+    /** A linked account as rendered on /profile, cached external stats included. */
     public record AccountView(
             Platform platform,
             String handle,
@@ -43,6 +49,7 @@ public class SyncController {
         }
     }
 
+    /** One sync attempt as shown in the /profile run history. */
     public record RunView(
             Long id,
             Platform platform,

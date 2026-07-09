@@ -4,12 +4,21 @@ import { RouterLink } from '@angular/router';
 import { Difficulty, Problem, ProblemStatus, StatusFilter } from '../../core/models/api.models';
 import { AuthStore } from '../../core/services/auth.store';
 import { ProgressStore } from '../../core/services/progress.store';
+import { Spinner } from '../../shared/spinner';
 
 const STATUSES: readonly ProblemStatus[] = ['SOLVED', 'ATTEMPTED', 'REVISIT'];
 
+/**
+ * The Striver A2Z sheet: a server-paged, server-filtered view of the 474 problems,
+ * ordered step -> sub-step -> position.
+ *
+ * Every status/star edit is routed through ProgressStore and applied optimistically. The
+ * filter controls re-query the server on each change rather than slicing the loaded page,
+ * because paging and filtering are server-side and the server owns the progress counters.
+ */
 @Component({
   selector: 'app-sheet-page',
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, Spinner],
   template: `
     <main class="sheet">
       <header>
@@ -82,7 +91,7 @@ const STATUSES: readonly ProblemStatus[] = ['SOLVED', 'ATTEMPTED', 'REVISIT'];
       </div>
 
       @if (store.loading()) {
-        <p>Loading problems…</p>
+        <app-spinner label="Loading problems…" />
       } @else {
         @if (store.error()) {
           <p class="error" role="alert">{{ store.error() }}</p>

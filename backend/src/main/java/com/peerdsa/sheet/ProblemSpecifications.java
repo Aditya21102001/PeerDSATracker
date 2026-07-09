@@ -8,6 +8,11 @@ import jakarta.persistence.criteria.Root;
 import jakarta.persistence.criteria.Subquery;
 import org.springframework.data.jpa.domain.Specification;
 
+/**
+ * Builds the reusable {@link Specification}s behind the paginated problem query. Each factory
+ * returns an always-true predicate when its argument is absent, so callers can {@code allOf} them
+ * together without null checks.
+ */
 public final class ProblemSpecifications {
 
     private ProblemSpecifications() {}

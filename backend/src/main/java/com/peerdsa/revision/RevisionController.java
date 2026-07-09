@@ -12,6 +12,11 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * REST surface for the spaced-repetition workflow: the due queue, upcoming reviews, and the
+ * schedule / recalled / forgot / retire transitions. Every state change delegates to
+ * {@link RevisionService}, which owns the invariant that scheduling never alters solve status.
+ */
 @RestController
 @RequestMapping("/api/revision")
 public class RevisionController {
@@ -22,6 +27,7 @@ public class RevisionController {
         this.revision = revision;
     }
 
+    /** Caller-chosen first interval in days; {@code null} falls back to the ladder bottom. */
     public record ScheduleRequest(Integer intervalDays) {}
 
     /** Everything whose next review has come due. */
@@ -30,6 +36,7 @@ public class RevisionController {
         return revision.due(user.getId());
     }
 
+    /** Reviews scheduled but not yet due: the complement of {@link #queue}. */
     @GetMapping("/upcoming")
     public List<RevisionService.RevisionItem> upcoming(@AuthenticationPrincipal User user) {
         return revision.upcoming(user.getId());

@@ -37,6 +37,14 @@ import { RouterLink } from '@angular/router';
   `,
   styleUrl: './auth.scss',
 })
+/**
+ * "Forgot password" request form. Guest-only, and only routed at all when
+ * environment.resetEnabled is true (there is otherwise no mailer to send the link).
+ *
+ * The endpoint answers 204 whether or not the address is registered, so this screen shows
+ * the same "if that address exists…" confirmation in every case — revealing which emails
+ * have accounts would be a user-enumeration oracle.
+ */
 export class Forgot {
   private readonly fb = inject(FormBuilder);
   private readonly http = inject(HttpClient);

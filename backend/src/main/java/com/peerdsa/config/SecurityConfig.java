@@ -19,6 +19,12 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+/**
+ * Stateless HTTP security: no session, CSRF disabled (there is no cookie to forge), and the
+ * {@link JwtAuthenticationFilter} placed ahead of the username/password filter. Only the
+ * unauthenticated auth endpoints and actuator health/info are public; everything else -- including
+ * {@code /api/peers/search} -- requires a valid token.
+ */
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {

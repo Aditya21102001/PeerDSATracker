@@ -10,6 +10,10 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
+/**
+ * Middle of the content hierarchy: one of the 62 sub-steps that group {@link Problem}s under a
+ * {@link SheetStep}.
+ */
 @Entity
 @Table(name = "sheet_sub_steps")
 public class SheetSubStep {

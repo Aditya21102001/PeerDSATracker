@@ -3,6 +3,16 @@
 A gamified peer DSA progress tracker: work through the Striver A2Z sheet, keep a daily streak,
 compare progress with peers on a leaderboard, and keep notes with a spaced-repetition revision queue.
 
+## Documentation
+
+New to the codebase? Start with **[docs/](docs/)**, which explains the architecture and every
+feature from scratch — [architecture](docs/01-architecture.md), [data model](docs/02-data-model.md),
+[backend](docs/03-backend.md), [frontend](docs/04-frontend.md), [analytics](docs/05-analytics.md),
+[API reference](docs/06-api-reference.md), [glossary](docs/07-glossary.md).
+
+This README is the *operational* document: setup, environment, deployment, and the gotchas that
+will bite you. The two do not repeat each other.
+
 ## Stack
 
 | Layer | Tech |

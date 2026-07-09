@@ -11,6 +11,10 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * XP scoring and badge awarding. {@link #awardEarnedBadges} is idempotent and runs inside the
+ * SOLVED-transition transaction, so it is safe to call on every solve without double-granting.
+ */
 @Service
 public class GamificationService {
 
@@ -82,6 +86,7 @@ public class GamificationService {
                 .toList();
     }
 
+    /** Derives the 1-based level and progress within it from raw XP (level 1 starts at 0 XP). */
     public XpView xpFor(User user) {
         int xp = user.getXp();
         int level = 1 + xp / XP_PER_LEVEL;
@@ -89,6 +94,7 @@ public class GamificationService {
         return new XpView(xp, level, intoLevel, XP_PER_LEVEL - intoLevel, XP_PER_LEVEL);
     }
 
+    /** One badge as seen by a user: catalog fields plus whether and when they earned it. */
     public record BadgeView(
             String code,
             String name,
@@ -99,5 +105,6 @@ public class GamificationService {
             boolean earned,
             Instant awardedAt) {}
 
+    /** XP progress payload: raw total, current level, and distance into and to the next level. */
     public record XpView(int xp, int level, int xpIntoLevel, int xpToNextLevel, int xpPerLevel) {}
 }

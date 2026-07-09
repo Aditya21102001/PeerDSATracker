@@ -9,6 +9,7 @@ public enum StatusFilter {
     UNSOLVED,
     STARRED;
 
+    /** The backing {@link ProblemStatus}, or null for the pseudo-statuses UNSOLVED and STARRED. */
     public ProblemStatus toProblemStatus() {
         return switch (this) {
             case SOLVED -> ProblemStatus.SOLVED;

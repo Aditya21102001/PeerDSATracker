@@ -14,6 +14,12 @@ import java.util.Map;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
+/**
+ * A user's link to one external judge, unique per (user, platform). Holds the handle and
+ * the last stats fetched from that platform; the cached {@code external_stats} are shown
+ * alongside sheet progress on /profile and deliberately never merged into
+ * {@code daily_activity}.
+ */
 @Entity
 @Table(
         name = "platform_accounts",

@@ -8,6 +8,10 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+/**
+ * Persistence for {@link User}, including case-insensitive lookups that hit the {@code lower(...)}
+ * unique indexes and the nightly stale-streak reset.
+ */
 public interface UserRepository extends JpaRepository<User, Long> {
 
     /**

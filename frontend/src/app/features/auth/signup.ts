@@ -59,6 +59,12 @@ import { AuthStore } from '../../core/services/auth.store';
   `,
   styleUrl: './auth.scss',
 })
+/**
+ * Registration form, reached only through guestGuard.
+ *
+ * signup() exchanges the credentials for tokens *and* loads /auth/me, so by the time this
+ * navigates the user is already fully signed in — /dashboard needs no extra profile fetch.
+ */
 export class Signup {
   private readonly fb = inject(FormBuilder);
   private readonly auth = inject(AuthStore);

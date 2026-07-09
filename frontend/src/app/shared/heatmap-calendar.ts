@@ -66,6 +66,8 @@ export class HeatmapCalendar {
       const d = new Date(t);
       const iso = toIso(d);
       const weekday = d.getDay();
+      // A missing date is normal, not an error: a broken streak writes no daily_activity row
+      // at all, so an absent day simply counts as zero.
       const count = byDate.get(iso) ?? 0;
 
       cells.push({ date: iso, count, level: levelFor(count), week, weekday });

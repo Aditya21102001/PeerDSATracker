@@ -1,3 +1,12 @@
+"""Per-topic mastery. Pure compute: Spring supplies solved/total per topic, this ranks them.
+
+Mastery is simply solved/total. Only topics with at least MIN_PROBLEMS_FOR_RANKING problems are
+ranked, but mastery is still reported for every topic the caller sent.
+
+`mastery_by_topic` is the lookup that `revision.py` reuses to weight a candidate by how weak its
+topic is.
+"""
+
 from __future__ import annotations
 
 from app.schemas import TopicMastery, TopicStat, WeaknessRequest, WeaknessResponse

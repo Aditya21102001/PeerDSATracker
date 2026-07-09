@@ -8,6 +8,11 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+/**
+ * Access to the {@link UserProblemStatus} rows: point look-ups and batch loads for the sheet, the
+ * status/star counters behind the progress summary, and the spaced-repetition queues. Finders that
+ * feed a DTO fetch-join the problem's step so the graph is loaded before the session closes.
+ */
 public interface UserProblemStatusRepository extends JpaRepository<UserProblemStatus, Long> {
 
     Optional<UserProblemStatus> findByUserIdAndProblemId(Long userId, Long problemId);
@@ -19,6 +24,7 @@ public interface UserProblemStatusRepository extends JpaRepository<UserProblemSt
 
     long countByUserIdAndStarredTrue(Long userId);
 
+    /** Projection: solved count for one sheet step. */
     interface StepSolvedCount {
         int getStepNo();
 
@@ -51,6 +57,7 @@ public interface UserProblemStatusRepository extends JpaRepository<UserProblemSt
             """)
     List<UserProblemStatus> findDue(@Param("userId") Long userId, @Param("now") Instant now);
 
+    /** Reviews still in the future -- the complement of {@link #findDue}, same fetch joins. */
     @Query("""
             select s from UserProblemStatus s
             join fetch s.problem p
@@ -63,6 +70,7 @@ public interface UserProblemStatusRepository extends JpaRepository<UserProblemSt
             """)
     List<UserProblemStatus> findUpcoming(@Param("userId") Long userId, @Param("now") Instant now);
 
+    /** Projection: solved count for one topic, feeding the analytics weakness report. */
     interface TopicSolvedCount {
         String getTopic();
 

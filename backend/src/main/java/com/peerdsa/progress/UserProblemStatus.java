@@ -16,6 +16,11 @@ import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import java.time.Instant;
 
+/**
+ * One row per (user, problem) the user has touched -- via a status, a star or a scheduled review.
+ * {@code status} is nullable so a problem can be starred without being marked; the row is deleted
+ * once it carries neither (see {@link #isEmpty()}). Also holds the spaced-repetition schedule.
+ */
 @Entity
 @Table(
         name = "user_problem_status",

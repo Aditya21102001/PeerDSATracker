@@ -20,6 +20,11 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * Read-only REST surface over the sheet: the paginated problem list, a single problem, and the
+ * user's progress summary. Every problem is returned with the caller's own status, fetched one page
+ * at a time rather than per row.
+ */
 @RestController
 @RequestMapping("/api/sheet")
 public class SheetController {
@@ -38,6 +43,10 @@ public class SheetController {
         this.progress = progress;
     }
 
+    /**
+     * One page of problems matching the filters, each carrying the caller's status. Page size is
+     * clamped to {@value #MAX_PAGE_SIZE} so a client can't pull the whole sheet in one request.
+     */
     @GetMapping("/problems")
     public Page<ProblemDto> problems(
             @AuthenticationPrincipal User user,

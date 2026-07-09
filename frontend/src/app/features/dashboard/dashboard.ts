@@ -13,10 +13,19 @@ import { ActivityService } from '../../core/services/activity.service';
 import { AuthStore } from '../../core/services/auth.store';
 import { InsightsService } from '../../core/services/insights.service';
 import { HeatmapCalendar } from '../../shared/heatmap-calendar';
+import { Spinner } from '../../shared/spinner';
 
+/**
+ * The landing dashboard: streak, XP/level, badge progress, the activity heatmap, and an
+ * analytics-backed insights panel (weakest/strongest topics plus revise-next picks).
+ *
+ * Core stats and insights load as two independent requests so the optional analytics
+ * service — which answers 503 while Render's free tier is spun down — can degrade its own
+ * panel without ever blocking the rest of the page.
+ */
 @Component({
   selector: 'app-dashboard',
-  imports: [HeatmapCalendar, RouterLink],
+  imports: [HeatmapCalendar, RouterLink, Spinner],
   template: `
     <main class="dashboard">
       <header>
@@ -33,7 +42,7 @@ import { HeatmapCalendar } from '../../shared/heatmap-calendar';
       </header>
 
       @if (loading()) {
-        <p>Loading…</p>
+        <app-spinner label="Loading your dashboard…" />
       } @else if (error()) {
         <p class="error" role="alert">{{ error() }}</p>
       } @else {
@@ -81,7 +90,11 @@ import { HeatmapCalendar } from '../../shared/heatmap-calendar';
         <section class="card">
           <h2>Insights</h2>
           @if (insightsLoading()) {
-            <p class="muted">Waking the analytics service… this takes about a minute after idle.</p>
+            <app-spinner
+              inline
+              [size]="16"
+              label="Waking the analytics service… this takes about a minute after idle."
+            />
           } @else if (insightsDown()) {
             <p class="muted">
               Analytics is unavailable right now. Everything else on this page still works.

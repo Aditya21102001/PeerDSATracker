@@ -2,10 +2,15 @@ import { Component, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { NoteSummary } from '../../core/models/api.models';
 import { NotesService } from '../../core/services/notes.service';
+import { Spinner } from '../../shared/spinner';
 
+/**
+ * Read-only index of the user's notes — one note per problem, enforced by a unique constraint
+ * on (user, problem). Each row links to the editor at notes/:problemId.
+ */
 @Component({
   selector: 'app-notes-page',
-  imports: [RouterLink],
+  imports: [RouterLink, Spinner],
   template: `
     <main class="notes">
       <header>
@@ -18,7 +23,7 @@ import { NotesService } from '../../core/services/notes.service';
       </header>
 
       @if (loading()) {
-        <p>Loading…</p>
+        <app-spinner label="Loading your notes…" />
       } @else {
         <p class="count">{{ total() }} note(s)</p>
         <ul>
@@ -61,6 +66,7 @@ export class NotesPage {
 
   protected snippet(note: NoteSummary): string {
     const flat = note.content.replace(/\s+/g, ' ').trim();
+    // '(empty)' only guards whitespace-only content; a truly empty note is deleted on save.
     return flat.length > 140 ? `${flat.slice(0, 140)}…` : flat || '(empty)';
   }
 }

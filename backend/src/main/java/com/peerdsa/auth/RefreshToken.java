@@ -8,6 +8,11 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
 
+/**
+ * A persisted refresh-token session. Stored only as a SHA-256 hash and rotated on every use, with
+ * {@code replacedBy} linking a token to its successor so that reuse of an already-rotated token can
+ * be recognised as theft.
+ */
 @Entity
 @Table(name = "refresh_tokens")
 public class RefreshToken {

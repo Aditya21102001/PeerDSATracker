@@ -6,6 +6,11 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.Repository;
 import org.springframework.data.repository.query.Param;
 
+/**
+ * Read-only ranking queries returning {@link LeaderboardRow} projections. Extends the bare
+ * {@link Repository} rather than {@code JpaRepository} so it exposes only these native reads
+ * and no entity CRUD over {@link User}.
+ */
 public interface LeaderboardRepository extends Repository<User, Long> {
 
     /**

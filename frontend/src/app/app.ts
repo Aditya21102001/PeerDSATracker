@@ -8,4 +8,5 @@ import { ThemeToggle } from './shared/theme-toggle';
   templateUrl: './app.html',
   styleUrl: './app.scss',
 })
+/** Root shell: hosts the routed views and the always-visible theme toggle. */
 export class App {}

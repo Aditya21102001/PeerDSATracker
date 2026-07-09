@@ -14,6 +14,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * Core authentication logic: credential checks, plus issuing and rotating the JWT access token
+ * and opaque refresh token. Only the SHA-256 of a refresh token is persisted; the raw value is
+ * handed to the client once and never stored.
+ */
 @Service
 public class AuthService {
 

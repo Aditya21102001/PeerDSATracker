@@ -4,6 +4,15 @@ import { RouterLink } from '@angular/router';
 import { Platform, PlatformAccountView, SyncRunView } from '../../core/models/api.models';
 import { InsightsService } from '../../core/services/insights.service';
 
+/**
+ * Links LeetCode / Codeforces handles and shows each account's cached external stats
+ * alongside its recent sync runs.
+ *
+ * Those external numbers sit beside — and are never merged into — the sheet's streak and
+ * XP, which are earned here only. Sync is best-effort (LeetCode has no official API), so a
+ * failed run is recorded as FAILED and the last cached stats simply stay put. "Sync now"
+ * exists because Render's free tier skips the scheduled sync while the backend sleeps.
+ */
 @Component({
   selector: 'app-profile-page',
   imports: [FormsModule, RouterLink],

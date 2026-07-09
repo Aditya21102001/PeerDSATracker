@@ -4,6 +4,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.Test;
 
+/**
+ * The interval ladder, rung by rung. It is duplicated in the analytics service as
+ * {@code LADDER} in {@code app/services/revision.py}, which has no way to see this class --
+ * so if these numbers change, that file must change with them.
+ */
 class RevisionScheduleTest {
 
     @Test

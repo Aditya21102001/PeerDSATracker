@@ -164,6 +164,11 @@ tr.me {
 }
 
 @media (max-width: 34rem) {
+  .tabs button {
+    min-height: 40px;
+    flex: 1;
+  }
+
   th,
   td {
     padding: var(--sp-2) var(--sp-2);

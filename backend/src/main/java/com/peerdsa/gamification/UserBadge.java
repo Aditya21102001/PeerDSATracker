@@ -9,6 +9,10 @@ import java.io.Serializable;
 import java.time.Instant;
 import java.util.Objects;
 
+/**
+ * Join row recording that a user holds a badge; the mere existence of the row is the award.
+ * {@code awardedAt} is populated by the database default, hence {@code insertable = false}.
+ */
 @Entity
 @Table(name = "user_badges")
 @IdClass(UserBadge.Key.class)

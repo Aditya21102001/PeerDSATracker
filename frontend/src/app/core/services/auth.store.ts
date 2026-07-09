@@ -5,6 +5,14 @@ import { Observable, catchError, finalize, map, of, shareReplay, switchMap, tap,
 import { Me, TokenResponse } from '../models/api.models';
 import { TokenService } from './token.service';
 
+/**
+ * The session: who is signed in, and how requests get a valid access token.
+ *
+ * Two rules make the whole scheme work, and both are easy to break:
+ * refresh is single-flight (see {@link AuthStore.refreshOnce}), and it bypasses the
+ * interceptor chain. Losing either turns a normal page load into a session-killing
+ * refresh-token-reuse report from the backend.
+ */
 @Service()
 export class AuthStore {
   private readonly http = inject(HttpClient);

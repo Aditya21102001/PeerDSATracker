@@ -12,6 +12,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * REST surface for the social graph: follow / unfollow, the following and followers lists, and
+ * user search. Every endpoint is authenticated; search in particular must not be public.
+ */
 @RestController
 @RequestMapping("/api/peers")
 public class PeerController {

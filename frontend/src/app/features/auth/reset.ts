@@ -36,6 +36,13 @@ import { Router, RouterLink } from '@angular/router';
   `,
   styleUrl: './auth.scss',
 })
+/**
+ * Set-a-new-password form, opened from an emailed link that carries the token as ?token=….
+ *
+ * Deliberately NOT guest-only, unlike /forgot: a signed-in user following the link from
+ * their inbox must still land here. A successful reset revokes every refresh token, so it
+ * ends all of the user's other sessions (which the tagline warns about).
+ */
 export class Reset {
   /** Bound from ?token=… by withComponentInputBinding(). */
   readonly token = input<string>('');

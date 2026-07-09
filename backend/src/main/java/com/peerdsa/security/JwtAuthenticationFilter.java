@@ -16,6 +16,11 @@ import org.springframework.security.web.authentication.WebAuthenticationDetailsS
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+/**
+ * Authenticates requests carrying a {@code Bearer} JWT: on a valid token it loads the user and
+ * populates the {@link SecurityContextHolder} for the request. Purely stateless -- an absent or
+ * invalid token is left unauthenticated for the security chain to reject downstream.
+ */
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 

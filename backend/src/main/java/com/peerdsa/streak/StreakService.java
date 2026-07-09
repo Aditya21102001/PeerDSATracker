@@ -8,6 +8,13 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * Owns streak counters and the activity heatmap. A "day" is resolved in the configured
+ * {@code app.streak.zone} so a late-night solve lands on the intended calendar cell rather
+ * than the previous day's. Because a broken streak writes nothing, the stored
+ * {@code users.current_streak} goes stale; reads correct it via
+ * {@link #effectiveCurrentStreak} and the nightly job reconciles the column.
+ */
 @Service
 public class StreakService {
 
@@ -120,7 +127,9 @@ public class StreakService {
                 .toList();
     }
 
+    /** A single populated heatmap cell: problems solved and XP earned on {@code date}. */
     public record HeatmapDay(LocalDate date, int count, int xp) {}
 
+    /** Streak widget payload; {@code current} is already corrected for missed days. */
     public record StreakSummary(int current, int longest, LocalDate lastActiveDate, long totalActiveDays) {}
 }

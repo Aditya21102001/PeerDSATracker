@@ -68,6 +68,13 @@ def match_array(s: str, start: int) -> str:
 
 
 def extract_sections(html: str) -> list[dict]:
+    """Reconstruct the flight text and pull the categories array out of it.
+
+    Each chunk's payload is a JS string literal, so `json.loads` is what un-escapes it; the
+    decoded chunks concatenate into one flight document. The categories array is not labelled,
+    so it is located by walking *backwards* from the first "category_id" key: back to the '{'
+    that opens the object holding it, then back to the '[' that opens the enclosing array.
+    """
     chunks = re.findall(r'self\.__next_f\.push\(\[1,\s*("(?:[^"\\]|\\.)*")\s*\]\)', html, re.S)
     if not chunks:
         raise SystemExit("no RSC flight chunks found -- the page layout changed")

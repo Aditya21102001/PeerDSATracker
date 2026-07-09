@@ -7,6 +7,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
+/** Top level of the sheet's content hierarchy: one of the 18 A2Z steps. */
 @Entity
 @Table(name = "sheet_steps")
 public class SheetStep {

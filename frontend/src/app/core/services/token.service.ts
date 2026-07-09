@@ -3,6 +3,7 @@ import { TokenResponse } from '../models/api.models';
 
 const REFRESH_KEY = 'peerdsa.refreshToken';
 
+/** The only place tokens are stored. Nothing else may read or write `localStorage` for auth. */
 @Service()
 export class TokenService {
   /**

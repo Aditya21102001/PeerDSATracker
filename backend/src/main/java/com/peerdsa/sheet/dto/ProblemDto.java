@@ -5,6 +5,10 @@ import com.peerdsa.progress.UserProblemStatus;
 import com.peerdsa.sheet.Difficulty;
 import com.peerdsa.sheet.Problem;
 
+/**
+ * Flattened view of a {@link Problem} plus the caller's progress on it, returned by the sheet API.
+ * {@code status} is null and {@code starred} false when the user has never touched the problem.
+ */
 public record ProblemDto(
         Long id,
         String title,

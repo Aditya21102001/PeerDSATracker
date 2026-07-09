@@ -148,5 +148,14 @@ header {
     .stats {
       grid-column: 1 / -1;
     }
+
+    button {
+      min-height: 38px;
+    }
+  }
+
+  .tabs button {
+    min-height: 40px;
+    flex: 1;
   }
 }

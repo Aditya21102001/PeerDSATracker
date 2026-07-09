@@ -4,6 +4,11 @@ import { RouterLink } from '@angular/router';
 import { NotesService } from '../../core/services/notes.service';
 import { Problem } from '../../core/models/api.models';
 
+/**
+ * Editor for the single note attached to a problem. Routed as notes/:problemId, with problemId
+ * supplied by component input binding. One note per (user, problem); saving empty content
+ * deletes the note server-side, so Save can double as Delete.
+ */
 @Component({
   selector: 'app-note-editor',
   imports: [FormsModule, RouterLink],
@@ -69,6 +74,7 @@ export class NoteEditor {
 
   protected save(): void {
     this.saving.set(true);
+    // Empty content is a valid save: the server deletes the note rather than storing a blank one.
     this.notes.save(Number(this.problemId()), this.content).subscribe({
       next: () => {
         this.saving.set(false);

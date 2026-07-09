@@ -45,6 +45,7 @@ public class Follow {
         return followeeId;
     }
 
+    /** Composite primary key mirroring the (follower_id, followee_id) pair. */
     public static class Key implements Serializable {
         private Long followerId;
         private Long followeeId;

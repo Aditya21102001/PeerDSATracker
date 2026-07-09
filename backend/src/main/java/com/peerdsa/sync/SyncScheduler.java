@@ -9,6 +9,11 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+/**
+ * Periodic background sync of every linked account. On Render's free tier {@code @Scheduled}
+ * jobs do not fire while the backend is asleep, so in practice sync is driven manually from
+ * the /profile button; this fires only while the instance happens to be awake.
+ */
 @Component
 public class SyncScheduler {
 

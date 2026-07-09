@@ -8,6 +8,11 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
 
+/**
+ * A single-use, short-lived password-reset grant. Only the SHA-256 hash is persisted; the token
+ * is invalid once {@code usedAt} is set or {@code expiresAt} has passed, and requesting a new link
+ * marks any outstanding token used.
+ */
 @Entity
 @Table(name = "password_reset_tokens")
 public class PasswordResetToken {

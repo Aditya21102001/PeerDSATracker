@@ -9,6 +9,11 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
+/**
+ * A badge definition: a stable {@code code}, display fields, and the {@link CriteriaType}
+ * threshold that earns it. Rows are seeded by Flyway (13 badges in V5) and never created
+ * at runtime.
+ */
 @Entity
 @Table(name = "badges")
 public class Badge {

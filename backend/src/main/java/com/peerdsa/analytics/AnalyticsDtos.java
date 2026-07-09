@@ -9,15 +9,20 @@ public final class AnalyticsDtos {
 
     private AnalyticsDtos() {}
 
+    /** One topic's solved/total counts, the raw input FastAPI scores into mastery. */
     public record TopicStat(String topic, long solved, long total) {}
 
+    /** FastAPI's computed mastery for a topic; {@code gap} is the unsolved remainder. */
     public record TopicMastery(String topic, double mastery, long solved, long total, long gap) {}
 
+    /** Request for {@code /analytics/weakness}: this user's per-topic progress. */
     public record WeaknessRequest(Long userId, List<TopicStat> byTopic) {}
 
+    /** FastAPI's weakest/strongest topic ranking for {@code /analytics/weakness}. */
     public record WeaknessResponse(
             Long userId, List<TopicMastery> weakest, List<TopicMastery> strongest, double overallMastery) {}
 
+    /** A scheduled problem offered to {@code /analytics/revise-next} for ranking. */
     public record Candidate(
             Long problemId,
             String title,
@@ -27,15 +32,20 @@ public final class AnalyticsDtos {
             Instant lastReviewedAt,
             Instant nextReviewAt) {}
 
+    /** Request for {@code /analytics/revise-next}: progress plus the due candidates. */
     public record ReviseNextRequest(Long userId, List<TopicStat> byTopic, List<Candidate> candidates) {}
 
+    /** One prioritised revision suggestion returned by {@code /analytics/revise-next}. */
     public record Recommendation(
             Long problemId, String title, String reason, double priority, int suggestedIntervalDays) {}
 
+    /** FastAPI's ordered revision suggestions for {@code /analytics/revise-next}. */
     public record ReviseNextResponse(Long userId, List<Recommendation> recommendations) {}
 
+    /** Shared request body for both {@code /fetch/leetcode} and {@code /fetch/codeforces}. */
     public record FetchRequest(String handle) {}
 
+    /** Cached LeetCode profile; {@code found} is false, not an error, for an unknown handle. */
     public record LeetCodeStats(
             String handle,
             boolean found,
@@ -51,6 +61,7 @@ public final class AnalyticsDtos {
             String source,
             String error) {}
 
+    /** Cached Codeforces profile; {@code found} is false, not an error, for an unknown handle. */
     public record CodeforcesStats(
             String handle,
             boolean found,

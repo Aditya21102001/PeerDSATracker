@@ -10,6 +10,12 @@ import jakarta.persistence.Table;
 import java.time.Instant;
 import java.time.LocalDate;
 
+/**
+ * The account aggregate and the leaderboard row. Beyond credentials it carries denormalized
+ * counters ({@code xp}, {@code totalSolved}, streaks, {@code lastActiveDate}) maintained at
+ * write time by ProgressService/StreakService, so a leaderboard read stays a single indexed
+ * scan instead of aggregating every user's progress rows.
+ */
 @Entity
 @Table(name = "users")
 public class User {

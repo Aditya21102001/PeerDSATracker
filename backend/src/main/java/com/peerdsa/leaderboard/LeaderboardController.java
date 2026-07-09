@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+/** Endpoints for the global and peers leaderboards, ranked off the denormalized user counters. */
 @RestController
 @RequestMapping("/api/leaderboard")
 public class LeaderboardController {
@@ -20,6 +21,7 @@ public class LeaderboardController {
         this.leaderboard = leaderboard;
     }
 
+    /** A page of ranked rows plus {@code totalUsers} so the client can size pagination. */
     public record LeaderboardResponse(List<LeaderboardRow> rows, int page, int size, long totalUsers) {}
 
     /** Ranked by XP, tie-broken by problems solved. */

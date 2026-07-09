@@ -11,6 +11,11 @@ function withToken(req: HttpRequest<unknown>, token: string): HttpRequest<unknow
   return req.clone({ setHeaders: { Authorization: `Bearer ${token}` } });
 }
 
+/**
+ * Attaches the access token to outgoing requests and recovers from expiry: a 401 that
+ * still has a refresh token funnels into one shared refresh (AuthStore.refreshOnce), then
+ * the original request is retried once. A failed refresh forces sign-out.
+ */
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const tokens = inject(TokenService);
   const auth = inject(AuthStore);

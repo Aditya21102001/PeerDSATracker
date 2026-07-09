@@ -11,9 +11,14 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * Translates exceptions thrown by controllers into the uniform {@link ApiError} JSON envelope,
+ * keeping client mistakes (malformed body, failed validation) as 4xx rather than leaking 500s.
+ */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    /** Uniform JSON error envelope; {@code fieldErrors} is empty except for validation failures. */
     public record ApiError(Instant timestamp, int status, String message, Map<String, String> fieldErrors) {}
 
     @ExceptionHandler(ResponseStatusException.class)
@@ -29,6 +34,7 @@ public class GlobalExceptionHandler {
                 .body(new ApiError(Instant.now(), HttpStatus.BAD_REQUEST.value(), "Malformed request body", Map.of()));
     }
 
+    /** Flattens bean-validation failures into a field-to-message map; the first message per field wins. */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiError> handleValidation(MethodArgumentNotValidException ex) {
         Map<String, String> fields = new LinkedHashMap<>();

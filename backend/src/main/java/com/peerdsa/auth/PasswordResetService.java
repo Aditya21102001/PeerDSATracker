@@ -13,6 +13,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * Drives the password-reset flow. Every outcome is deliberately indistinguishable to an
+ * anonymous caller -- unknown email, rate-limited, and link-delivered all look identical -- so the
+ * endpoint cannot be used to enumerate accounts. Tokens are single-use and short-lived, and
+ * consuming one revokes all of the user's refresh tokens.
+ */
 @Service
 public class PasswordResetService {
 

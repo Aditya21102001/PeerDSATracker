@@ -3,6 +3,7 @@ package com.peerdsa.gamification;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+/** Spring Data access to the seeded {@code badges} catalog. */
 public interface BadgeRepository extends JpaRepository<Badge, Long> {
 
     /**

@@ -10,6 +10,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * CRUD for notes, keyed by (user, problem). Reads never 404: a missing note surfaces as empty so
+ * the editor always has a document to open, and {@code save} lazily creates the row on first write.
+ */
 @Service
 public class NotesService {
 
@@ -51,12 +55,14 @@ public class NotesService {
         return notes.findByUserIdOrderByUpdatedAtDesc(userId, pageable).map(NoteSummary::from);
     }
 
+    /** Full note content for the single-note editor. */
     public record NoteView(Long problemId, String content, Instant updatedAt) {
         static NoteView from(Note note) {
             return new NoteView(note.getProblem().getId(), note.getContent(), note.getUpdatedAt());
         }
     }
 
+    /** One row of the note list, carrying the problem title alongside the note. */
     public record NoteSummary(
             Long problemId, String problemTitle, int stepNo, String content, Instant updatedAt) {
         static NoteSummary from(Note note) {

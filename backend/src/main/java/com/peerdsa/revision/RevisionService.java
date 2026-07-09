@@ -15,6 +15,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * Owns the spaced-repetition schedule carried on each {@link UserProblemStatus} row. Central
+ * invariant: the schedule is orthogonal to solve status, so scheduling, reviewing, resetting and
+ * retiring a problem never move XP or change whether it counts as solved.
+ */
 @Service
 public class RevisionService {
 
@@ -121,6 +126,7 @@ public class RevisionService {
                 overdue);
     }
 
+    /** Read model for one scheduled problem, including how many days overdue its review is. */
     public record RevisionItem(
             Long problemId,
             String title,

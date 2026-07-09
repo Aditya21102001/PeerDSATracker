@@ -1,16 +1,23 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { Subject, debounceTime, distinctUntilChanged, switchMap } from 'rxjs';
+import { Subject, debounceTime, distinctUntilChanged, merge, switchMap, tap } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { PeerView } from '../../core/models/api.models';
 import { PeerService } from '../../core/services/peer.service';
+import { Spinner } from '../../shared/spinner';
 
 type Tab = 'search' | 'following' | 'followers';
 
+/**
+ * Peer discovery and the follow graph, across search / following / followers tabs. Search hits
+ * an auth-gated endpoint — an open one would let anyone enumerate every registered username.
+ * Following is idempotent and self-follows are rejected server-side. A follower need not be
+ * followed back, so every row carries its own `following` flag rather than a shared view.
+ */
 @Component({
   selector: 'app-peers-page',
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, Spinner],
   template: `
     <main class="peers">
       <header>
@@ -43,7 +50,7 @@ type Tab = 'search' | 'following' | 'followers';
           type="search"
           placeholder="Search usernames…"
           [(ngModel)]="query"
-          (ngModelChange)="search$.next($event)"
+          (ngModelChange)="onQuery($event)"
         />
       }
 
@@ -51,22 +58,30 @@ type Tab = 'search' | 'following' | 'followers';
         <p class="error" role="alert">{{ error() }}</p>
       }
 
-      <ul class="people">
-        @for (p of people(); track p.id) {
-          <li>
-            <span class="name">
-              {{ p.displayName || p.username }}
-              <small>&#64;{{ p.username }}</small>
-            </span>
-            <span class="stats">{{ p.xp }} XP · {{ p.totalSolved }} solved · {{ p.currentStreak }}🔥</span>
-            <button type="button" [class.following]="p.following" (click)="toggleFollow(p)">
-              {{ p.following ? 'Following' : 'Follow' }}
-            </button>
-          </li>
-        } @empty {
-          <li class="empty">{{ emptyMessage() }}</li>
-        }
-      </ul>
+      <!-- The empty message asserts a fact ("you follow nobody"). Never show it while the
+           request that would disprove it is still in flight. -->
+      @if (loading()) {
+        <app-spinner label="Loading peers…" />
+      } @else {
+        <ul class="people">
+          @for (p of people(); track p.id) {
+            <li>
+              <span class="name">
+                {{ p.displayName || p.username }}
+                <small>&#64;{{ p.username }}</small>
+              </span>
+              <span class="stats">
+                {{ p.xp }} XP · {{ p.totalSolved }} solved · {{ p.currentStreak }}🔥
+              </span>
+              <button type="button" [class.following]="p.following" (click)="toggleFollow(p)">
+                {{ p.following ? 'Following' : 'Follow' }}
+              </button>
+            </li>
+          } @empty {
+            <li class="empty">{{ emptyMessage() }}</li>
+          }
+        </ul>
+      }
     </main>
   `,
   styleUrl: './peers-page.scss',
@@ -78,23 +93,39 @@ export class PeersPage {
   protected readonly tab = signal<Tab>('search');
   protected readonly people = signal<PeerView[]>([]);
   protected readonly error = signal<string | null>(null);
+  protected readonly loading = signal(false);
   protected query = '';
 
-  /** Debounced so typing doesn't fire a request per keystroke. */
-  protected readonly search$ = new Subject<string>();
+  /** Keystrokes. Debounced and de-duplicated. */
+  private readonly search$ = new Subject<string>();
+
+  /**
+   * Re-running the query the tab switch just cleared. This bypasses `distinctUntilChanged`,
+   * which would otherwise swallow an identical query and leave the list empty under a
+   * "No users match that name" message.
+   */
+  private readonly rerun$ = new Subject<string>();
 
   constructor() {
-    this.search$
+    merge(this.search$.pipe(debounceTime(250), distinctUntilChanged()), this.rerun$)
       .pipe(
-        debounceTime(250),
-        distinctUntilChanged(),
+        // After the debounce, so a burst of keystrokes is one spinner, not one per key.
+        tap(() => this.loading.set(true)),
         switchMap((q) => this.peers.search(q)),
         takeUntilDestroyed(),
       )
       .subscribe({
-        next: (found) => this.people.set(found),
-        error: () => this.error.set('Search failed.'),
+        next: (found) => {
+          this.people.set(found);
+          this.loading.set(false);
+        },
+        error: () => this.fail('Search failed.'),
       });
+  }
+
+  /** The spinner is armed inside the pipe, after the debounce — not here, per keystroke. */
+  protected onQuery(query: string): void {
+    this.search$.next(query);
   }
 
   protected select(tab: Tab): void {
@@ -103,15 +134,39 @@ export class PeersPage {
     this.people.set([]);
 
     if (tab === 'following') {
-      this.peers.following().subscribe({ next: (p) => this.people.set(p) });
+      this.loading.set(true);
+      this.peers.following().subscribe({
+        next: (p) => {
+          this.people.set(p);
+          this.loading.set(false);
+        },
+        error: () => this.fail('Could not load who you follow.'),
+      });
     } else if (tab === 'followers') {
-      this.peers.followers().subscribe({ next: (p) => this.people.set(p) });
-    } else if (this.query.trim()) {
-      this.search$.next(this.query);
+      this.loading.set(true);
+      this.peers.followers().subscribe({
+        next: (p) => {
+          this.people.set(p);
+          this.loading.set(false);
+        },
+        error: () => this.fail('Could not load your followers.'),
+      });
+    } else {
+      // Back on the search tab: re-run the last query, or show the prompt-to-type empty state.
+      this.loading.set(false);
+      if (this.query.trim()) {
+        this.rerun$.next(this.query);
+      }
     }
   }
 
+  private fail(message: string): void {
+    this.error.set(message);
+    this.loading.set(false);
+  }
+
   protected toggleFollow(peer: PeerView): void {
+    // Optimistic: flip the flag immediately, then roll back to wasFollowing if the request fails.
     const wasFollowing = peer.following;
     this.patch(peer.id, !wasFollowing);
 

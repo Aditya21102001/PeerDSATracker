@@ -20,6 +20,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * The only writer of a user's progress state. A SOLVED transition updates the status row and, in
+ * the same transaction, XP, the streak, the day's activity row and badge awards, so the
+ * denormalized counters on {@code users} can never drift from the status rows.
+ */
 @Service
 public class ProgressService {
 
@@ -42,6 +47,7 @@ public class ProgressService {
         this.gamification = gamification;
     }
 
+    /** Statuses keyed by problem id; a problem with no row is simply absent, i.e. untouched. */
     @Transactional(readOnly = true)
     public Map<Long, UserProblemStatus> statusesFor(Long userId, Collection<Long> problemIds) {
         if (problemIds.isEmpty()) {
@@ -103,6 +109,11 @@ public class ProgressService {
         applySolveTransition(userId, problem, previous, null, previouslySolvedAt);
     }
 
+    /**
+     * Applies, or refunds, the XP, streak and badge effects of crossing the SOLVED boundary. No-ops
+     * when SOLVED-ness is unchanged, so it fires exactly once in either direction and the effects
+     * stay idempotent.
+     */
     private void applySolveTransition(
             Long userId, Problem problem, ProblemStatus previous, ProblemStatus next, Instant previouslySolvedAt) {
 
@@ -130,6 +141,7 @@ public class ProgressService {
         users.save(user);
     }
 
+    /** Flips the star, deleting the row when the star was the last thing keeping it alive. */
     @Transactional
     public boolean toggleStar(Long userId, Long problemId) {
         UserProblemStatus row = findOrCreate(userId, problemId);
@@ -178,8 +190,10 @@ public class ProgressService {
         });
     }
 
+    /** Per-step tally: how many of a step's problems the user has solved. */
     public record StepProgress(int stepNo, String stepTitle, long total, long solved) {}
 
+    /** Whole-sheet progress summary: counts by status plus the per-step breakdown. */
     public record SheetProgress(
             long total, long solved, long attempted, long revisit, long starred, List<StepProgress> steps) {}
 }

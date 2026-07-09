@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+/** Read-only endpoints exposing a user's badge collection and XP/level progress. */
 @RestController
 @RequestMapping("/api/gamification")
 public class GamificationController {

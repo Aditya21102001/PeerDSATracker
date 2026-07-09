@@ -1,3 +1,4 @@
+/** Striver-sheet difficulty tier of a problem. */
 export type Difficulty = 'EASY' | 'MEDIUM' | 'HARD';
 
 /** Null status = the user has never marked the problem. */
@@ -6,12 +7,14 @@ export type ProblemStatus = 'SOLVED' | 'ATTEMPTED' | 'REVISIT';
 /** The `status` query param also accepts these pseudo-statuses. */
 export type StatusFilter = ProblemStatus | 'UNSOLVED' | 'STARRED';
 
+/** Access/refresh pair returned by /api/auth/login, /signup, and /refresh. */
 export interface TokenResponse {
   accessToken: string;
   refreshToken: string;
   expiresInSeconds: number;
 }
 
+/** The signed-in user's profile and headline stats, from /api/auth/me. */
 export interface Me {
   id: number;
   email: string;
@@ -23,6 +26,7 @@ export interface Me {
   longestStreak: number;
 }
 
+/** A sheet problem with the caller's own status/star, from /api/sheet/problems[/{id}]. */
 export interface Problem {
   id: number;
   title: string;
@@ -39,6 +43,7 @@ export interface Problem {
   starred: boolean;
 }
 
+/** Per-step solved/total counts, nested inside SheetProgress. */
 export interface StepProgress {
   stepNo: number;
   stepTitle: string;
@@ -46,6 +51,7 @@ export interface StepProgress {
   solved: number;
 }
 
+/** Aggregate sheet counters plus the per-step breakdown, from /api/sheet/progress. */
 export interface SheetProgress {
   total: number;
   solved: number;
@@ -55,6 +61,7 @@ export interface SheetProgress {
   steps: StepProgress[];
 }
 
+/** One day's activity cell from /api/activity/heatmap. */
 export interface HeatmapDay {
   /** ISO yyyy-MM-dd, in the server's configured streak zone. */
   date: string;
@@ -62,6 +69,7 @@ export interface HeatmapDay {
   xp: number;
 }
 
+/** Current/longest streak figures from /api/activity/streak. */
 export interface StreakSummary {
   current: number;
   longest: number;
@@ -69,8 +77,10 @@ export interface StreakSummary {
   totalActiveDays: number;
 }
 
+/** The kind of threshold a badge is earned against. */
 export type CriteriaType = 'TOTAL_SOLVED' | 'STREAK' | 'XP' | 'TOPIC_COMPLETE';
 
+/** A badge definition plus the user's earned state, from /api/gamification/badges. */
 export interface BadgeView {
   code: string;
   name: string;
@@ -82,6 +92,7 @@ export interface BadgeView {
   awardedAt: string | null;
 }
 
+/** XP total resolved into level progress, from /api/gamification/xp. */
 export interface XpView {
   xp: number;
   level: number;
@@ -90,9 +101,12 @@ export interface XpView {
   xpPerLevel: number;
 }
 
+/** External judge a user can link for stat syncing. */
 export type Platform = 'LEETCODE' | 'CODEFORCES';
+/** Lifecycle state of a single sync run. */
 export type SyncStatus = 'PENDING' | 'RUNNING' | 'SUCCESS' | 'FAILED';
 
+/** One topic's mastery figures, part of WeaknessReport. */
 export interface TopicMastery {
   topic: string;
   mastery: number;
@@ -101,6 +115,7 @@ export interface TopicMastery {
   gap: number;
 }
 
+/** Weakest/strongest topic breakdown from /api/analytics/weakness (FastAPI). */
 export interface WeaknessReport {
   userId: number;
   weakest: TopicMastery[];
@@ -108,6 +123,7 @@ export interface WeaknessReport {
   overallMastery: number;
 }
 
+/** A single suggested problem, part of ReviseNextReport. */
 export interface Recommendation {
   problemId: number;
   title: string;
@@ -116,6 +132,7 @@ export interface Recommendation {
   suggestedIntervalDays: number;
 }
 
+/** Prioritized revision suggestions from /api/analytics/revise-next (FastAPI). */
 export interface ReviseNextReport {
   userId: number;
   recommendations: Recommendation[];
@@ -130,6 +147,7 @@ export interface PlatformAccountView {
   externalStats: Record<string, unknown> | null;
 }
 
+/** A sync run record from /api/sync/run and /api/sync/runs. */
 export interface SyncRunView {
   id: number;
   platform: Platform;
@@ -141,12 +159,14 @@ export interface SyncRunView {
   errorMessage: string | null;
 }
 
+/** A problem's note body from /api/notes/problems/{id} (get and save). */
 export interface NoteView {
   problemId: number;
   content: string;
   updatedAt: string | null;
 }
 
+/** A note list entry, paged inside /api/notes. */
 export interface NoteSummary {
   problemId: number;
   problemTitle: string;
@@ -155,6 +175,7 @@ export interface NoteSummary {
   updatedAt: string;
 }
 
+/** A scheduled revision entry from /api/revision/{queue,upcoming} and schedule writes. */
 export interface RevisionItem {
   problemId: number;
   title: string;
@@ -167,6 +188,7 @@ export interface RevisionItem {
   overdueDays: number;
 }
 
+/** A discoverable peer from /api/peers/{search,following,followers}. */
 export interface PeerView {
   id: number;
   username: string;
@@ -179,6 +201,7 @@ export interface PeerView {
   following: boolean;
 }
 
+/** One ranked row; also returned directly as an array by /api/leaderboard/peers. */
 export interface LeaderboardRow {
   rank: number;
   userId: number;
@@ -190,6 +213,7 @@ export interface LeaderboardRow {
   currentStreak: number;
 }
 
+/** A paged global ranking from /api/leaderboard/global. */
 export interface LeaderboardResponse {
   rows: LeaderboardRow[];
   page: number;

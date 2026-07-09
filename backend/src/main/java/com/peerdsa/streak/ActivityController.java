@@ -8,6 +8,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * Read-only endpoints backing the streak widget and activity heatmap. Activity is only ever
+ * written on the solve path in {@link StreakService}, never through this controller.
+ */
 @RestController
 @RequestMapping("/api/activity")
 public class ActivityController {

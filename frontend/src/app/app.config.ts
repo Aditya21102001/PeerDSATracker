@@ -7,6 +7,10 @@ import { authInterceptor } from './core/interceptors/auth.interceptor';
 import { AuthStore } from './core/services/auth.store';
 import { routes } from './app.routes';
 
+/**
+ * Application-wide providers wired up at bootstrap: the router (with component input
+ * binding), the HTTP client behind the auth interceptor, and the pre-route session restore.
+ */
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),

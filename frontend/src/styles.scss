@@ -534,6 +534,12 @@ main > header {
   padding-right: 2.75rem;
 }
 
+/* Four nav items at 320px do not fit on one line. Measured: /sheet overflowed by 14px. */
+main > header nav {
+  flex-wrap: wrap;
+  row-gap: var(--sp-1);
+}
+
 @media (max-width: 48rem) {
   main {
     padding-left: var(--sp-3) !important;
@@ -544,6 +550,16 @@ main > header {
     align-items: flex-start;
     flex-direction: column;
     gap: var(--sp-2);
+  }
+
+  /* Measured tap targets were 24px tall. A finger is ~44px; 40 is the floor worth
+     shipping. Padding, not height, so the text stays vertically centred. */
+  main > header nav a,
+  main > header nav button {
+    display: inline-flex;
+    align-items: center;
+    min-height: 40px;
+    padding-inline: var(--sp-1);
   }
 }
 

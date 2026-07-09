@@ -1,3 +1,9 @@
+"""Pins the ranking rules in `weakness.analyse`.
+
+The two that would break silently: a topic too small to say anything about mastery must never be
+ranked, and no topic may be reported as both a weakness and a strength.
+"""
+
 from app.schemas import TopicStat, WeaknessRequest
 from app.services import weakness
 

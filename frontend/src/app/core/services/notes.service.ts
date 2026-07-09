@@ -3,6 +3,13 @@ import { Service, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { NoteSummary, NoteView, Page, Problem, RevisionItem } from '../models/api.models';
 
+/**
+ * Notes and the spaced-repetition queue, which share this service because the revision UI
+ * is built out of noted problems.
+ *
+ * A revision schedule is orthogonal to a problem's status: scheduling, reviewing, resetting
+ * and retiring never change whether a problem counts as solved, and so can never move XP.
+ */
 @Service()
 export class NotesService {
   private readonly http = inject(HttpClient);

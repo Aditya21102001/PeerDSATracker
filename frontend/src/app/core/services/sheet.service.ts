@@ -10,6 +10,7 @@ import {
   StatusFilter,
 } from '../models/api.models';
 
+/** Filters for `GET /api/sheet/problems`. Every field is optional and omitted when null. */
 export interface ProblemQuery {
   step?: number | null;
   difficulty?: Difficulty | null;
@@ -19,6 +20,13 @@ export interface ProblemQuery {
   size?: number;
 }
 
+/**
+ * Raw HTTP for the sheet and for status/star mutations. Holds no state — {@link ProgressStore}
+ * owns that, and is what components should talk to.
+ *
+ * Marking a problem SOLVED is what moves XP, the streak, the day's activity row and badge
+ * awards; the backend does all of that in one transaction, and un-marking refunds it.
+ */
 @Service()
 export class SheetService {
   private readonly http = inject(HttpClient);

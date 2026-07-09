@@ -151,6 +151,14 @@ h2 {
       a {
         flex: 1 1 auto;
       }
+
+      button,
+      a {
+        min-height: 38px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
     }
   }
 }

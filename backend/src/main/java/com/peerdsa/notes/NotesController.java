@@ -16,6 +16,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import jakarta.validation.Valid;
 
+/**
+ * REST surface for per-problem markdown notes and the paginated note list. Page size is clamped to
+ * {@link #MAX_PAGE_SIZE} so a caller cannot request an unbounded page.
+ */
 @RestController
 @RequestMapping("/api/notes")
 public class NotesController {
@@ -28,6 +32,7 @@ public class NotesController {
         this.notes = notes;
     }
 
+    /** Note body, capped to bound row size and request payload. */
     public record NoteRequest(@Size(max = 20_000) String content) {}
 
     @GetMapping("/problems/{problemId}")

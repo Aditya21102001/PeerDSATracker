@@ -3,12 +3,19 @@ import { RouterLink } from '@angular/router';
 import { LeaderboardRow } from '../../core/models/api.models';
 import { AuthStore } from '../../core/services/auth.store';
 import { PeerService } from '../../core/services/peer.service';
+import { Spinner } from '../../shared/spinner';
 
 type Scope = 'global' | 'peers';
 
+/**
+ * Two ranked boards: global (server-paged) and peers (me plus everyone I follow, ranked only
+ * within that set, not against the world). Ranks are computed from denormalized counters before
+ * LIMIT, so page 2 still carries true global ranks — `row.rank` is authoritative and must never
+ * be re-derived from the row's index. `currentStreak` arrives already corrected by the server.
+ */
 @Component({
   selector: 'app-leaderboard-page',
-  imports: [RouterLink],
+  imports: [RouterLink, Spinner],
   template: `
     <main class="leaderboard">
       <header>
@@ -42,7 +49,7 @@ type Scope = 'global' | 'peers';
       </div>
 
       @if (loading()) {
-        <p>Loading…</p>
+        <app-spinner label="Loading the leaderboard…" />
       } @else if (error()) {
         <p class="error" role="alert">{{ error() }}</p>
       } @else {
@@ -68,6 +75,7 @@ type Scope = 'global' | 'peers';
             <tbody>
               @for (r of rows(); track r.userId) {
                 <tr [class.me]="r.userId === myId()">
+                  <!-- Server-supplied rank; never swap for $index — page 2 shows true global ranks. -->
                   <td class="rank">{{ r.rank }}</td>
                   <td class="member">
                     {{ r.displayName || r.username }}

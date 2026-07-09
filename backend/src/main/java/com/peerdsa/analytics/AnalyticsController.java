@@ -9,6 +9,11 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * HTTP surface for the analytics features. Each endpoint delegates to
+ * {@link AnalyticsService} and, per the "analytics is optional" rule, translates a failed
+ * call into a 503 so a dead analytics service never surfaces as an app-side 500.
+ */
 @RestController
 @RequestMapping("/api/analytics")
 public class AnalyticsController {

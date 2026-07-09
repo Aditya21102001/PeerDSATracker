@@ -3,10 +3,20 @@ import { RouterLink } from '@angular/router';
 import { Observable, forkJoin } from 'rxjs';
 import { RevisionItem } from '../../core/models/api.models';
 import { NotesService } from '../../core/services/notes.service';
+import { Spinner } from '../../shared/spinner';
 
+/**
+ * Spaced-repetition review queue over the Striver sheet. Reviews follow a fixed interval
+ * ladder (1, 3, 7, 16, 35, 90 days, saturating at the top so reviews never stop) — "Got it"
+ * climbs a rung, "Forgot" drops back to 1 day. Deliberately not SM-2: with no self-reported
+ * recall quality there is nothing to drive an ease factor.
+ *
+ * A schedule is orthogonal to a problem's status — scheduling or retiring never touches XP
+ * or the SOLVED flag. The queue is split into due-now and upcoming.
+ */
 @Component({
   selector: 'app-revision-page',
-  imports: [RouterLink],
+  imports: [RouterLink, Spinner],
   template: `
     <main class="revision">
       <header>
@@ -19,7 +29,7 @@ import { NotesService } from '../../core/services/notes.service';
       </header>
 
       @if (loading()) {
-        <p>Loading…</p>
+        <app-spinner label="Loading your revision queue…" />
       } @else {
         @if (error()) {
           <p class="error" role="alert">{{ error() }}</p>

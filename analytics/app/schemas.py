@@ -22,10 +22,14 @@ class CamelModel(BaseModel):
 # ---------------------------------------------------------------- fetch
 
 class FetchRequest(CamelModel):
+    """Request body for /fetch/leetcode and /fetch/codeforces; handle is the platform username."""
+
     handle: str = Field(min_length=1, max_length=100)
 
 
 class LeetCodeStats(CamelModel):
+    """Response of /fetch/leetcode; found=False means the best-effort lookup failed and error says why."""
+
     handle: str
     found: bool
     total_solved: int = 0
@@ -43,6 +47,8 @@ class LeetCodeStats(CamelModel):
 
 
 class CodeforcesStats(CamelModel):
+    """Response of /fetch/codeforces; found=False means the lookup failed and error says why."""
+
     handle: str
     found: bool
     rating: int | None = None
@@ -58,17 +64,23 @@ class CodeforcesStats(CamelModel):
 # ------------------------------------------------------------ analytics
 
 class TopicStat(CamelModel):
+    """One topic's solved/total counts, as Spring feeds them to both analytics endpoints."""
+
     topic: str
     solved: int = Field(ge=0)
     total: int = Field(ge=0)
 
 
 class WeaknessRequest(CamelModel):
+    """Request body for /analytics/weakness."""
+
     user_id: int
     by_topic: list[TopicStat]
 
 
 class TopicMastery(CamelModel):
+    """A scored topic in the /analytics/weakness response; mastery is solved/total, gap is problems left."""
+
     topic: str
     mastery: float
     solved: int
@@ -77,6 +89,8 @@ class TopicMastery(CamelModel):
 
 
 class WeaknessResponse(CamelModel):
+    """Response of /analytics/weakness; strongest is drawn only from topics not already named weakest."""
+
     user_id: int
     weakest: list[TopicMastery]
     strongest: list[TopicMastery]
@@ -84,6 +98,8 @@ class WeaknessResponse(CamelModel):
 
 
 class Candidate(CamelModel):
+    """A problem eligible for revision in the /analytics/revise-next request; next_review_at drives overdue-ness."""
+
     problem_id: int
     title: str = ""
     topic: str | None = None
@@ -94,12 +110,16 @@ class Candidate(CamelModel):
 
 
 class ReviseNextRequest(CamelModel):
+    """Request body for /analytics/revise-next; by_topic feeds the topic-weakness signal."""
+
     user_id: int
     by_topic: list[TopicStat] = Field(default_factory=list)
     candidates: list[Candidate]
 
 
 class Recommendation(CamelModel):
+    """One ranked problem in the /analytics/revise-next response; priority is 0..1, reason is human-readable."""
+
     problem_id: int
     title: str
     reason: str
@@ -108,5 +128,7 @@ class Recommendation(CamelModel):
 
 
 class ReviseNextResponse(CamelModel):
+    """Response of /analytics/revise-next; recommendations are ordered by descending priority."""
+
     user_id: int
     recommendations: list[Recommendation]

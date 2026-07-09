@@ -12,6 +12,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * Social-graph logic over the {@link Follow} edge table. Follows are idempotent and self-follows
+ * are rejected; peer views report {@link StreakService#effectiveCurrentStreak} rather than the
+ * stored streak column, which goes stale on an idle day.
+ */
 @Service
 public class PeerService {
 
@@ -86,6 +91,7 @@ public class PeerService {
                 .toList();
     }
 
+    /** Read model for a peer row, with {@code following} flagged relative to the viewer. */
     public record PeerView(
             Long id,
             String username,

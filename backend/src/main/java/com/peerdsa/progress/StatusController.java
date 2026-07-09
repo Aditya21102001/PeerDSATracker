@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+/** Write API for a user's per-problem progress: set or clear a status and toggle a star. */
 @RestController
 @RequestMapping("/api/status")
 public class StatusController {
@@ -23,10 +24,13 @@ public class StatusController {
         this.progress = progress;
     }
 
+    /** Body of the set-status request; the status is required. */
     public record StatusRequest(@NotNull ProblemStatus status) {}
 
+    /** Echoes the problem's status and star state after a status write. */
     public record StatusResponse(Long problemId, ProblemStatus status, boolean starred) {}
 
+    /** Echoes the problem's star state after a toggle. */
     public record StarResponse(Long problemId, boolean starred) {}
 
     @PutMapping("/problems/{problemId}")

@@ -11,6 +11,11 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.lang.NonNull;
 
+/**
+ * Read access to the sheet's {@link Problem}s. Any finder feeding a DTO pulls the
+ * {@code subStep}/{@code step} graph eagerly, because {@code open-in-view=false} closes the
+ * session before the DTO is assembled.
+ */
 public interface ProblemRepository extends JpaRepository<Problem, Long>, JpaSpecificationExecutor<Problem> {
 
     /**
@@ -31,6 +36,7 @@ public interface ProblemRepository extends JpaRepository<Problem, Long>, JpaSpec
     @EntityGraph(attributePaths = {"subStep", "subStep.step"})
     Optional<Problem> findWithStepById(Long id);
 
+    /** Projection: how many problems live under one sheet step. */
     interface StepTotal {
         int getStepNo();
 
@@ -49,6 +55,7 @@ public interface ProblemRepository extends JpaRepository<Problem, Long>, JpaSpec
             """)
     List<StepTotal> countPerStep();
 
+    /** Projection: how many problems carry one topic. */
     interface TopicTotal {
         String getTopic();
 
