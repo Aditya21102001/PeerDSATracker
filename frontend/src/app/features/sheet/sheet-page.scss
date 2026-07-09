@@ -276,21 +276,9 @@ header {
     grid-template-columns: 2.5rem 1fr auto;
     row-gap: var(--sp-2);
 
-    /* Measured: 20px. Unhittable with a thumb. */
     .star {
       grid-row: 1;
-      display: grid;
-      place-items: center;
-      min-width: 40px;
-      min-height: 40px;
       margin-left: calc(var(--sp-2) * -1);
-    }
-
-    /* Measured: 30px. */
-    .actions button {
-      min-height: 38px;
-      padding: 0.4rem 0.7rem;
-      font-size: var(--fs-xs);
     }
 
     .title {
@@ -306,23 +294,46 @@ header {
       justify-content: flex-start;
     }
 
-    /* Measured: 21px tall as bare inline text. Give them a real hit area, and pull the
-       padding back out with a negative margin so the row keeps its original rhythm. */
     .note,
     a[target='_blank'] {
       grid-row: 2;
       justify-self: end;
-      display: inline-grid;
-      place-items: center;
-      min-height: 40px;
-      padding-inline: var(--sp-2);
-      margin-block: calc(var(--sp-2) * -1);
       font-size: var(--fs-xs);
     }
   }
 
   .overall {
     padding: var(--sp-4);
+  }
+}
+
+/* Thumb-sized hit areas. Keyed on the POINTER, not the viewport width: a 768px tablet is a
+   touch device with the same thumbs as a 375px phone, and a width breakpoint sails right past
+   it. Measured before this rule, on an iPad: star 20px, status buttons 30px, Note 21px. */
+@media (pointer: coarse) {
+  .problems li {
+    .star {
+      display: grid;
+      place-items: center;
+      min-width: 40px;
+      min-height: 40px;
+    }
+
+    .actions button {
+      min-height: 38px;
+      padding: 0.4rem 0.7rem;
+    }
+
+    /* Bare inline text at 21px. The negative block margin pulls the new padding back out
+       so the row keeps its original rhythm. */
+    .note,
+    a[target='_blank'] {
+      display: inline-grid;
+      place-items: center;
+      min-height: 40px;
+      padding-inline: var(--sp-2);
+      margin-block: calc(var(--sp-2) * -1);
+    }
   }
 }
 
