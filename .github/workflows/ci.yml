@@ -28,10 +28,10 @@ jobs:
         working-directory: backend
         run: mvn -B -ntp verify
 
-  # The Dockerfile is what Render builds. It cannot be tested on a machine without
+  # These Dockerfiles are what Render builds. They cannot be tested on a machine without
   # Docker, so this job is the only thing standing between a typo and a failed deploy.
   docker:
-    name: backend image builds
+    name: images build and start
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -64,6 +64,37 @@ jobs:
           grep -qi "OutOfMemory\|Killed" /tmp/out.txt \
             && { echo "::error::JVM ran out of memory in a 512MB container"; exit 1; } || true
           echo "OK: JVM started, bound \$PORT, no OOM under 512MB"
+
+      - name: Build the analytics image
+        uses: docker/build-push-action@v6
+        with:
+          context: analytics
+          push: false
+          load: true
+          tags: peerdsa-analytics:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Unlike the backend, this service needs nothing external, so it must come
+      # fully up and answer its health check.
+      - name: Analytics container serves /health on $PORT
+        run: |
+          docker run -d --name analytics --memory=512m -e PORT=10000 -p 10000:10000 peerdsa-analytics:ci
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:10000/health > /tmp/health.json 2>/dev/null; then break; fi
+            sleep 1
+          done
+          docker logs analytics
+          grep -q '"status":"ok"' /tmp/health.json \
+            || { echo "::error::analytics container did not serve /health"; exit 1; }
+
+          # The guard is the only thing protecting a public URL: prove it rejects.
+          code=$(curl -s -o /dev/null -w '%{http_code}' -X POST http://localhost:10000/fetch/leetcode \
+            -H 'Content-Type: application/json' -d '{"handle":"x"}')
+          [ "$code" = "401" ] || { echo "::error::/fetch/leetcode answered $code, expected 401 without a token"; exit 1; }
+
+          docker rm -f analytics
+          echo "OK: analytics serves /health and rejects untokenised calls"
 
   frontend:
     name: frontend (Angular 22)

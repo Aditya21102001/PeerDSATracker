@@ -165,8 +165,15 @@ reset links sit in logs where operators can read them.
 |---|---|---|
 | frontend | Vercel | static build, root directory `frontend`, `vercel.json` rewrites `/api/*` |
 | backend | Render | Docker (Render has **no native Java**), free instance |
-| analytics | Render | native Python runtime, free instance |
+| analytics | Render | Docker, free instance |
 | database | Neon | a **separate** project from the dev one |
+
+Both services run as containers. The backend *must* — Render has no Java runtime. The analytics
+service could use Render's native Python runtime; it ships as a container for parity, so the same
+image runs locally and in production and the Python version is pinned in the Dockerfile rather than
+a dashboard variable. Use `python:3.13-slim`, never `-alpine`: `uvicorn[standard]` pulls `uvloop`
+and `httptools`, which are C extensions with no manylinux wheels for musl, so Alpine would compile
+them from source.
 
 The browser only ever talks to the Vercel origin: `vercel.json` rewrites `/api/:path*` to the Render
 backend server-side, so there is no CORS and no preflight. Vercel checks the filesystem *before*

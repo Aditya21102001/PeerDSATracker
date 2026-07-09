@@ -1,0 +1,19 @@
+# Build context is analytics/, so the rest of the repo is already excluded.
+
+.venv/
+__pycache__/
+*.py[cod]
+
+# The image runs the service; it does not run the test suite.
+tests/
+pytest.ini
+.pytest_cache/
+
+.git/
+.gitignore
+*.md
+.env
+.env.*
+
+.idea/
+.vscode/

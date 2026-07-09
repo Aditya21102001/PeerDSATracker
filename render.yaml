@@ -25,7 +25,7 @@ services:
     type: web
     runtime: docker
     plan: free
-    region: ohio # keep in the same region as the Neon database
+    region: virginia # the Neon endpoint is us-east-1; keep them together
     rootDir: backend
     dockerfilePath: ./Dockerfile
     dockerContext: .
@@ -83,18 +83,19 @@ services:
   # ---------------------------------------------------------- FastAPI analytics
   # Stateless and DB-less. Guarded by the X-Internal-Token shared secret, which is
   # what makes a public URL acceptable (free instances cannot be private services).
+  #
+  # Docker rather than Render's native Python runtime: the same image runs locally and
+  # here, and the Python version is pinned in analytics/Dockerfile instead of a
+  # dashboard variable. buildCommand/startCommand/PYTHON_VERSION do not apply.
   - name: peerdsa-analytics
     type: web
-    runtime: python
+    runtime: docker
     plan: free
-    region: ohio
+    region: virginia
     rootDir: analytics
-    buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
     healthCheckPath: /health
     autoDeployTrigger: commit
     envVarGroups:
       - peerdsa-shared # the same INTERNAL_TOKEN the backend reads
-    envVars:
-      - key: PYTHON_VERSION
-        value: "3.13.4"
