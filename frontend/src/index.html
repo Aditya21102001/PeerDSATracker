@@ -2,10 +2,36 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Frontend</title>
+  <title>PeerDSATracker — 474 problems. Zero excuses.</title>
   <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Work the Striver A2Z sheet, keep a streak, and race your peers.">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
+
+  <!-- Tints the browser chrome on mobile to match whichever theme is active. -->
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f6f7fb">
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0c0e14">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700&display=swap"
+    rel="stylesheet">
+
+  <script>
+    // Applied before first paint. Reading the stored choice in a component would let
+    // the light theme flash for a frame on a dark-mode machine.
+    (function () {
+      try {
+        var saved = localStorage.getItem('peerdsa.theme');
+        if (saved === 'light' || saved === 'dark') {
+          document.documentElement.setAttribute('data-theme', saved);
+        }
+      } catch (_) {
+        /* private mode: fall through to the OS preference */
+      }
+    })();
+  </script>
 </head>
 <body>
   <app-root></app-root>

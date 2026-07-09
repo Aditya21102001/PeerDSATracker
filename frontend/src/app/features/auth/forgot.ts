@@ -26,7 +26,7 @@ import { RouterLink } from '@angular/router';
             <p class="error" role="alert">{{ error() }}</p>
           }
 
-          <button type="submit" [disabled]="form.invalid || busy()">
+          <button type="submit" class="btn" [disabled]="form.invalid || busy()">
             {{ busy() ? 'Sending…' : 'Send reset link' }}
           </button>
         </form>

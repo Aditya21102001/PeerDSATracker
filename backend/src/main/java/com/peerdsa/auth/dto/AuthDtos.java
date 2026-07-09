@@ -11,8 +11,12 @@ public final class AuthDtos {
 
     public record SignupRequest(
             @NotBlank @Email String email,
+            // Dots and hyphens allowed: "aditya.yadav" is the name people actually try.
+            // Uniqueness is still enforced case-insensitively by uq_users_username_lower.
             @NotBlank @Size(min = 3, max = 30)
-                    @Pattern(regexp = "^[a-zA-Z0-9_]+$", message = "letters, digits and underscore only")
+                    @Pattern(
+                            regexp = "^[a-zA-Z0-9._-]+$",
+                            message = "letters, digits, dot, hyphen and underscore only")
                     String username,
             @NotBlank @Size(min = 8, max = 100) String password) {}
 

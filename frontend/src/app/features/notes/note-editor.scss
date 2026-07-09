@@ -1,76 +1,45 @@
 .editor {
-  max-width: 46rem;
-  margin: 2rem auto;
-  padding: 0 1rem;
+  max-width: 48rem;
+  margin: 0 auto;
+  padding: var(--sp-6) var(--sp-4) var(--sp-7);
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: var(--sp-3);
+  animation: page-in var(--t-slow) var(--ease) both;
 }
 
 header {
   display: flex;
-  gap: 1rem;
+  gap: var(--sp-4);
+  font-size: var(--fs-sm);
 }
 
 h1 {
-  font-size: 1.3rem;
-  margin: 0;
+  font-size: var(--fs-xl);
 }
 
 .meta {
-  margin: 0;
-  font-size: 0.85rem;
-  opacity: 0.7;
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
 }
 
 textarea {
-  width: 100%;
-  padding: 0.75rem;
-  border: 1px solid #8884;
-  border-radius: 0.4rem;
-  font: inherit;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 0.9rem;
+  min-height: 22rem;
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  line-height: 1.65;
   resize: vertical;
 }
 
 .actions {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
-
-  button {
-    padding: 0.5rem 1rem;
-    border: 1px solid #4f46e5;
-    border-radius: 0.4rem;
-    background: #4f46e5;
-    color: #fff;
-    font: inherit;
-    cursor: pointer;
-
-    &:disabled {
-      opacity: 0.55;
-      cursor: not-allowed;
-    }
-
-    &.danger {
-      background: transparent;
-      color: #b91c1c;
-      border-color: #b91c1c55;
-    }
-  }
+  gap: var(--sp-3);
+  margin-top: var(--sp-1);
 }
 
 .message {
-  font-size: 0.85rem;
-  opacity: 0.75;
-}
-
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
+  font-size: var(--fs-sm);
+  color: var(--success);
+  animation: pop var(--t-base) var(--ease-bounce);
 }

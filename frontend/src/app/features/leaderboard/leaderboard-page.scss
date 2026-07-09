@@ -1,72 +1,114 @@
 .leaderboard {
-  max-width: 48rem;
-  margin: 2rem auto;
-  padding: 0 1rem;
+  max-width: 52rem;
+  margin: 0 auto;
+  padding: var(--sp-6) var(--sp-4) var(--sp-7);
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: var(--sp-4);
+  animation: page-in var(--t-slow) var(--ease) both;
 }
 
 header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
+  gap: var(--sp-4);
+  flex-wrap: wrap;
 
   h1 {
-    font-size: 1.4rem;
-    margin: 0;
+    font-size: var(--fs-xl);
   }
 
   nav {
     display: flex;
-    gap: 1rem;
+    gap: var(--sp-4);
+
+    a {
+      color: var(--text-muted);
+      font-size: var(--fs-sm);
+      font-weight: 500;
+
+      &:hover {
+        color: var(--text);
+      }
+    }
   }
 }
 
 .tabs {
   display: flex;
-  gap: 0.35rem;
+  gap: var(--sp-1);
+  padding: var(--sp-1);
+  background: var(--surface-2);
+  border-radius: var(--r-md);
+  width: fit-content;
 
   button {
-    padding: 0.4rem 0.8rem;
-    border: 1px solid #8884;
-    border-radius: 0.4rem;
+    padding: 0.4rem 0.9rem;
+    border: 0;
+    border-radius: var(--r-sm);
     background: transparent;
-    font: inherit;
+    font-size: var(--fs-sm);
+    font-weight: 500;
+    color: var(--text-muted);
     cursor: pointer;
+    transition:
+      background-color var(--t-base) var(--ease),
+      color var(--t-base) var(--ease);
+
+    &:hover {
+      color: var(--text);
+    }
 
     &.active {
-      background: #4f46e5;
-      border-color: #4f46e5;
-      color: #fff;
+      background: var(--surface);
+      color: var(--text);
+      box-shadow: var(--shadow-sm);
     }
   }
 }
 
 .count {
-  margin: 0;
-  font-size: 0.85rem;
-  opacity: 0.7;
+  font-size: var(--fs-xs);
+  color: var(--text-faint);
 }
 
 table {
   width: 100%;
   border-collapse: collapse;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
 }
 
 th,
 td {
   text-align: left;
-  padding: 0.55rem 0.6rem;
-  border-bottom: 1px solid #8883;
+  padding: var(--sp-3) var(--sp-4);
+  border-bottom: 1px solid var(--border);
+}
+
+tbody tr:last-child td {
+  border-bottom: 0;
 }
 
 th {
-  font-size: 0.75rem;
+  font-size: var(--fs-xs);
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  opacity: 0.7;
+  letter-spacing: 0.07em;
+  color: var(--text-faint);
+  font-weight: 600;
+  background: var(--surface-2);
+}
+
+tbody tr {
+  transition: background-color var(--t-fast) var(--ease);
+
+  &:hover {
+    background: var(--surface-2);
+  }
 }
 
 .num,
@@ -76,41 +118,43 @@ th {
 }
 
 .rank {
-  width: 3rem;
+  width: 3.5rem;
   text-align: left;
-  opacity: 0.7;
-}
-
-tr.me {
-  background: #4f46e511;
+  color: var(--text-faint);
   font-weight: 600;
 }
 
+/* Podium. The top three should feel like the top three. */
+tbody tr:nth-child(1) .rank {
+  color: var(--xp);
+}
+
+tbody tr:nth-child(2) .rank,
+tbody tr:nth-child(3) .rank {
+  color: var(--text-muted);
+}
+
+tr.me {
+  background: var(--accent-soft);
+  font-weight: 600;
+
+  &:hover {
+    background: var(--accent-soft);
+  }
+}
+
 .you {
-  margin-left: 0.4rem;
-  font-size: 0.7rem;
+  margin-left: var(--sp-2);
+  font-size: var(--fs-xs);
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  padding: 0.1rem 0.35rem;
-  border-radius: 999px;
-  background: #4f46e5;
-  color: #fff;
+  padding: 0.1rem 0.4rem;
+  border-radius: var(--r-full);
+  background: var(--accent);
+  color: var(--on-accent);
 }
 
 .empty {
-  opacity: 0.7;
   text-align: center;
-}
-
-.error {
-  color: #b91c1c;
-}
-
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
+  color: var(--text-muted);
 }

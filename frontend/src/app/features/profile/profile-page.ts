@@ -32,8 +32,13 @@ import { InsightsService } from '../../core/services/insights.service';
         <label for="handle" class="sr-only">Handle</label>
         <input id="handle" type="text" placeholder="your handle" [(ngModel)]="handle" />
 
-        <button type="button" (click)="link()" [disabled]="!handle.trim() || busy()">Link</button>
-        <button type="button" class="ghost" (click)="sync()" [disabled]="busy() || !accounts().length">
+        <button type="button" class="btn" (click)="link()" [disabled]="!handle.trim() || busy()">Link</button>
+        <button
+          type="button"
+          class="btn btn-ghost"
+          (click)="sync()"
+          [disabled]="busy() || !accounts().length"
+        >
           {{ busy() ? 'Syncing…' : 'Sync now' }}
         </button>
       </section>

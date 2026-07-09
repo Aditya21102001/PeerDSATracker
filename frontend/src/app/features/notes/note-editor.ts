@@ -35,10 +35,10 @@ import { Problem } from '../../core/models/api.models';
       ></textarea>
 
       <div class="actions">
-        <button type="button" (click)="save()" [disabled]="saving()">
+        <button type="button" class="btn" (click)="save()" [disabled]="saving()">
           {{ saving() ? 'Saving…' : 'Save' }}
         </button>
-        <button type="button" class="danger" (click)="remove()" [disabled]="saving()">Delete</button>
+        <button type="button" class="btn btn-danger" (click)="remove()" [disabled]="saving()">Delete</button>
         @if (message()) {
           <span class="message" role="status">{{ message() }}</span>
         }

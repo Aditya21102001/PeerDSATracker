@@ -1,33 +1,43 @@
 .notes {
-  max-width: 46rem;
-  margin: 2rem auto;
-  padding: 0 1rem;
+  max-width: 48rem;
+  margin: 0 auto;
+  padding: var(--sp-6) var(--sp-4) var(--sp-7);
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: var(--sp-4);
+  animation: page-in var(--t-slow) var(--ease) both;
 }
 
 header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
+  gap: var(--sp-4);
+  flex-wrap: wrap;
 
   h1 {
-    font-size: 1.4rem;
-    margin: 0;
+    font-size: var(--fs-xl);
   }
 
   nav {
     display: flex;
-    gap: 1rem;
+    gap: var(--sp-4);
+
+    a {
+      color: var(--text-muted);
+      font-size: var(--fs-sm);
+      font-weight: 500;
+
+      &:hover {
+        color: var(--text);
+      }
+    }
   }
 }
 
 .count {
-  margin: 0;
-  font-size: 0.85rem;
-  opacity: 0.7;
+  font-size: var(--fs-xs);
+  color: var(--text-faint);
 }
 
 ul {
@@ -36,42 +46,51 @@ ul {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: var(--sp-2);
 }
 
 li {
-  padding: 0.7rem 0.85rem;
-  border: 1px solid #8883;
-  border-radius: 0.4rem;
+  padding: var(--sp-4);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  transition:
+    border-color var(--t-fast) var(--ease),
+    transform var(--t-fast) var(--ease);
+
+  &:not(.empty):hover {
+    border-color: var(--border-strong);
+    transform: translateY(-1px);
+  }
 
   a {
     display: flex;
     justify-content: space-between;
-    gap: 1rem;
+    gap: var(--sp-4);
     font-weight: 600;
-    text-decoration: none;
-    color: inherit;
+    color: var(--text);
 
     &:hover .title {
-      text-decoration: underline;
+      color: var(--accent);
     }
   }
 
   .step {
-    font-size: 0.75rem;
-    opacity: 0.6;
+    font-size: var(--fs-xs);
+    color: var(--text-faint);
     font-weight: 400;
     white-space: nowrap;
   }
 
   .snippet {
-    margin: 0.35rem 0 0;
-    font-size: 0.85rem;
-    opacity: 0.7;
+    margin-top: var(--sp-2);
+    font-size: var(--fs-sm);
+    color: var(--text-muted);
+    line-height: 1.5;
   }
 
   &.empty {
-    opacity: 0.75;
     border-style: dashed;
+    text-align: center;
   }
 }
