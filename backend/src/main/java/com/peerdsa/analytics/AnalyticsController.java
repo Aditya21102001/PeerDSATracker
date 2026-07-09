@@ -49,23 +49,34 @@ public class AnalyticsController {
     }
 
     /**
-     * The analytics service failing is never a 500: the app itself is fine. But "asleep" and
-     * "misconfigured" are different failures and must not share a status code or a silence.
+     * The analytics service failing is never a 500: the app itself is fine. But "not up yet" and
+     * "answered wrongly" are different failures, and only one of them is worth retrying.
      *
      * <ul>
-     *   <li><b>503</b> — nothing answered: connect refused, or the read timed out. On Render's
-     *       free tier this is the ordinary cold start, and it is retryable. The client retries
-     *       503 with backoff; anything else it gives up on immediately.
-     *   <li><b>502</b> — analytics answered, with an error. A wrong {@code INTERNAL_TOKEN} (401)
-     *       or a wrong {@code ANALYTICS_BASE_URL} (404) lands here. Retrying cannot fix a
-     *       misconfiguration, so the client must not spin on it.
+     *   <li><b>503</b> — the service is not up. Either nothing answered (connect refused, read
+     *       timed out) or Render's edge answered <em>for</em> it while it cold-started. Measured:
+     *       a spun-down free-tier service returns a gateway error in ~1.1s, so this is the
+     *       ordinary cold-start path, not a timeout. Retryable, and the client retries 503.
+     *   <li><b>502</b> — analytics itself answered, with an error. A wrong {@code INTERNAL_TOKEN}
+     *       (401), a wrong {@code ANALYTICS_BASE_URL} (404), or a crash (500). Retrying cannot fix
+     *       a misconfiguration, so the client must not spin on it.
      * </ul>
+     *
+     * <p>The distinction is the status, not the exception type: a proxy standing in for a dead
+     * origin emits 502/503/504, and FastAPI never does. Mapping those to 502 would tell the
+     * client "give up" on the one failure that always resolves itself within a minute.
      *
      * <p>Both are logged. Previously the cause was attached to the exception and dropped on the
      * floor, so a misconfigured deployment reported "service unavailable" and left no trace.
      */
     private static ResponseStatusException translate(RestClientException e) {
         if (e instanceof RestClientResponseException response) {
+            if (isGatewayError(response.getStatusCode().value())) {
+                log.warn(
+                        "Analytics gateway returned {}; the service is probably cold-starting.",
+                        response.getStatusCode());
+                return unavailable(e);
+            }
             // A 4xx is us calling it wrong; a 5xx is it failing on its own. Sending an operator
             // to check credentials after an upstream crash wastes the one clue they have.
             String hint = response.getStatusCode().is4xxClientError()
@@ -85,6 +96,15 @@ public class AnalyticsController {
         } else {
             log.error("Unexpected failure calling analytics", e);
         }
+        return unavailable(e);
+    }
+
+    /** Statuses a proxy emits when the origin is unreachable. FastAPI never returns these. */
+    private static boolean isGatewayError(int status) {
+        return status == 502 || status == 503 || status == 504;
+    }
+
+    private static ResponseStatusException unavailable(RestClientException e) {
         return new ResponseStatusException(
                 HttpStatus.SERVICE_UNAVAILABLE, "Analytics service unavailable", e);
     }

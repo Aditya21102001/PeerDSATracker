@@ -3,6 +3,7 @@ package com.peerdsa.analytics;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -82,5 +83,30 @@ class AnalyticsControllerTest {
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(e -> assertThat(((ResponseStatusException) e).getStatusCode())
                         .isEqualTo(HttpStatus.BAD_GATEWAY));
+    }
+
+    /**
+     * Measured against Render: a spun-down free-tier service does not time out. Its edge answers
+     * with a gateway error in about a second. That is a cold start, it resolves itself, and the
+     * client must retry it -- so it has to be a 503. Classifying it as 502 turned an ordinary
+     * cold start into a permanent "analytics unavailable" panel on the dashboard.
+     */
+    @Test
+    void aGatewayErrorFromRenderWhileAnalyticsWakesIsARetryable503() {
+        for (HttpStatus gateway : new HttpStatus[] {
+            HttpStatus.BAD_GATEWAY, HttpStatus.SERVICE_UNAVAILABLE, HttpStatus.GATEWAY_TIMEOUT
+        }) {
+            // doThrow, not when(...): re-stubbing with when() would CALL the already-stubbed
+            // mock and throw the previous iteration's exception right here.
+            doThrow(HttpServerErrorException.create(gateway, gateway.getReasonPhrase(), null, null, null))
+                    .when(analytics)
+                    .weakness(anyLong());
+
+            assertThatThrownBy(() -> controller.weakness(user))
+                    .describedAs("upstream %s must map to a retryable 503", gateway)
+                    .isInstanceOf(ResponseStatusException.class)
+                    .satisfies(e -> assertThat(((ResponseStatusException) e).getStatusCode())
+                            .isEqualTo(HttpStatus.SERVICE_UNAVAILABLE));
+        }
     }
 }
