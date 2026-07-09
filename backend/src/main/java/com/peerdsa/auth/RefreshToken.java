@@ -81,6 +81,19 @@ public class RefreshToken {
         this.replacedBy = replacedBy;
     }
 
+    /** The token that superseded this one, or null if it was revoked without rotation (logout). */
+    public Long getReplacedBy() {
+        return replacedBy;
+    }
+
+    /**
+     * Written by the database default, so a successor's {@code createdAt} is the exact instant
+     * its predecessor was rotated. Null until the row has been read back from the database.
+     */
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
     public boolean isUsable() {
         return !revoked && expiresAt.isAfter(Instant.now());
     }

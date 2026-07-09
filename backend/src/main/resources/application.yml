@@ -50,6 +50,9 @@ app:
     secret: ${JWT_SECRET}
     access-ttl: PT15M
     refresh-ttl: P30D
+    # Two tabs refreshing at once present the same token. Replaying a just-rotated token
+    # inside this window is a race, not theft. Seconds, never minutes.
+    refresh-grace: ${REFRESH_GRACE:PT30S}
   reset:
     # OFF in production until a real mailer exists. ResetLinkDeliverer writes the
     # link to the log, so an enabled /forgot would promise an email it cannot send

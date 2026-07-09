@@ -23,6 +23,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.stubbing.Answer;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.server.ResponseStatusException;
 
 /**
@@ -32,6 +33,8 @@ import org.springframework.web.server.ResponseStatusException;
  * roll it back -- these tests pin that the revoker is actually invoked.
  */
 class AuthServiceTest {
+
+    private static final Duration GRACE = Duration.ofSeconds(30);
 
     private UserRepository users;
     private RefreshTokenRepository refreshTokens;
@@ -47,7 +50,10 @@ class AuthServiceTest {
 
         PasswordEncoder encoder = new BCryptPasswordEncoder();
         JwtProperties properties = new JwtProperties(
-                "test-secret-that-is-definitely-long-enough-for-hs256", Duration.ofMinutes(15), Duration.ofDays(30));
+                "test-secret-that-is-definitely-long-enough-for-hs256",
+                Duration.ofMinutes(15),
+                Duration.ofDays(30),
+                GRACE);
         jwtService = new JwtService(properties);
 
         authService = new AuthService(users, refreshTokens, revoker, encoder, jwtService, properties);
@@ -87,7 +93,10 @@ class AuthServiceTest {
 
         // Re-sign the same claims with a different secret.
         JwtProperties otherSecret = new JwtProperties(
-                "a-completely-different-secret-of-sufficient-length!!", Duration.ofMinutes(15), Duration.ofDays(30));
+                "a-completely-different-secret-of-sufficient-length!!",
+                Duration.ofMinutes(15),
+                Duration.ofDays(30),
+                GRACE);
         String forged = new JwtService(otherSecret).generateAccessToken(1234L, "a@b.com");
 
         // Swap the payload for one claiming a different subject.
@@ -172,6 +181,69 @@ class AuthServiceTest {
         // The whole point: revocation goes through the REQUIRES_NEW bean, so the 401 above
         // cannot roll it back.
         verify(revoker).revokeAllForUser(1L);
+    }
+
+    /**
+     * Two tabs refresh at once. Both present the same token; one wins the rotation. Before the
+     * grace window existed, the loser's replay revoked the whole family -- including the token
+     * the winner had just been handed -- and signed the user out everywhere.
+     */
+    @Test
+    void aRotationRaceInsideTheGraceWindowIsNotTheft() {
+        RefreshToken rotated = rotatedToken(java.time.Instant.now().minusSeconds(2));
+
+        var tokens = authService.refresh("the-loser-of-the-race", "junit", "127.0.0.1");
+
+        assertThat(tokens.accessToken()).isNotBlank();
+        assertThat(tokens.refreshToken()).isNotBlank();
+        assertThat(rotated.isRevoked()).isTrue();
+        verify(revoker, never()).revokeAllForUser(anyLong());
+    }
+
+    @Test
+    void replayingARotatedTokenAfterTheGraceWindowIsStillTheft() {
+        rotatedToken(java.time.Instant.now().minus(GRACE).minusSeconds(1));
+
+        assertThatThrownBy(() -> authService.refresh("stolen-later", "junit", "127.0.0.1"))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("reuse detected");
+
+        verify(revoker).revokeAllForUser(1L);
+    }
+
+    /**
+     * Logout revokes without rotating, so there is no successor to date a grace window from.
+     * A replayed logged-out token must never be honoured, however fresh.
+     */
+    @Test
+    void replayingALoggedOutTokenIsTheftEvenImmediately() {
+        RefreshToken loggedOut =
+                new RefreshToken(1L, "hash", java.time.Instant.now().plusSeconds(600), "j", "ip");
+        loggedOut.revoke(); // no setReplacedBy: logout does not rotate
+        when(refreshTokens.findByTokenHash(any())).thenReturn(Optional.of(loggedOut));
+
+        assertThatThrownBy(() -> authService.refresh("replayed", "junit", "127.0.0.1"))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("reuse detected");
+
+        verify(revoker).revokeAllForUser(1L);
+    }
+
+    /** A revoked token whose successor was rotated at {@code rotatedAt}. */
+    private RefreshToken rotatedToken(java.time.Instant rotatedAt) {
+        RefreshToken presented =
+                new RefreshToken(1L, "hash", java.time.Instant.now().plusSeconds(600), "j", "ip");
+        presented.revoke();
+        presented.setReplacedBy(2L);
+
+        RefreshToken successor =
+                new RefreshToken(1L, "hash2", java.time.Instant.now().plusSeconds(600), "j", "ip");
+        // createdAt is written by the database default, so it has no setter.
+        ReflectionTestUtils.setField(successor, "createdAt", rotatedAt);
+
+        when(refreshTokens.findByTokenHash(any())).thenReturn(Optional.of(presented));
+        when(refreshTokens.findById(2L)).thenReturn(Optional.of(successor));
+        return presented;
     }
 
     @Test
