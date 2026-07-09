@@ -3,6 +3,20 @@
 #
 # Values marked `sync: false` are never committed -- Render prompts for them when the
 # blueprint is first created, and leaves them alone on later syncs.
+# Values marked `generateValue: true` are created by Render as a random base64 256-bit
+# string, so they never pass through a keyboard, a chat log, or this file.
+
+# The backend and analytics services must present the SAME X-Internal-Token. Putting it
+# in a shared group means Render generates it once and both services read it.
+#
+# If Render rejects `generateValue` inside a group on blueprint creation, the fallback is
+# to delete this group, declare `INTERNAL_TOKEN: {sync: false}` on both services, and
+# paste the same value into each.
+envVarGroups:
+  - name: peerdsa-shared
+    envVars:
+      - key: INTERNAL_TOKEN
+        generateValue: true
 
 services:
   # ------------------------------------------------------- Spring Boot backend
@@ -17,6 +31,8 @@ services:
     dockerContext: .
     healthCheckPath: /actuator/health
     autoDeployTrigger: commit
+    envVarGroups:
+      - peerdsa-shared # supplies INTERNAL_TOKEN
     envVars:
       # Tuned for 512 MB / 0.1 CPU. See backend/Dockerfile for the reasoning.
       # If the container is OOM-killed (exit 137), drop MaxRAMPercentage to 40.
@@ -45,10 +61,11 @@ services:
         sync: false
       - key: NEON_PASSWORD
         sync: false
-      - key: JWT_SECRET # generate fresh; never reuse the local one
-        sync: false
-      - key: INTERNAL_TOKEN # must match peerdsa-analytics exactly
-        sync: false
+
+      # Render generates this. Must be >= 32 bytes: a base64 256-bit value is 44 chars,
+      # which JwtService accepts. Never reuse the local development secret.
+      - key: JWT_SECRET
+        generateValue: true
 
       # `fromService` can only yield host/port/hostport, never a URL with a scheme.
       # Paste the analytics service's public https://...onrender.com URL: the public
@@ -76,8 +93,8 @@ services:
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /health
     autoDeployTrigger: commit
+    envVarGroups:
+      - peerdsa-shared # the same INTERNAL_TOKEN the backend reads
     envVars:
       - key: PYTHON_VERSION
         value: "3.13.4"
-      - key: INTERNAL_TOKEN # must match peerdsa-backend exactly
-        sync: false
