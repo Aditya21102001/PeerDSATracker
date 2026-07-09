@@ -87,3 +87,27 @@ button {
   color: #b91c1c;
   font-size: 0.875rem;
 }
+
+.sent {
+  margin: 0;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid #16a34a55;
+  background: #16a34a11;
+  border-radius: 0.4rem;
+  font-size: 0.9rem;
+}
+
+.row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-top: 0.5rem;
+
+  label {
+    margin-top: 0;
+  }
+}
+
+.forgot {
+  font-size: 0.8rem;
+}

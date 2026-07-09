@@ -1,8 +1,10 @@
 package com.peerdsa.auth;
 
+import com.peerdsa.auth.dto.AuthDtos.ForgotRequest;
 import com.peerdsa.auth.dto.AuthDtos.LoginRequest;
 import com.peerdsa.auth.dto.AuthDtos.MeResponse;
 import com.peerdsa.auth.dto.AuthDtos.RefreshRequest;
+import com.peerdsa.auth.dto.AuthDtos.ResetRequest;
 import com.peerdsa.auth.dto.AuthDtos.SignupRequest;
 import com.peerdsa.auth.dto.AuthDtos.TokenResponse;
 import com.peerdsa.user.User;
@@ -22,10 +24,15 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
     private final AuthService authService;
+    private final PasswordResetService passwordReset;
     private final com.peerdsa.streak.StreakService streaks;
 
-    public AuthController(AuthService authService, com.peerdsa.streak.StreakService streaks) {
+    public AuthController(
+            AuthService authService,
+            PasswordResetService passwordReset,
+            com.peerdsa.streak.StreakService streaks) {
         this.authService = authService;
+        this.passwordReset = passwordReset;
         this.streaks = streaks;
     }
 
@@ -49,6 +56,22 @@ public class AuthController {
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(@Valid @RequestBody RefreshRequest request) {
         authService.logout(request.refreshToken());
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Always 204, even for an unknown email. Any other behaviour tells an anonymous
+     * caller which addresses are registered.
+     */
+    @PostMapping("/forgot")
+    public ResponseEntity<Void> forgot(@Valid @RequestBody ForgotRequest request) {
+        passwordReset.requestReset(request.email());
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/reset")
+    public ResponseEntity<Void> reset(@Valid @RequestBody ResetRequest request) {
+        passwordReset.reset(request.token(), request.password());
         return ResponseEntity.noContent().build();
     }
 

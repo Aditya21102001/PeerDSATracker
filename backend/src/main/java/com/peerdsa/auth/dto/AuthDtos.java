@@ -20,6 +20,10 @@ public final class AuthDtos {
 
     public record RefreshRequest(@NotBlank String refreshToken) {}
 
+    public record ForgotRequest(@NotBlank @Email String email) {}
+
+    public record ResetRequest(@NotBlank String token, @NotBlank @Size(min = 8, max = 100) String password) {}
+
     public record TokenResponse(String accessToken, String refreshToken, long expiresInSeconds) {}
 
     public record MeResponse(

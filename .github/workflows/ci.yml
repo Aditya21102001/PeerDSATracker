@@ -1,0 +1,85 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A new push to the same branch supersedes an in-flight run.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: backend (Java 17)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: temurin
+          cache: maven
+
+      # The unit tests are self-contained (mocked repositories), so no database or
+      # Neon credentials are needed. `verify` skips spring-boot:run entirely.
+      - name: Build and test
+        working-directory: backend
+        run: mvn -B -ntp verify
+
+  frontend:
+    name: frontend (Angular 22)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build
+        working-directory: frontend
+        run: npx ng build --configuration production
+
+  analytics:
+    name: analytics (Python 3.13)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+
+      - name: Install
+        working-directory: analytics
+        run: |
+          pip install -r requirements.txt
+          pip install pytest
+
+      # These cover the pure-compute services only. The LeetCode/Codeforces clients
+      # are deliberately not exercised in CI: they hit live third-party APIs, and a
+      # rate limit or an outage upstream must never turn this build red.
+      - name: Test
+        working-directory: analytics
+        run: python -m pytest -q
+
+  seed:
+    name: seed script parses the A2Z sheet
+    runs-on: ubuntu-latest
+    # Scrapes takeuforward.org, so it can fail for reasons outside this repo.
+    # Informational: it should never block a merge.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Check the sheet still parses
+        run: python tools/seed/build_striver_a2z.py --check

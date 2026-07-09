@@ -21,7 +21,10 @@ import { AuthStore } from '../../core/services/auth.store';
         <label for="email">Email</label>
         <input id="email" type="email" formControlName="email" autocomplete="email" />
 
-        <label for="password">Password</label>
+        <div class="row">
+          <label for="password">Password</label>
+          <a class="forgot" routerLink="/forgot">Forgot?</a>
+        </div>
         <input id="password" type="password" formControlName="password" autocomplete="current-password" />
 
         @if (error()) {

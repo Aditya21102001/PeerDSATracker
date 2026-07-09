@@ -143,6 +143,43 @@ Because the generated SQL is committed, a broken scrape never affects the runnin
 - **Spring Boot 4 ships Jackson 3**: `tools.jackson.databind.ObjectMapper`, not
   `com.fasterxml.jackson.databind`. And `RestClient.Builder` needs the `spring-boot-restclient`
   module, the same per-library autoconfiguration split as `spring-boot-flyway`.
+
+## Password reset
+
+`POST /api/auth/forgot` **always returns 204**, whether or not the email is registered. Any other
+behaviour hands an anonymous caller a user-enumeration oracle. The per-user rate limit (5/hour) is
+silent for the same reason.
+
+Only the SHA-256 of the reset token is stored, like refresh tokens. A token is single-use and
+expires in 30 minutes, requesting a new link invalidates the outstanding one, and **consuming a
+token revokes every refresh token the user holds** — a reset is exactly the case where an existing
+session may belong to whoever compromised the account.
+
+**There is no mail server.** `ResetLinkDeliverer` writes the link to the application log at WARN.
+That is fine locally and honest about what it is, but a production deployment must replace it, or
+reset links sit in logs where operators can read them.
+
+## Testing
+
+```bash
+cd backend   && mvn -B test        # 29 tests
+cd analytics && python -m pytest -q # 15 tests
+```
+
+These are unit tests with mocked repositories — no database needed, which is why CI runs them
+without Neon credentials. They pin the two invariants that would otherwise break silently: XP and
+`total_solved` move if and only if a problem crosses the SOLVED boundary, exactly once, in either
+direction; and refresh-token reuse revokes the whole chain via the `REQUIRES_NEW` revoker.
+
+**There are no integration tests.** Every phase was additionally verified by driving the running
+system end to end (real HTTP, real Neon, real LeetCode/Codeforces), but that is not a regression
+suite. `analytics`' external clients are deliberately not covered in CI: they hit live third-party
+APIs, and an upstream outage must never turn the build red.
+
+*Note on JWT:* appending a single base64url character to a signature is **not** rejected — those
+6 bits do not complete a byte, so the decoder drops them and recovers the same signature. That is
+decoder laxness, not a forgery vector. Tampered payloads, flipped signature characters, and tokens
+signed with another key are all rejected; `AuthServiceTest` pins those.
 - **Low-memory Windows machines:** `npm install` can hard-OOM (`node::Realloc` assertion) if the
   commit charge is near the limit. Use `npm install --maxsockets 3`, set `MAVEN_OPTS=-Xmx1g`, and
   don't run Maven and npm concurrently.
@@ -155,4 +192,5 @@ Phase 3 (done): daily streak, GitHub-style activity heatmap, XP + levels, 13 bad
 Phase 4 (done): peers (follow/unfollow, search) + global and peers leaderboards.
 Phase 5 (done): per-problem notes + spaced-repetition revision queue.
 Phase 6 (done): FastAPI topic-weakness + revise-next analytics, LeetCode/Codeforces sync.
-Phase 7 (todo): hardening, forgot/reset flow, refresh token in an httpOnly cookie, prod config, CI.
+Phase 7 (partly done): password reset flow, unit tests for the XP and refresh-token invariants, CI.
+Still open: refresh token in an httpOnly cookie, a real mailer, integration tests, deploy config.

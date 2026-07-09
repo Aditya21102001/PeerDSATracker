@@ -44,10 +44,16 @@ server:
   port: ${SERVER_PORT:8080}
 
 app:
+  # Where reset links point. Must match where the SPA is actually served.
+  frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:4300}
   jwt:
     secret: ${JWT_SECRET}
     access-ttl: PT15M
     refresh-ttl: P30D
+  reset:
+    ttl: PT30M
+    # Per user, per hour. Exceeding it silently does nothing (still a 204).
+    max-per-hour: 5
   streak:
     # Which calendar a "day" belongs to. Set this to the audience's zone
     # (e.g. Asia/Kolkata), or late-night solves land on the previous day.

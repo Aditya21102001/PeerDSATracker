@@ -21,6 +21,17 @@ export const routes: Routes = [
     loadComponent: () => import('./features/auth/signup').then((m) => m.Signup),
   },
   {
+    path: 'forgot',
+    canActivate: [guestGuard],
+    loadComponent: () => import('./features/auth/forgot').then((m) => m.Forgot),
+  },
+  {
+    // Deliberately not guest-only: a signed-in user following a reset link from their
+    // inbox should still land on the form.
+    path: 'reset',
+    loadComponent: () => import('./features/auth/reset').then((m) => m.Reset),
+  },
+  {
     path: 'sheet',
     canActivate: [authGuard],
     loadComponent: () => import('./features/sheet/sheet-page').then((m) => m.SheetPage),

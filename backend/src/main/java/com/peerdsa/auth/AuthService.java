@@ -7,13 +7,7 @@ import com.peerdsa.config.JwtProperties;
 import com.peerdsa.security.JwtService;
 import com.peerdsa.user.User;
 import com.peerdsa.user.UserRepository;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
 import java.time.Instant;
-import java.util.Base64;
-import java.util.HexFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -22,8 +16,6 @@ import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class AuthService {
-
-    private static final SecureRandom RANDOM = new SecureRandom();
 
     private final UserRepository users;
     private final RefreshTokenRepository refreshTokens;
@@ -117,9 +109,7 @@ public class AuthService {
     private Issued issueTokens(User user, String userAgent, String ip) {
         String access = jwtService.generateAccessToken(user.getId(), user.getEmail());
 
-        byte[] bytes = new byte[48];
-        RANDOM.nextBytes(bytes);
-        String rawRefresh = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+        String rawRefresh = Tokens.random(48);
 
         RefreshToken saved = refreshTokens.save(new RefreshToken(
                 user.getId(),
@@ -133,11 +123,6 @@ public class AuthService {
     }
 
     private static String sha256(String value) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            return HexFormat.of().formatHex(digest.digest(value.getBytes(StandardCharsets.UTF_8)));
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("SHA-256 unavailable", e);
-        }
+        return Tokens.sha256(value);
     }
 }
