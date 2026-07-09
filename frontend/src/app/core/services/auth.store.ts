@@ -1,7 +1,7 @@
 import { HttpBackend, HttpClient } from '@angular/common/http';
 import { Service, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { Observable, finalize, map, shareReplay, switchMap, tap, throwError } from 'rxjs';
+import { Observable, catchError, finalize, map, of, shareReplay, switchMap, tap, throwError } from 'rxjs';
 import { Me, TokenResponse } from '../models/api.models';
 import { TokenService } from './token.service';
 
@@ -39,6 +39,30 @@ export class AuthStore {
 
   loadMe(): Observable<Me> {
     return this.http.get<Me>('/api/auth/me').pipe(tap((me) => this.user.set(me)));
+  }
+
+  /**
+   * Runs once, before the first route renders.
+   *
+   * The access token is deliberately kept in memory, so a reload loses it while the
+   * refresh token survives in localStorage. Without this, `authGuard` waves the user
+   * through and the first page fires every one of its requests unauthenticated -- six
+   * 401s on the dashboard -- before the interceptor notices and refreshes.
+   *
+   * A dead refresh token means the session is over: clear it so the guard redirects to
+   * /signin instead of letting a page load and fail.
+   */
+  restoreSession(): Observable<unknown> {
+    if (!this.tokens.refreshToken() || this.tokens.accessToken()) {
+      return of(null);
+    }
+    return this.refreshOnce().pipe(
+      catchError(() => {
+        this.tokens.clear();
+        this.user.set(null);
+        return of(null);
+      }),
+    );
   }
 
   /**

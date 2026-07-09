@@ -20,7 +20,7 @@ import { HeatmapCalendar } from '../../shared/heatmap-calendar';
   template: `
     <main class="dashboard">
       <header>
-        <h1>⚡ Kasukabe Task Force ⚡</h1>
+        <h1>⚡ The Grind ⚡</h1>
         <nav>
           <a routerLink="/sheet">Sheet</a>
           <a routerLink="/revision">Revision</a>

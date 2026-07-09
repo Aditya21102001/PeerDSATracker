@@ -11,7 +11,7 @@ import { AuthStore } from '../../core/services/auth.store';
   template: `
     <main class="auth">
       <header>
-        <h1>⚡ Kasukabe Task Force ⚡</h1>
+        <h1>⚡ The Grind ⚡</h1>
         <p class="tagline">Your missions are waiting.</p>
       </header>
 
