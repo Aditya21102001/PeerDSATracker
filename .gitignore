@@ -1,0 +1,28 @@
+# secrets
+.env
+
+# java / maven
+backend/target/
+*.class
+
+# JVM crash dumps
+hs_err_pid*.log
+replay_pid*.log
+
+# node / angular
+node_modules/
+frontend/dist/
+frontend/.angular/
+npm-debug.log*
+
+# python
+analytics/.venv/
+__pycache__/
+*.py[cod]
+
+# editors / os
+.idea/
+.vscode/
+*.iml
+Thumbs.db
+.DS_Store

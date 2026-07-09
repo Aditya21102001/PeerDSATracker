@@ -1,0 +1,116 @@
+.leaderboard {
+  max-width: 48rem;
+  margin: 2rem auto;
+  padding: 0 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+
+  h1 {
+    font-size: 1.4rem;
+    margin: 0;
+  }
+
+  nav {
+    display: flex;
+    gap: 1rem;
+  }
+}
+
+.tabs {
+  display: flex;
+  gap: 0.35rem;
+
+  button {
+    padding: 0.4rem 0.8rem;
+    border: 1px solid #8884;
+    border-radius: 0.4rem;
+    background: transparent;
+    font: inherit;
+    cursor: pointer;
+
+    &.active {
+      background: #4f46e5;
+      border-color: #4f46e5;
+      color: #fff;
+    }
+  }
+}
+
+.count {
+  margin: 0;
+  font-size: 0.85rem;
+  opacity: 0.7;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 0.55rem 0.6rem;
+  border-bottom: 1px solid #8883;
+}
+
+th {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.7;
+}
+
+.num,
+.rank {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.rank {
+  width: 3rem;
+  text-align: left;
+  opacity: 0.7;
+}
+
+tr.me {
+  background: #4f46e511;
+  font-weight: 600;
+}
+
+.you {
+  margin-left: 0.4rem;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.1rem 0.35rem;
+  border-radius: 999px;
+  background: #4f46e5;
+  color: #fff;
+}
+
+.empty {
+  opacity: 0.7;
+  text-align: center;
+}
+
+.error {
+  color: #b91c1c;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

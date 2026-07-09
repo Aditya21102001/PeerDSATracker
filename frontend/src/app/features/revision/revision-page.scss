@@ -1,0 +1,132 @@
+.revision {
+  max-width: 52rem;
+  margin: 2rem auto;
+  padding: 0 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+
+  h1 {
+    font-size: 1.4rem;
+    margin: 0;
+  }
+
+  nav {
+    display: flex;
+    gap: 1rem;
+  }
+}
+
+h2 {
+  font-size: 0.95rem;
+  margin: 0 0 0.5rem;
+}
+
+.items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+
+  li {
+    display: grid;
+    grid-template-columns: 1fr auto auto auto;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.55rem 0.8rem;
+    border: 1px solid #8883;
+    border-radius: 0.4rem;
+  }
+
+  &.muted li {
+    grid-template-columns: 1fr auto;
+    opacity: 0.7;
+  }
+
+  .title {
+    font-weight: 500;
+  }
+
+  .overdue {
+    margin-left: 0.5rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 0.1rem 0.4rem;
+    border-radius: 999px;
+    background: #dc262622;
+    color: #b91c1c;
+  }
+
+  .interval {
+    font-size: 0.75rem;
+    opacity: 0.65;
+    white-space: nowrap;
+  }
+
+  .difficulty {
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 0.15rem 0.45rem;
+    border-radius: 999px;
+
+    &[data-level='EASY'] {
+      background: #16a34a22;
+      color: #15803d;
+    }
+
+    &[data-level='MEDIUM'] {
+      background: #d9770622;
+      color: #b45309;
+    }
+
+    &[data-level='HARD'] {
+      background: #dc262622;
+      color: #b91c1c;
+    }
+  }
+
+  .actions {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+
+    button,
+    a {
+      padding: 0.25rem 0.6rem;
+      border: 1px solid #4f46e5;
+      border-radius: 0.35rem;
+      background: #4f46e5;
+      color: #fff;
+      font: inherit;
+      font-size: 0.75rem;
+      cursor: pointer;
+      text-decoration: none;
+    }
+
+    .ghost,
+    a {
+      background: transparent;
+      color: inherit;
+      border-color: #8884;
+    }
+  }
+
+  .empty {
+    display: block;
+    opacity: 0.7;
+    border-style: dashed;
+  }
+}
+
+.error {
+  color: #b91c1c;
+}

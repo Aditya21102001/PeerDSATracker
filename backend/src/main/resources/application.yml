@@ -1,0 +1,77 @@
+spring:
+  application:
+    name: peerdsa-backend
+
+  # Reads the repo-root .env as a properties file, so `mvn spring-boot:run` works
+  # without exporting anything into the shell. Optional: real env vars still win.
+  config:
+    import: optional:file:../.env[.properties]
+
+  datasource:
+    # Runtime uses Neon's POOLED endpoint (host contains "-pooler").
+    url: ${NEON_POOLED_URL}
+    username: ${NEON_USER}
+    password: ${NEON_PASSWORD}
+    hikari:
+      maximum-pool-size: 5
+      # Neon free-tier compute suspends when idle; don't hold connections open.
+      minimum-idle: 0
+      # A cold start can take several seconds to wake the compute.
+      connection-timeout: 30000
+      initialization-fail-timeout: -1
+
+  jpa:
+    hibernate:
+      # Flyway owns the schema. Hibernate only checks that entities match it.
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+
+  flyway:
+    enabled: true
+    # Migrations MUST use the DIRECT (unpooled) endpoint. Neon's PgBouncer runs
+    # in transaction mode, which breaks Flyway's session-level advisory lock.
+    url: ${NEON_UNPOOLED_URL}
+    user: ${NEON_USER}
+    password: ${NEON_PASSWORD}
+    locations: classpath:db/migration
+
+server:
+  # Overridable because 8080 is often already taken by another local service.
+  port: ${SERVER_PORT:8080}
+
+app:
+  jwt:
+    secret: ${JWT_SECRET}
+    access-ttl: PT15M
+    refresh-ttl: P30D
+  streak:
+    # Which calendar a "day" belongs to. Set this to the audience's zone
+    # (e.g. Asia/Kolkata), or late-night solves land on the previous day.
+    zone: ${STREAK_ZONE:UTC}
+    reset-cron: "0 15 0 * * *"
+  cors:
+    # Only needed when the browser calls the API directly; `ng serve` proxies /api
+    # through its own origin, so dev normally makes no cross-origin requests.
+    allowed-origins: http://localhost:4300,http://localhost:4200
+  analytics:
+    base-url: ${ANALYTICS_BASE_URL:http://localhost:8000}
+    internal-token: ${INTERNAL_TOKEN:dev-internal-token}
+  sync:
+    # Every 6 hours. Codeforces asks for ~1 request / 2s; LeetCode's unofficial
+    # endpoint is soft rate-limited with no published budget.
+    cron: "0 0 */6 * * *"
+    throttle-millis: 2000
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+logging:
+  level:
+    org.flywaydb: INFO
