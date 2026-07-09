@@ -1,4 +1,4 @@
-/** Striver-sheet difficulty tier of a problem. */
+/** Sheet difficulty tier of a problem. */
 export type Difficulty = 'EASY' | 'MEDIUM' | 'HARD';
 
 /** Null status = the user has never marked the problem. */

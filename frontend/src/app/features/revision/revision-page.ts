@@ -6,7 +6,7 @@ import { NotesService } from '../../core/services/notes.service';
 import { Spinner } from '../../shared/spinner';
 
 /**
- * Spaced-repetition review queue over the Striver sheet. Reviews follow a fixed interval
+ * Spaced-repetition review queue over The Grind Sheet. Reviews follow a fixed interval
  * ladder (1, 3, 7, 16, 35, 90 days, saturating at the top so reviews never stop) — "Got it"
  * climbs a rung, "Forgot" drops back to 1 day. Deliberately not SM-2: with no self-reported
  * recall quality there is nothing to drive an ease factor.

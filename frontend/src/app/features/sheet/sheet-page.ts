@@ -9,8 +9,8 @@ import { Spinner } from '../../shared/spinner';
 const STATUSES: readonly ProblemStatus[] = ['SOLVED', 'ATTEMPTED', 'REVISIT'];
 
 /**
- * The Striver A2Z sheet: a server-paged, server-filtered view of the 474 problems,
- * ordered step -> sub-step -> position.
+ * The Grind Sheet: a server-paged, server-filtered view of the 474 problems (sourced from
+ * the Striver A2Z sheet), ordered step -> sub-step -> position.
  *
  * Every status/star edit is routed through ProgressStore and applied optimistically. The
  * filter controls re-query the server on each change rather than slicing the loaded page,
@@ -22,7 +22,19 @@ const STATUSES: readonly ProblemStatus[] = ['SOLVED', 'ATTEMPTED', 'REVISIT'];
   template: `
     <main class="sheet">
       <header>
-        <h1>Striver A2Z Sheet</h1>
+        <div class="title">
+          <h1>The Grind Sheet</h1>
+          <!-- The 474 problems are someone else's curated list. Credit it. -->
+          <p class="credit">
+            474 problems, curated from the
+            <a
+              href="https://takeuforward.org/strivers-a2z-dsa-course/strivers-a2z-dsa-course-sheet-2"
+              target="_blank"
+              rel="noopener"
+              >Striver A2Z sheet</a
+            >.
+          </p>
+        </div>
         <nav>
           <a routerLink="/dashboard">Dashboard</a>
           <a routerLink="/revision">Revision</a>

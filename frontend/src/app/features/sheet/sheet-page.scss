@@ -12,6 +12,26 @@ header {
   gap: var(--sp-4);
   flex-wrap: wrap;
 
+  /* min-width: 0 so the credit line can wrap instead of widening the flex row. */
+  .title {
+    min-width: 0;
+  }
+
+  .credit {
+    margin: var(--sp-1) 0 0;
+    font-size: var(--fs-xs);
+    color: var(--text-faint);
+
+    a {
+      color: inherit;
+      text-decoration: underline;
+
+      &:hover {
+        color: var(--accent);
+      }
+    }
+  }
+
   nav {
     display: flex;
     align-items: center;
