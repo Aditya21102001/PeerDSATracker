@@ -73,6 +73,12 @@ li {
     &:hover .title {
       color: var(--accent);
     }
+
+    /* A long problem title must wrap, not shove "Step 12" off the screen. */
+    @media (max-width: 34rem) {
+      flex-direction: column;
+      gap: var(--sp-1);
+    }
   }
 
   .step {

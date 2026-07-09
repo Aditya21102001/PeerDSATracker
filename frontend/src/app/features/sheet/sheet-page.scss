@@ -249,18 +249,64 @@ header {
   }
 }
 
+/* Tablet: drop the step number, keep everything else. */
+@media (max-width: 60rem) {
+  .problems li {
+    grid-template-columns: 1.75rem 1fr auto auto auto;
+
+    .step {
+      display: none;
+    }
+  }
+}
+
+/* Phone: two rows per problem. Title on top, controls beneath — nothing is hidden
+   except the step number, and nothing overflows. */
 @media (max-width: 46rem) {
+  .filters {
+    flex-direction: column;
+
+    select {
+      width: 100%;
+    }
+  }
+
   .problems li {
     grid-template-columns: 1.75rem 1fr auto;
     row-gap: var(--sp-2);
 
-    .step,
-    .note {
-      display: none;
+    .star {
+      grid-row: 1;
+    }
+
+    .title {
+      grid-row: 1;
+    }
+
+    .difficulty {
+      grid-row: 1;
     }
 
     .actions {
       grid-column: 1 / -1;
+      justify-content: flex-start;
     }
+
+    .note,
+    a[target='_blank'] {
+      grid-row: 2;
+      justify-self: end;
+      font-size: var(--fs-xs);
+    }
+  }
+
+  .overall {
+    padding: var(--sp-4);
+  }
+}
+
+@media (max-width: 26rem) {
+  .problems li .actions button {
+    flex: 1;
   }
 }

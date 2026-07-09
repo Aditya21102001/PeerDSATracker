@@ -52,38 +52,41 @@ type Scope = 'global' | 'peers';
           <p class="count">You and {{ rows().length - 1 }} peer(s) you follow</p>
         }
 
-        <table>
-          <caption class="sr-only">Ranked by XP, tie-broken by problems solved</caption>
-          <thead>
-            <tr>
-              <th scope="col">#</th>
-              <th scope="col">Member</th>
-              <th scope="col">XP</th>
-              <th scope="col">Solved</th>
-              <th scope="col">Streak</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (r of rows(); track r.userId) {
-              <tr [class.me]="r.userId === myId()">
-                <td class="rank">{{ r.rank }}</td>
-                <td>
-                  {{ r.displayName || r.username }}
-                  @if (r.userId === myId()) {
-                    <span class="you">you</span>
-                  }
-                </td>
-                <td class="num">{{ r.xp }}</td>
-                <td class="num">{{ r.totalSolved }}</td>
-                <td class="num">{{ r.currentStreak }}</td>
-              </tr>
-            } @empty {
+        <!-- The table scrolls inside this box rather than widening the page. -->
+        <div class="scroll-x">
+          <table>
+            <caption class="sr-only">Ranked by XP, tie-broken by problems solved</caption>
+            <thead>
               <tr>
-                <td colspan="5" class="empty">Nothing here yet. Solve a problem to get on the board.</td>
+                <th scope="col">#</th>
+                <th scope="col">Member</th>
+                <th scope="col">XP</th>
+                <th scope="col" class="col-optional">Solved</th>
+                <th scope="col">Streak</th>
               </tr>
-            }
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              @for (r of rows(); track r.userId) {
+                <tr [class.me]="r.userId === myId()">
+                  <td class="rank">{{ r.rank }}</td>
+                  <td class="member">
+                    {{ r.displayName || r.username }}
+                    @if (r.userId === myId()) {
+                      <span class="you">you</span>
+                    }
+                  </td>
+                  <td class="num">{{ r.xp }}</td>
+                  <td class="num col-optional">{{ r.totalSolved }}</td>
+                  <td class="num">{{ r.currentStreak }}</td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="5" class="empty">Nothing here yet. Solve a problem to get on the board.</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
       }
     </main>
   `,

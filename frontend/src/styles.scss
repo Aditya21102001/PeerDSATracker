@@ -187,6 +187,31 @@ body {
   transition:
     background-color var(--t-base) var(--ease),
     color var(--t-base) var(--ease);
+
+  // A stray wide child must never make the whole document scroll sideways.
+  // `clip` (unlike `hidden`) does not create a scroll container, so `position: sticky`
+  // keeps working.
+  overflow-x: clip;
+}
+
+/* A grid or flex child defaults to min-width:auto, so a long problem title refuses to
+   shrink and shoves the layout off-screen. This is the single most common cause of
+   horizontal overflow in this app. */
+.problems li > *,
+.people li > *,
+.items li > *,
+.recs li > *,
+.topics li > *,
+.accounts li > *,
+.runs li > * {
+  min-width: 0;
+}
+
+.title,
+.name,
+.step-title,
+.snippet {
+  overflow-wrap: anywhere;
 }
 
 h1,
@@ -490,6 +515,49 @@ textarea {
   clip: rect(0 0 0 0);
   white-space: nowrap;
   border: 0;
+}
+
+/* Wide content (tables, the heatmap) scrolls inside its own box rather than
+   widening the page. */
+.scroll-x {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* =============================================================================
+   Responsive base. Every page is <main><header>…</header>…</main>, so these
+   global rules reach all of them without touching each component.
+   ========================================================================== */
+
+/* The theme toggle is fixed at the top-right; keep page headers out from under it. */
+main > header {
+  padding-right: 2.75rem;
+}
+
+@media (max-width: 48rem) {
+  main {
+    padding-left: var(--sp-3) !important;
+    padding-right: var(--sp-3) !important;
+  }
+
+  main > header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: var(--sp-2);
+  }
+}
+
+@media (max-width: 30rem) {
+  :root {
+    /* Shrink the display sizes only; body copy stays readable at 16px. */
+    --fs-3xl: 1.875rem;
+    --fs-2xl: 1.5rem;
+    --fs-xl: 1.25rem;
+  }
+
+  .btn {
+    padding: 0.55rem 0.9rem;
+  }
 }
 
 /* =============================================================================

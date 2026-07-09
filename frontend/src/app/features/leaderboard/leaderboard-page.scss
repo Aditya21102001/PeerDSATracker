@@ -158,3 +158,30 @@ tr.me {
   text-align: center;
   color: var(--text-muted);
 }
+
+.member {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 34rem) {
+  th,
+  td {
+    padding: var(--sp-2) var(--sp-2);
+    font-size: var(--fs-xs);
+  }
+
+  /* "Solved" is the least load-bearing column; XP already implies it. */
+  .col-optional {
+    display: none;
+  }
+
+  .rank {
+    width: 2.25rem;
+  }
+
+  .you {
+    display: block;
+    margin: var(--sp-1) 0 0;
+    width: fit-content;
+  }
+}

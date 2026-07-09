@@ -58,6 +58,15 @@ header {
     flex: 1;
     min-width: 10rem;
   }
+
+  @media (max-width: 34rem) {
+    select,
+    input,
+    button {
+      width: 100%;
+      flex: none;
+    }
+  }
 }
 
 .ghost {
@@ -159,6 +168,22 @@ h2 {
     padding: var(--sp-2) var(--sp-3);
     border: 1px solid var(--border);
     border-radius: var(--r-sm);
+  }
+
+  /* 18rem of fixed columns cannot fit a 320px phone. Stack them. */
+  @media (max-width: 34rem) {
+    li {
+      grid-template-columns: 1fr auto;
+    }
+
+    .trigger {
+      display: none;
+    }
+
+    .err {
+      grid-column: 1 / -1;
+      white-space: normal;
+    }
   }
 
   li.failed .status {

@@ -3,4 +3,10 @@
   top: var(--sp-4);
   right: var(--sp-4);
   z-index: 10;
+
+  // Tuck closer to the corner on a phone, where every pixel of header is contested.
+  @media (max-width: 30rem) {
+    top: var(--sp-2);
+    right: var(--sp-2);
+  }
 }

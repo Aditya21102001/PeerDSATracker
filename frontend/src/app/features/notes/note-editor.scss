@@ -24,7 +24,8 @@ h1 {
 }
 
 textarea {
-  min-height: 22rem;
+  /* Fills the screen on a phone, comfortable on a laptop. */
+  min-height: min(60dvh, 22rem);
   font-family: var(--font-mono);
   font-size: var(--fs-sm);
   line-height: 1.65;
@@ -36,6 +37,7 @@ textarea {
   align-items: center;
   gap: var(--sp-3);
   margin-top: var(--sp-1);
+  flex-wrap: wrap;
 }
 
 .message {

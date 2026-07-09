@@ -136,6 +136,7 @@ h2 {
 @media (max-width: 40rem) {
   .items li {
     grid-template-columns: 1fr auto;
+    row-gap: var(--sp-2);
 
     .interval {
       display: none;
@@ -143,6 +144,13 @@ h2 {
 
     .actions {
       grid-column: 1 / -1;
+      flex-wrap: wrap;
+
+      /* Four controls at 320px: let them share the row instead of overflowing. */
+      button:not(.ghost),
+      a {
+        flex: 1 1 auto;
+      }
     }
   }
 }
