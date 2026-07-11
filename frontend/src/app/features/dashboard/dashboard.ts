@@ -12,6 +12,7 @@ import {
 import { ActivityService } from '../../core/services/activity.service';
 import { AuthStore } from '../../core/services/auth.store';
 import { InsightsService } from '../../core/services/insights.service';
+import { TourService } from '../../core/services/tour.service';
 import { HeatmapCalendar } from '../../shared/heatmap-calendar';
 import { Spinner } from '../../shared/spinner';
 
@@ -30,7 +31,7 @@ import { Spinner } from '../../shared/spinner';
     <main class="dashboard">
       <header>
         <h1>⚡ The Grind ⚡</h1>
-        <nav>
+        <nav data-tour="nav">
           <a routerLink="/sheet">Sheet</a>
           <a routerLink="/revision">Revision</a>
           <a routerLink="/notes">Notes</a>
@@ -47,7 +48,7 @@ import { Spinner } from '../../shared/spinner';
       } @else if (error()) {
         <p class="error" role="alert">{{ error() }}</p>
       } @else {
-        <section class="tiles">
+        <section class="tiles" data-tour="stats">
           <div class="tile">
             <span class="value">{{ streak()?.current ?? 0 }}</span>
             <span class="label">Day streak</span>
@@ -84,7 +85,7 @@ import { Spinner } from '../../shared/spinner';
           </section>
         }
 
-        <section class="card">
+        <section class="card" data-tour="heatmap">
           <app-heatmap-calendar [days]="heatmap()" [today]="today" />
         </section>
 
@@ -164,6 +165,7 @@ export class Dashboard {
   private readonly activity = inject(ActivityService);
   private readonly insights = inject(InsightsService);
   private readonly auth = inject(AuthStore);
+  private readonly tour = inject(TourService);
 
   /** Captured once at construction: templates must not call new Date(). */
   protected readonly today = new Date();
@@ -225,6 +227,10 @@ export class Dashboard {
         this.insightsLoading.set(false);
       },
     });
+
+    // First visit only: walk a new user through the app. Deferred so the intro card shows
+    // while the dashboard data above is still loading. Replayable from the Guide.
+    queueMicrotask(() => this.tour.autoStartOnce());
   }
 
   protected criteriaLabel(badge: BadgeView): string {

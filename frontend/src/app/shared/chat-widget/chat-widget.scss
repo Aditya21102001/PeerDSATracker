@@ -1,0 +1,347 @@
+:host {
+  --chat-width: 24rem;
+  --chat-height: min(34rem, 72vh);
+}
+
+/* Floating action button, bottom-right on every page. */
+.fab {
+  position: fixed;
+  right: var(--sp-4);
+  bottom: var(--sp-4);
+  z-index: 40;
+  width: 3.5rem;
+  height: 3.5rem;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 1.5rem;
+  cursor: pointer;
+  box-shadow: var(--shadow-lg, 0 8px 24px rgb(0 0 0 / 0.25));
+  transition:
+    transform var(--t-fast) var(--ease-bounce),
+    background-color var(--t-base) var(--ease);
+
+  &:hover {
+    transform: scale(1.08);
+  }
+
+  &:active {
+    transform: scale(0.96);
+  }
+}
+
+.panel {
+  position: fixed;
+  right: var(--sp-4);
+  bottom: calc(var(--sp-4) + 4rem);
+  z-index: 41;
+  width: var(--chat-width);
+  max-width: calc(100vw - var(--sp-4) * 2);
+  height: var(--chat-height);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-lg, 0 12px 32px rgb(0 0 0 / 0.3));
+  animation: chat-in var(--t-base) var(--ease) both;
+}
+
+@keyframes chat-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem) scale(0.98);
+  }
+}
+
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-4);
+  border-bottom: 1px solid var(--border);
+
+  .who {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.2;
+    min-width: 0;
+
+    strong {
+      font-family: var(--font-display);
+    }
+
+    small {
+      color: var(--text-faint);
+      font-size: var(--fs-xs);
+    }
+  }
+
+  .tools {
+    display: flex;
+    gap: var(--sp-1);
+
+    button {
+      display: grid;
+      place-items: center;
+      width: 2rem;
+      height: 2rem;
+      border: 0;
+      border-radius: var(--r-sm);
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 0.95rem;
+      transition:
+        background-color var(--t-fast) var(--ease),
+        color var(--t-fast) var(--ease);
+
+      &:hover,
+      &.on {
+        background: var(--surface-2);
+        color: var(--text);
+      }
+    }
+  }
+}
+
+.history {
+  border-bottom: 1px solid var(--border);
+  max-height: 40%;
+  overflow-y: auto;
+  padding: var(--sp-2);
+
+  ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-1);
+    border-radius: var(--r-sm);
+
+    &.active {
+      background: var(--surface-2);
+    }
+
+    &.empty {
+      padding: var(--sp-2);
+      color: var(--text-faint);
+      font-size: var(--fs-xs);
+    }
+  }
+
+  .pick {
+    flex: 1;
+    min-width: 0;
+    text-align: left;
+    border: 0;
+    background: transparent;
+    color: var(--text-muted);
+    padding: var(--sp-2);
+    font-size: var(--fs-sm);
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+
+    &:hover {
+      color: var(--text);
+    }
+  }
+
+  .del {
+    flex: none;
+    border: 0;
+    background: transparent;
+    color: var(--text-faint);
+    padding: var(--sp-2);
+    cursor: pointer;
+
+    &:hover {
+      color: var(--danger);
+    }
+  }
+}
+
+.thread {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--sp-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+
+  .hello {
+    margin: auto 0;
+    text-align: center;
+    color: var(--text-muted);
+
+    .faint {
+      margin-top: var(--sp-2);
+      font-size: var(--fs-xs);
+      color: var(--text-faint);
+    }
+  }
+}
+
+.msg {
+  display: flex;
+
+  &.user {
+    justify-content: flex-end;
+  }
+
+  &.bot {
+    justify-content: flex-start;
+  }
+
+  .bubble {
+    max-width: 85%;
+    padding: var(--sp-2) var(--sp-3);
+    border-radius: var(--r-md);
+    font-size: var(--fs-sm);
+    line-height: 1.5;
+    /* Preserve the model's newlines and code indentation without risking HTML injection. */
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  &.user .bubble {
+    background: var(--accent);
+    color: var(--on-accent);
+    border-bottom-right-radius: var(--r-sm);
+  }
+
+  &.bot .bubble {
+    background: var(--surface-2);
+    color: var(--text);
+    border-bottom-left-radius: var(--r-sm);
+  }
+
+  .thinking {
+    padding: var(--sp-2) var(--sp-3);
+  }
+}
+
+/* Blinking caret trailing the streamed text. */
+.cursor {
+  display: inline-block;
+  width: 0.5rem;
+  height: 1em;
+  margin-left: 1px;
+  vertical-align: text-bottom;
+  background: currentColor;
+  opacity: 0.6;
+  animation: blink 1s steps(2, start) infinite;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+.error {
+  color: var(--danger);
+  font-size: var(--fs-xs);
+  margin: 0;
+}
+
+.composer {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--sp-2);
+  padding: var(--sp-3);
+  border-top: 1px solid var(--border);
+
+  textarea {
+    flex: 1;
+    resize: none;
+    max-height: 7.5rem;
+    padding: var(--sp-2) var(--sp-3);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    background: var(--bg, var(--surface-2));
+    color: var(--text);
+    font: inherit;
+    font-size: var(--fs-sm);
+    line-height: 1.4;
+
+    &:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 1px;
+    }
+  }
+
+  button {
+    flex: none;
+    width: 2.5rem;
+    height: 2.5rem;
+    display: grid;
+    place-items: center;
+    border: 0;
+    border-radius: var(--r-md);
+    cursor: pointer;
+    font-size: 1rem;
+    transition:
+      background-color var(--t-fast) var(--ease),
+      opacity var(--t-fast) var(--ease);
+  }
+
+  .send {
+    background: var(--accent);
+    color: var(--on-accent);
+
+    &:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+  }
+
+  .stop {
+    background: var(--surface-2);
+    color: var(--text);
+    font-size: 0.8rem;
+  }
+}
+
+/* Phone: the panel fills the screen so nothing spills off a 320px viewport. */
+@media (max-width: 30rem) {
+  .panel {
+    right: var(--sp-2);
+    left: var(--sp-2);
+    bottom: calc(var(--sp-2) + 4rem);
+    width: auto;
+    max-width: none;
+    height: min(32rem, 76vh);
+  }
+
+  .fab {
+    right: var(--sp-3);
+    bottom: var(--sp-3);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fab,
+  .panel {
+    animation: none;
+    transition: none;
+  }
+
+  .cursor {
+    animation: none;
+  }
+}

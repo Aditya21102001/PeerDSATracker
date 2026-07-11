@@ -2,3 +2,11 @@
 <app-theme-toggle class="theme-switch" />
 
 <router-outlet />
+
+<!-- Product tour. Renders nothing unless the tour is active; sits above every route. -->
+<app-tour-overlay />
+
+<!-- Floating study assistant, only for signed-in users. -->
+@if (auth.isAuthenticated()) {
+  <app-chat-widget />
+}

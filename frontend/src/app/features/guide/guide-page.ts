@@ -1,18 +1,53 @@
-import { Component, inject } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { catchError, forkJoin, of } from 'rxjs';
+import { BadgeView } from '../../core/models/api.models';
+import { ActivityService } from '../../core/services/activity.service';
 import { AuthStore } from '../../core/services/auth.store';
+import { InsightsService } from '../../core/services/insights.service';
+import { NotesService } from '../../core/services/notes.service';
+import { SheetService } from '../../core/services/sheet.service';
+import { TourService } from '../../core/services/tour.service';
+import { Spinner } from '../../shared/spinner';
+
+/** One row of the signed-in user's "next steps" checklist. */
+interface Task {
+  done: boolean;
+  label: string;
+  detail: string;
+  link: string;
+  action: string;
+}
+
+/** The signed-in user's live progress, gathered to personalise the guide. */
+interface GuideStats {
+  solved: number;
+  streak: number;
+  level: number;
+  xp: number;
+  toNext: number;
+  nextLevel: number;
+  scheduled: number;
+  platforms: number;
+  nextBadge: string | null;
+}
 
 /**
  * A public how-it-works page, linked from the welcome page and the dashboard nav. It has no
- * guard, so both logged-out visitors and signed-in users can read it — the header CTA adapts
- * to which they are (Dashboard vs. Get started) via {@link AuthStore.isAuthenticated}.
+ * guard, so both logged-out visitors and signed-in users can read it.
  *
- * The numbers here (XP values, the interval ladder, XP-per-level) mirror the backend and must
- * be kept in step with GamificationService and RevisionSchedule if those ever change.
+ * For a signed-in user it opens with a **personalised "next steps" panel** driven by their real
+ * progress (level, streak, what they haven't tried yet) and a button to replay the product tour;
+ * the reference sections below explain each feature. A logged-out visitor sees only the reference
+ * material plus signup CTAs. Every panel fetch is best-effort — a failed call degrades that line,
+ * never the page.
+ *
+ * The static numbers here (XP values, the interval ladder, XP-per-level) mirror the backend and
+ * must be kept in step with GamificationService and RevisionSchedule if those ever change.
  */
 @Component({
   selector: 'app-guide-page',
-  imports: [RouterLink],
+  imports: [RouterLink, Spinner],
   template: `
     <main class="guide">
       <header>
@@ -32,6 +67,44 @@ import { AuthStore } from '../../core/services/auth.store';
         Everything here is built around one loop: solve a problem, mark it, and let the app turn
         that into XP, a streak, and a revision plan. Here's each piece.
       </p>
+
+      @if (isAuthenticated()) {
+        <section class="you card" aria-label="Your next steps">
+          <div class="you-head">
+            <h2>Your next steps</h2>
+            <button type="button" class="btn btn-sm" (click)="tour.start()">↺ Take the tour</button>
+          </div>
+
+          @if (loading()) {
+            <app-spinner inline label="Loading your progress…" />
+          } @else if (stats(); as s) {
+            <p class="level">
+              Level {{ s.level }} · {{ s.xp }} XP@if (s.toNext > 0) {
+                · {{ s.toNext }} XP to level {{ s.nextLevel }}
+              }
+            </p>
+
+            <ul class="checklist">
+              @for (task of checklist(); track task.label) {
+                <li [class.done]="task.done">
+                  <span class="mark" aria-hidden="true">{{ task.done ? '✓' : '○' }}</span>
+                  <span class="ctext">
+                    <strong>{{ task.label }}</strong>
+                    <small>{{ task.detail }}</small>
+                  </span>
+                  @if (!task.done) {
+                    <a class="btn btn-sm btn-ghost" [routerLink]="task.link">{{ task.action }}</a>
+                  }
+                </li>
+              }
+            </ul>
+
+            @if (s.nextBadge) {
+              <p class="badge-hint">🏅 {{ s.nextBadge }}</p>
+            }
+          }
+        </section>
+      }
 
       <ol class="toc" aria-label="Contents">
         <li><a href="#start">Getting started</a></li>
@@ -169,7 +242,108 @@ import { AuthStore } from '../../core/services/auth.store';
 })
 export class GuidePage {
   private readonly auth = inject(AuthStore);
+  private readonly sheet = inject(SheetService);
+  private readonly activity = inject(ActivityService);
+  private readonly notes = inject(NotesService);
+  private readonly insights = inject(InsightsService);
+  protected readonly tour = inject(TourService);
 
   /** Drives the header/footer CTAs: Dashboard/Open the sheet when signed in, Get started when not. */
   protected readonly isAuthenticated = this.auth.isAuthenticated;
+
+  protected readonly loading = signal(this.auth.isAuthenticated());
+  protected readonly stats = signal<GuideStats | null>(null);
+
+  /** The next-steps checklist, derived from the live progress once it loads. */
+  protected readonly checklist = computed<Task[]>(() => {
+    const s = this.stats();
+    if (!s) {
+      return [];
+    }
+    return [
+      {
+        done: s.solved > 0,
+        label: 'Solve your first problem',
+        detail: s.solved > 0 ? `${s.solved} solved so far` : 'Open the sheet and mark one Solved',
+        link: '/sheet',
+        action: 'Open sheet',
+      },
+      {
+        done: s.streak > 0,
+        label: 'Keep a daily streak',
+        detail: s.streak > 0 ? `🔥 ${s.streak}-day streak going` : 'Solve one today to start a streak',
+        link: '/sheet',
+        action: 'Solve today',
+      },
+      {
+        done: s.scheduled > 0,
+        label: 'Queue a problem for revision',
+        detail: s.scheduled > 0 ? `${s.scheduled} scheduled for review` : 'Nothing scheduled yet',
+        link: '/revision',
+        action: 'Set up revision',
+      },
+      {
+        done: s.platforms > 0,
+        label: 'Link a coding platform',
+        detail: s.platforms > 0 ? `${s.platforms} linked` : 'Bring your LeetCode / Codeforces stats',
+        link: '/profile',
+        action: 'Link account',
+      },
+    ];
+  });
+
+  constructor() {
+    if (this.auth.isAuthenticated()) {
+      this.loadProgress();
+    }
+  }
+
+  /**
+   * Gathers the signed-in user's live progress. Every stream is best-effort: a failed call
+   * defaults its slice rather than blanking the whole panel.
+   */
+  private loadProgress(): void {
+    forkJoin({
+      progress: this.sheet.progress().pipe(catchError(() => of(null))),
+      streak: this.activity.streak().pipe(catchError(() => of(null))),
+      xp: this.activity.xp().pipe(catchError(() => of(null))),
+      badges: this.activity.badges().pipe(catchError(() => of([] as BadgeView[]))),
+      due: this.notes.dueQueue().pipe(catchError(() => of([]))),
+      upcoming: this.notes.upcoming().pipe(catchError(() => of([]))),
+      accounts: this.insights.accounts().pipe(catchError(() => of([]))),
+    }).subscribe((data) => {
+      const solved = data.progress?.solved ?? 0;
+      this.stats.set({
+        solved,
+        streak: data.streak?.current ?? 0,
+        level: data.xp?.level ?? 1,
+        xp: data.xp?.xp ?? 0,
+        toNext: data.xp?.xpToNextLevel ?? 0,
+        nextLevel: (data.xp?.level ?? 1) + 1,
+        scheduled: data.due.length + data.upcoming.length,
+        platforms: data.accounts.length,
+        nextBadge: this.nextBadge(data.badges, solved, data.xp?.xp ?? 0),
+      });
+      this.loading.set(false);
+    });
+  }
+
+  /** The closest unearned solve- or XP-threshold badge, phrased as a gap to close. */
+  private nextBadge(badges: BadgeView[], solved: number, xp: number): string | null {
+    const closest = (type: 'TOTAL_SOLVED' | 'XP', have: number) =>
+      badges
+        .filter((b) => !b.earned && b.criteriaType === type && b.criteriaValue > have)
+        .sort((a, b) => a.criteriaValue - b.criteriaValue)[0];
+
+    const bySolves = closest('TOTAL_SOLVED', solved);
+    if (bySolves) {
+      const gap = bySolves.criteriaValue - solved;
+      return `${gap} more ${gap === 1 ? 'solve' : 'solves'} → ${bySolves.name}`;
+    }
+    const byXp = closest('XP', xp);
+    if (byXp) {
+      return `${byXp.criteriaValue - xp} XP → ${byXp.name}`;
+    }
+    return null;
+  }
 }

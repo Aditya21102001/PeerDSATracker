@@ -163,9 +163,21 @@ unreachable sandbox all come back as `ran: false` with an `error` string. A prog
 but fails to compile or crashes is a successful result carrying `compileOutput` / `stderr` and a
 non-zero exit code — that's the user's bug to see, not a service failure.
 
-`PISTON_URL` points at the sandbox (default: the public `emkc.org` instance, which is rate-limited;
-set it to a self-hosted Piston for real use). The Spring side validates the language against a fixed
-catalogue before ever calling this, so arbitrary strings never reach Piston.
+`PISTON_URL` points at the sandbox. The public `emkc.org` instance became **whitelist-only on
+2026-02-15**, so the expected setup is now a **self-hosted Piston**, which also matches this
+project's "same image everywhere" philosophy:
+
+```bash
+docker run -d --name piston -p 2000:2000 ghcr.io/engineer-man/piston
+# the image ships with no languages — install the ones you want:
+docker exec piston ppman install python c++ java javascript c go
+```
+
+`PISTON_URL` then defaults to `http://localhost:2000/api/v2`. Mind the base path: a self-hosted
+instance ends in `/api/v2`, while the old public one ended in `/api/v2/piston`. Because the client
+resolves versions from `/runtimes` at call time, it picks up whatever languages you installed with
+no config change. The Spring side validates the language against a fixed catalogue before ever
+calling this, so arbitrary strings never reach Piston.
 
 ## Failure is a first-class outcome
 

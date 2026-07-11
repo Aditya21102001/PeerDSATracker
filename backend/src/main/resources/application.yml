@@ -88,6 +88,23 @@ app:
     # endpoint is soft rate-limited with no published budget.
     cron: "0 0 */6 * * *"
     throttle-millis: 2000
+  openrouter:
+    # The AI assistant. Blank key disables the feature: /api/chat then answers 503
+    # "not configured" instead of calling upstream with an empty credential.
+    api-key: ${OPENROUTER_API_KEY:}
+    base-url: ${OPENROUTER_BASE_URL:https://openrouter.ai/api/v1}
+    # Must be a real free model id (ends in ":free"). The free list rotates, hence an
+    # env var. NOTE: "openrouter/free" is NOT a valid id and will 404.
+    model: "${OPENROUTER_MODEL:meta-llama/llama-3.3-70b-instruct:free}"
+    system-prompt: "${OPENROUTER_SYSTEM_PROMPT:You are Grind Buddy, a concise coding-interview tutor inside a DSA progress tracker. Help with data structures, algorithms, complexity analysis, and debugging. Prefer hints and step-by-step reasoning over dumping full solutions unless explicitly asked. Use short paragraphs and fenced code blocks. If a question is unrelated to programming or studying, gently steer back.}"
+    # Most-recent messages replayed as context. Caps the token bill on a long thread.
+    max-history: ${OPENROUTER_MAX_HISTORY:20}
+    connect-timeout: ${OPENROUTER_CONNECT_TIMEOUT:10s}
+    # A free model can be slow; give the whole streamed reply room to finish.
+    read-timeout: ${OPENROUTER_READ_TIMEOUT:120s}
+    # Sent to OpenRouter for dashboard attribution; both are optional there.
+    referer: ${OPENROUTER_REFERER:https://peer-dsa-tracker-iota.vercel.app}
+    title: ${OPENROUTER_TITLE:PeerDSATracker}
 
 management:
   endpoints:

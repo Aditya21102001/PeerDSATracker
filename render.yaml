@@ -82,6 +82,13 @@ services:
       - key: CORS_ALLOWED_ORIGINS
         sync: false
 
+      # AI assistant. A blank key disables the feature (chat returns 503 "not configured")
+      # so the rest of the app deploys fine without it. Get a free key at openrouter.ai.
+      # OPENROUTER_MODEL must be a real free model id ending in ":free"; the free list
+      # rotates. The default (llama-3.3-70b-instruct:free) is baked into application.yml.
+      - key: OPENROUTER_API_KEY
+        sync: false
+
   # ---------------------------------------------------------- FastAPI analytics
   # Stateless and DB-less. Guarded by the X-Internal-Token shared secret, which is
   # what makes a public URL acceptable (free instances cannot be private services).

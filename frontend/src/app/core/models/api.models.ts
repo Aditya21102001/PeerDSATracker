@@ -264,3 +264,25 @@ export interface RunResult {
   signal: string | null;
   error: string | null;
 }
+
+/** A chat thread in the assistant widget, from /api/chat/conversations. */
+export interface ChatConversation {
+  id: number;
+  title: string;
+  updatedAt: string;
+}
+
+/** One stored turn. `role` is 'user' or 'assistant'; the system prompt is never returned. */
+export interface ChatMessage {
+  id: number;
+  role: 'user' | 'assistant';
+  content: string;
+  createdAt: string;
+}
+
+/** A conversation with its full message history, from /api/chat/conversations/{id}. */
+export interface ChatConversationDetail {
+  id: number;
+  title: string;
+  messages: ChatMessage[];
+}

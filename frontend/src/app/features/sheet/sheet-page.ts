@@ -44,7 +44,7 @@ const STATUSES: readonly ProblemStatus[] = ['SOLVED', 'ATTEMPTED', 'REVISIT'];
       </header>
 
       @if (store.progress(); as p) {
-        <section class="overall" aria-label="Overall progress">
+        <section class="overall" aria-label="Overall progress" data-tour="sheet-progress">
           <div class="bar-row">
             <strong>{{ p.solved }} / {{ p.total }} solved</strong>
             <span>{{ store.solvedPercent() }}%</span>
@@ -110,7 +110,7 @@ const STATUSES: readonly ProblemStatus[] = ['SOLVED', 'ATTEMPTED', 'REVISIT'];
         }
         <p class="count">{{ store.total() }} problems</p>
 
-        <ul class="problems">
+        <ul class="problems" data-tour="sheet-list">
           @for (p of store.problems(); track p.id) {
             <li [class.solved]="p.status === 'SOLVED'">
               <button
