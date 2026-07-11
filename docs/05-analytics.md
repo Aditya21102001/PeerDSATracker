@@ -35,7 +35,8 @@ analytics/app/
 │   └── revision.py         priority ranking of revision candidates
 └── clients/
     ├── leetcode.py         unofficial GraphQL. The fragile boundary.
-    └── codeforces.py       official REST API
+    ├── codeforces.py       official REST API
+    └── piston.py           proxies user code to the Piston sandbox
 ```
 
 ## Routes
@@ -48,6 +49,7 @@ analytics/app/
 | `POST /fetch/codeforces` | token | profile stats + solved-by-tag |
 | `POST /analytics/weakness` | token | per-topic mastery report |
 | `POST /analytics/revise-next` | token | ranked revision recommendations |
+| `POST /execute` | token | run user code in the Piston sandbox |
 
 Every route except `/health` requires the `X-Internal-Token` header. That shared secret is what
 makes a public URL acceptable — Render's free tier cannot host private services. Spring Boot is
@@ -143,6 +145,27 @@ body, not the status code.**
 Only the most recent 1000 submissions are scanned for solved-by-tag. A prolific user's full history
 is tens of thousands of rows; this keeps one request bounded. The same problem solved twice still
 counts once.
+
+## `clients/piston.py` — running untrusted code
+
+The in-app code editor's **Run** button ends up here. This service **never executes user code
+itself** — it proxies to [Piston](https://github.com/engineer-man/piston), which runs each
+submission in an isolated jail and returns stdout/stderr/exit-code. Nothing user-supplied touches
+this process or the Spring backend.
+
+Piston's `/execute` needs an exact runtime **version**, which drifts as the instance is upgraded.
+Rather than hard-code versions, the client fetches `/runtimes` once, caches the language→version
+map for the process lifetime, and resolves a language (or one of its aliases) on demand. A cache
+miss just refetches.
+
+Like every client here, it degrades instead of raising: an unknown language, a rate-limit, or an
+unreachable sandbox all come back as `ran: false` with an `error` string. A program that *does* run
+but fails to compile or crashes is a successful result carrying `compileOutput` / `stderr` and a
+non-zero exit code — that's the user's bug to see, not a service failure.
+
+`PISTON_URL` points at the sandbox (default: the public `emkc.org` instance, which is rate-limited;
+set it to a self-hosted Piston for real use). The Spring side validates the language against a fixed
+catalogue before ever calling this, so arbitrary strings never reach Piston.
 
 ## Failure is a first-class outcome
 

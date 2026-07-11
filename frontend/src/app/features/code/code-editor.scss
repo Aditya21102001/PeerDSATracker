@@ -1,0 +1,162 @@
+/* In-app code editor. All colour/space/shape comes from the design tokens in styles.scss. */
+
+.code {
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: var(--sp-5) var(--sp-4) var(--sp-7);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  animation: page-in var(--t-slow) var(--ease) both;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  flex-wrap: wrap;
+
+  nav {
+    display: flex;
+    gap: var(--sp-4);
+
+    a {
+      color: var(--text-muted);
+      font-size: var(--fs-sm);
+      font-weight: 500;
+
+      &:hover {
+        color: var(--text);
+      }
+    }
+  }
+}
+
+.meta {
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+
+  select {
+    width: auto;
+    min-width: 9rem;
+  }
+
+  .status {
+    font-size: var(--fs-sm);
+    color: var(--text-muted);
+  }
+}
+
+/* Editor beside the input/output column on a wide screen; stacked on a narrow one. */
+.grid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: var(--sp-4);
+  align-items: stretch;
+
+  @media (max-width: 52rem) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.pane {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.pane-label {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-faint);
+}
+
+.side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+textarea {
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+  tab-size: 4;
+  resize: vertical;
+  /* A long line scrolls inside the editor rather than widening the page. */
+  white-space: pre;
+  overflow: auto;
+}
+
+.source textarea {
+  min-height: 26rem;
+  height: 100%;
+}
+
+#stdin {
+  min-height: 5rem;
+  white-space: pre-wrap;
+}
+
+.output {
+  flex: 1;
+  min-height: 12rem;
+  padding: var(--sp-3);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  overflow: auto;
+
+  .block {
+    margin-top: var(--sp-2);
+
+    &-label {
+      font-size: var(--fs-xs);
+      font-weight: 700;
+      color: var(--text-faint);
+    }
+
+    pre {
+      margin-top: var(--sp-1);
+      font-family: var(--font-mono);
+      font-size: var(--fs-xs);
+      line-height: 1.5;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
+    /* stderr and compiler diagnostics read as failure without shouting. */
+    &.err pre {
+      color: var(--danger);
+    }
+  }
+
+  .run-error {
+    color: var(--danger);
+    font-size: var(--fs-sm);
+  }
+
+  .exit {
+    margin-top: var(--sp-3);
+    font-size: var(--fs-xs);
+    color: var(--success);
+
+    &.bad {
+      color: var(--danger);
+    }
+  }
+}

@@ -1,7 +1,8 @@
 # PeerDSATracker
 
 A gamified peer DSA progress tracker: work through the Striver A2Z sheet, keep a daily streak,
-compare progress with peers on a leaderboard, and keep notes with a spaced-repetition revision queue.
+compare progress with peers on a leaderboard, keep notes with a spaced-repetition revision queue,
+and write and run your solutions in an in-app editor.
 
 ## Documentation
 
@@ -20,6 +21,7 @@ will bite you. The two do not repeat each other.
 | Frontend | Angular 22 (zoneless, signals, lazy-loaded routes) |
 | Backend | Spring Boot 4.1, Java 17, Maven, Spring Data JPA, Flyway |
 | Analytics / sync | Python 3.13 + FastAPI (stateless, DB-less) |
+| Code execution | Piston sandbox, proxied through the analytics service |
 | Database | PostgreSQL (Neon) |
 | Auth | Spring Security + BCrypt + JWT access/refresh with rotation |
 

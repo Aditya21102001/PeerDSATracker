@@ -1,0 +1,187 @@
+/* How-it-works page. Reads as a document, so it is narrower than the app pages and leans on
+   the shared .card primitive for each section. All values come from the design tokens. */
+
+.guide {
+  max-width: 48rem;
+  margin: 0 auto;
+  padding: var(--sp-6) var(--sp-4) var(--sp-7);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
+  animation: page-in var(--t-slow) var(--ease) both;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  flex-wrap: wrap;
+
+  nav {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-4);
+    flex-wrap: wrap;
+
+    a:not(.btn) {
+      color: var(--text-muted);
+      font-size: var(--fs-sm);
+      font-weight: 500;
+
+      &:hover {
+        color: var(--text);
+      }
+    }
+  }
+}
+
+.lede {
+  font-size: var(--fs-lg);
+  color: var(--text-muted);
+}
+
+/* Anchored table of contents. Renders as chips so it reads as navigation, not prose. */
+.toc {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  counter-reset: toc;
+
+  li {
+    counter-increment: toc;
+  }
+
+  a {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-1);
+    padding: 0.3rem 0.7rem;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--r-full);
+    font-size: var(--fs-xs);
+    color: var(--text-muted);
+
+    &::before {
+      content: counter(toc);
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    &:hover {
+      color: var(--text);
+      border-color: var(--border-strong);
+    }
+  }
+}
+
+/* Land the section a little below the fixed theme toggle when jumped to via an anchor. */
+section[id] {
+  scroll-margin-top: var(--sp-5);
+}
+
+section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+
+  h2 {
+    font-size: var(--fs-xl);
+  }
+
+  p {
+    color: var(--text);
+  }
+}
+
+.defs {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+
+  li {
+    color: var(--text-muted);
+    font-size: var(--fs-sm);
+  }
+}
+
+/* Neutral counterpart to the difficulty .pill, for status words that have no colour of their own. */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.55rem;
+  margin-right: var(--sp-1);
+  border-radius: var(--r-full);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--text);
+
+  &.star {
+    color: var(--xp);
+    background: var(--xp-soft);
+    border-color: transparent;
+  }
+}
+
+.pill {
+  margin-right: var(--sp-1);
+}
+
+.xp-row {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-4);
+
+  li {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-2);
+    font-size: var(--fs-sm);
+    font-weight: 600;
+  }
+}
+
+/* The interval ladder as a row of rungs, ending in a unit. */
+.ladder {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+
+  span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2.25rem;
+    padding: 0.35rem 0.5rem;
+    background: var(--accent-soft);
+    color: var(--accent);
+    border-radius: var(--r-md);
+    font-family: var(--font-display);
+    font-weight: 700;
+  }
+
+  small {
+    color: var(--text-faint);
+    font-size: var(--fs-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+}
+
+.closer {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+  padding-top: var(--sp-2);
+}

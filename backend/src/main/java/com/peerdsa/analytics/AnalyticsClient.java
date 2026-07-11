@@ -1,6 +1,8 @@
 package com.peerdsa.analytics;
 
 import com.peerdsa.analytics.AnalyticsDtos.CodeforcesStats;
+import com.peerdsa.analytics.AnalyticsDtos.ExecuteRequest;
+import com.peerdsa.analytics.AnalyticsDtos.ExecuteResult;
 import com.peerdsa.analytics.AnalyticsDtos.FetchRequest;
 import com.peerdsa.analytics.AnalyticsDtos.LeetCodeStats;
 import com.peerdsa.analytics.AnalyticsDtos.ReviseNextRequest;
@@ -65,6 +67,11 @@ public class AnalyticsClient {
 
     public CodeforcesStats fetchCodeforces(String handle) {
         return post("/fetch/codeforces", new FetchRequest(handle), CodeforcesStats.class);
+    }
+
+    /** Runs user code in Piston's sandbox via the FastAPI proxy; this JVM never executes it. */
+    public ExecuteResult execute(ExecuteRequest request) {
+        return post("/execute", request, ExecuteResult.class);
     }
 
     private <T> T post(String path, Object body, Class<T> responseType) {

@@ -16,6 +16,7 @@ import { Problem } from '../../core/models/api.models';
     <main class="editor">
       <header>
         <a routerLink="/notes">← All notes</a>
+        <a [routerLink]="['/code', problemId()]">Code</a>
         <a routerLink="/sheet">Sheet</a>
       </header>
 

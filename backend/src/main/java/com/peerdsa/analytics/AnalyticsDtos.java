@@ -73,4 +73,23 @@ public final class AnalyticsDtos {
             Instant fetchedAt,
             String source,
             String error) {}
+
+    /** Request for {@code /execute}: {@code language} is a Piston language id or alias. */
+    public record ExecuteRequest(String language, String source, String stdin) {}
+
+    /**
+     * Result of one run in Piston's sandbox. {@code ran} is false when the language is unknown or
+     * the sandbox was unreachable; {@code compileOutput} carries diagnostics for a program that
+     * never got to run, and {@code error} a proxy-level failure that is not the user's code.
+     */
+    public record ExecuteResult(
+            boolean ran,
+            String language,
+            String version,
+            String stdout,
+            String stderr,
+            String compileOutput,
+            Integer exitCode,
+            String signal,
+            String error) {}
 }

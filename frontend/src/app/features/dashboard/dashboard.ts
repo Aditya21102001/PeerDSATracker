@@ -37,6 +37,7 @@ import { Spinner } from '../../shared/spinner';
           <a routerLink="/peers">Peers</a>
           <a routerLink="/leaderboard">Leaderboard</a>
           <a routerLink="/profile">Platforms</a>
+          <a routerLink="/guide">Guide</a>
           <button type="button" class="link" (click)="signOut()">Sign out</button>
         </nav>
       </header>

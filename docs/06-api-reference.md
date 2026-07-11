@@ -187,6 +187,37 @@ These numbers are never merged into your streak or XP, which are earned on this 
 
 ---
 
+## Code — `/api/code`
+
+The in-app code editor: write, save, and run code per problem.
+
+| Method | Path | Body | Returns |
+|---|---|---|---|
+| GET | `/languages` | — | `LanguageOption[]` — the runnable languages |
+| GET | `/problems/{problemId}` | — | `CodeDraft[]` — one per saved language |
+| PUT | `/problems/{problemId}` | `{language, source}` | `CodeDraft` |
+| POST | `/run` | `{language, source, stdin}` | `RunResult` |
+
+```ts
+LanguageOption { id, label, editorMode, template }
+CodeDraft      { problemId, language, source, updatedAt }
+RunResult      { ran, language, version, stdout, stderr, compileOutput, exitCode, signal, error }
+```
+
+`language` must be one of the ids from `/languages` (Python, C++, Java, JavaScript, C, Go) — any
+other value is a `400`. Drafts are keyed by (user, problem, **language**), so each language keeps
+its own solution.
+
+`/run` proxies to Piston through the analytics service; **nothing runs on the backend or in the
+browser**. A program that fails to compile or crashes is a normal `RunResult` (`ran: false` or a
+non-zero `exitCode`, with `compileOutput`/`stderr` filled). Only the execution service being
+unreachable is an error:
+
+> **`/run` returns `503`** when the analytics/Piston service can't be reached — usually a cold
+> start on Render's free tier. The editor tells the user to retry in a moment.
+
+---
+
 ## Analytics — `/api/analytics`
 
 | Method | Path | Returns |
@@ -233,6 +264,7 @@ Not reachable from the browser. Every route except `/health` requires `X-Interna
 | POST | `/fetch/codeforces` | `{handle}` → `CodeforcesStats` |
 | POST | `/analytics/weakness` | `{userId, byTopic}` → `WeaknessResponse` |
 | POST | `/analytics/revise-next` | `{userId, byTopic, candidates}` → `ReviseNextResponse` |
+| POST | `/execute` | `{language, source, stdin}` → `ExecuteResult` (runs code in Piston's sandbox) |
 
 `LeetCodeStats.found` / `CodeforcesStats.found` is `false` with an `error` string when the handle
 does not exist or the upstream call failed. That is a normal response, not an error.

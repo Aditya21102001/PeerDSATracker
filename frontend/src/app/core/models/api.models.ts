@@ -229,3 +229,38 @@ export interface Page<T> {
   number: number;
   size: number;
 }
+
+/** One runnable language from GET /api/code/languages; `id` is the Piston language id. */
+export interface LanguageOption {
+  id: string;
+  label: string;
+  /** Highlighting hint for the editor (e.g. 'python', 'cpp'). */
+  editorMode: string;
+  /** Starter source shown when no draft exists for this language. */
+  template: string;
+}
+
+/** A user's saved code for one problem in one language, from /api/code/problems/{id}. */
+export interface CodeDraft {
+  problemId: number;
+  language: string;
+  source: string;
+  updatedAt: string | null;
+}
+
+/**
+ * Result of POST /api/code/run. `ran` is false when the language is unknown or the sandbox was
+ * unreachable; `compileOutput` holds diagnostics for code that never ran, and `error` a
+ * proxy-level failure that is not the user's code.
+ */
+export interface RunResult {
+  ran: boolean;
+  language: string;
+  version: string | null;
+  stdout: string;
+  stderr: string;
+  compileOutput: string | null;
+  exitCode: number | null;
+  signal: string | null;
+  error: string | null;
+}

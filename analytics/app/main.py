@@ -10,10 +10,12 @@ Run:  uvicorn app.main:app --reload --port 8000
 
 from fastapi import Depends, FastAPI
 
-from app.clients import codeforces, leetcode
+from app.clients import codeforces, leetcode, piston
 from app.deps import require_internal_token
 from app.schemas import (
     CodeforcesStats,
+    ExecuteRequest,
+    ExecuteResult,
     FetchRequest,
     LeetCodeStats,
     ReviseNextRequest,
@@ -64,3 +66,11 @@ async def analytics_weakness(request: WeaknessRequest) -> WeaknessResponse:
 @app.post("/analytics/revise-next", response_model=ReviseNextResponse, dependencies=internal)
 async def analytics_revise_next(request: ReviseNextRequest) -> ReviseNextResponse:
     return revision.recommend(request)
+
+
+# ------------------------------------------------------------- code execution
+
+@app.post("/execute", response_model=ExecuteResult, dependencies=internal)
+async def execute_code(request: ExecuteRequest) -> ExecuteResult:
+    """Run user code in Piston's sandbox. Never executes anything in this process."""
+    return await piston.execute(request)

@@ -132,3 +132,31 @@ class ReviseNextResponse(CamelModel):
 
     user_id: int
     recommendations: list[Recommendation]
+
+
+# ------------------------------------------------------------- code execution
+
+class ExecuteRequest(CamelModel):
+    """Body of POST /execute. `language` is a Piston language id or alias (e.g. `python`, `cpp`)."""
+
+    language: str = Field(min_length=1, max_length=40)
+    source: str = Field(max_length=100_000)
+    stdin: str = Field(default="", max_length=50_000)
+
+
+class ExecuteResult(CamelModel):
+    """Outcome of one run. `ran` is False when the language is unknown or Piston was unreachable.
+
+    `compile_output` carries compiler diagnostics for a program that never got to run; `error`
+    carries a proxy-level failure (bad language, upstream down) that is not the user's code.
+    """
+
+    ran: bool
+    language: str
+    version: str | None = None
+    stdout: str = ""
+    stderr: str = ""
+    compile_output: str | None = None
+    exit_code: int | None = None
+    signal: str | None = None
+    error: str | None = None

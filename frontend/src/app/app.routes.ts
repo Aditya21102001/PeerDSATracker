@@ -24,7 +24,19 @@ const resetRoutes: Routes = environment.resetEnabled
 // Every feature route is lazy-loaded via loadComponent, so the initial bundle
 // carries only the shell plus whichever route the user landed on.
 export const routes: Routes = [
-  { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
+  {
+    // Public landing page. guestGuard bounces signed-in users straight to /dashboard, so a
+    // returning user never sees the marketing page.
+    path: '',
+    pathMatch: 'full',
+    canActivate: [guestGuard],
+    loadComponent: () => import('./features/welcome/welcome-page').then((m) => m.WelcomePage),
+  },
+  {
+    // Public how-it-works page: no guard, reachable by guests and signed-in users alike.
+    path: 'guide',
+    loadComponent: () => import('./features/guide/guide-page').then((m) => m.GuidePage),
+  },
   {
     path: 'dashboard',
     canActivate: [authGuard],
@@ -66,6 +78,12 @@ export const routes: Routes = [
     path: 'notes/:problemId',
     canActivate: [authGuard],
     loadComponent: () => import('./features/notes/note-editor').then((m) => m.NoteEditor),
+  },
+  {
+    // :problemId is bound to the CodeEditor input, same as the note editor above.
+    path: 'code/:problemId',
+    canActivate: [authGuard],
+    loadComponent: () => import('./features/code/code-editor').then((m) => m.CodeEditor),
   },
   {
     path: 'revision',

@@ -1,0 +1,160 @@
+/* Landing page. All colour/space/shape comes from the tokens in styles.scss — a raw hex
+   here would not follow the theme. */
+
+.welcome {
+  max-width: 60rem;
+  margin: 0 auto;
+  padding: var(--sp-7) var(--sp-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-7);
+  animation: page-in var(--t-slow) var(--ease) both;
+}
+
+.hero {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-4);
+
+  h1 {
+    font-size: var(--fs-3xl);
+    /* Same brand gradient the auth card uses, so the two public surfaces match. */
+    background: linear-gradient(90deg, var(--accent), var(--flame));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .tagline {
+    font-family: var(--font-display);
+    font-size: var(--fs-xl);
+    font-weight: 600;
+    color: var(--text);
+    max-width: 34rem;
+  }
+
+  .sub {
+    color: var(--text-muted);
+    max-width: 40rem;
+  }
+}
+
+.cta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+  justify-content: center;
+  margin-top: var(--sp-2);
+}
+
+.foot {
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--sp-2);
+  padding: var(--sp-4) 0;
+  border-block: 1px solid var(--border);
+
+  div {
+    text-align: center;
+  }
+
+  dt {
+    font-family: var(--font-display);
+    font-size: var(--fs-2xl);
+    font-weight: 700;
+    line-height: 1.1;
+    background: linear-gradient(180deg, var(--text), var(--text-muted));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  dd {
+    margin: 0;
+    font-size: var(--fs-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.09em;
+    color: var(--text-faint);
+  }
+}
+
+.features ul {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: var(--sp-4);
+
+  li {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-2);
+    /* Lift on hover — the same tactile language as .btn, kept subtle for a whole card. */
+    transition:
+      transform var(--t-base) var(--ease),
+      border-color var(--t-base) var(--ease),
+      box-shadow var(--t-base) var(--ease);
+
+    &:hover {
+      transform: translateY(-3px);
+      border-color: var(--border-strong);
+      box-shadow: var(--shadow-md);
+    }
+  }
+
+  .ico {
+    font-size: var(--fs-2xl);
+    line-height: 1;
+  }
+
+  h3 {
+    font-size: var(--fs-md);
+  }
+
+  p {
+    color: var(--text-muted);
+    font-size: var(--fs-sm);
+  }
+}
+
+.closer {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-3);
+
+  h2 {
+    font-size: var(--fs-2xl);
+  }
+
+  p {
+    color: var(--text-muted);
+    max-width: 36rem;
+  }
+}
+
+@media (max-width: 30rem) {
+  .welcome {
+    padding: var(--sp-6) var(--sp-4);
+    gap: var(--sp-6);
+  }
+
+  /* Four figures crowd a phone; two rows of two breathe better. */
+  .stats {
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--sp-4);
+  }
+
+  /* Full-width CTAs are the easier tap target on a narrow screen. */
+  .cta .btn {
+    width: 100%;
+  }
+}
