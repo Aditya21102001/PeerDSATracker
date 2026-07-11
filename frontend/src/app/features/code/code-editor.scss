@@ -1,12 +1,12 @@
-/* In-app code editor. All colour/space/shape comes from the design tokens in styles.scss. */
+/* In-app code editor, LeetCode-style split. All colour/space/shape from the design tokens. */
 
 .code {
-  max-width: 72rem;
+  max-width: 90rem;
   margin: 0 auto;
-  padding: var(--sp-5) var(--sp-4) var(--sp-7);
+  padding: var(--sp-4) var(--sp-4) var(--sp-5);
   display: flex;
   flex-direction: column;
-  gap: var(--sp-4);
+  gap: var(--sp-3);
   animation: page-in var(--t-slow) var(--ease) both;
 }
 
@@ -17,29 +17,128 @@ header {
   gap: var(--sp-4);
   flex-wrap: wrap;
 
-  nav {
-    display: flex;
-    gap: var(--sp-4);
+  a {
+    color: var(--text-muted);
+    font-size: var(--fs-sm);
+    font-weight: 500;
 
-    a {
-      color: var(--text-muted);
-      font-size: var(--fs-sm);
-      font-weight: 500;
-
-      &:hover {
-        color: var(--text);
-      }
+    &:hover {
+      color: var(--text);
     }
   }
 }
 
-.meta {
-  color: var(--text-muted);
-  font-size: var(--fs-sm);
+/* Problem on the left, a drag handle, editor + console on the right. Fills the viewport like
+   LeetCode. The left column is driven by --left-col (set inline from the drag), NOT an inline
+   grid-template-columns -- so the mobile media query below can still collapse the split. */
+.workspace {
+  display: grid;
+  grid-template-columns: var(--left-col, 22rem) 0.4rem minmax(0, 1fr);
+  gap: var(--sp-3);
+  min-height: calc(100vh - 9rem);
+}
+
+.divider {
+  align-self: stretch;
+  border-radius: 3px;
+  background: var(--border);
+  cursor: col-resize;
+  touch-action: none; /* let pointer drags through instead of scrolling */
+  transition: background var(--t-fast) var(--ease);
+
+  &:hover,
+  &:focus-visible {
+    background: var(--accent);
+    outline: none;
+  }
+}
+
+/* Stack on a narrow screen; let the page grow rather than trapping panes in a short column. */
+@media (max-width: 60rem) {
+  .workspace {
+    grid-template-columns: 1fr;
+    min-height: 0;
+  }
+
+  .divider {
+    display: none;
+  }
+}
+
+.problem-pane {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: var(--sp-5);
+  overflow-y: auto;
+
+  h1 {
+    font-family: var(--font-display);
+    font-size: var(--fs-lg);
+    margin-bottom: var(--sp-3);
+  }
+
+  .tags {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    flex-wrap: wrap;
+    margin-bottom: var(--sp-3);
+
+    .step {
+      color: var(--text-faint);
+      font-size: var(--fs-xs);
+    }
+  }
+
+  .resources {
+    display: flex;
+    gap: var(--sp-3);
+    flex-wrap: wrap;
+    margin-bottom: var(--sp-4);
+
+    a {
+      font-size: var(--fs-sm);
+      color: var(--accent);
+
+      &:hover {
+        text-decoration: underline;
+      }
+    }
+  }
+
+  .hint {
+    color: var(--text-muted);
+    font-size: var(--fs-sm);
+    line-height: 1.6;
+  }
+}
+
+.pill {
+  padding: 0.1rem 0.5rem;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+
+  &[data-level='EASY'] {
+    color: var(--success);
+  }
+  &[data-level='MEDIUM'] {
+    color: var(--xp);
+  }
+  &[data-level='HARD'] {
+    color: var(--danger);
+  }
+}
+
+.editor-pane {
   display: flex;
-  align-items: center;
-  gap: var(--sp-2);
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: var(--sp-3);
+  min-height: 0;
 }
 
 .toolbar {
@@ -59,22 +158,34 @@ header {
   }
 }
 
-/* Editor beside the input/output column on a wide screen; stacked on a narrow one. */
-.grid {
-  display: grid;
-  grid-template-columns: 1.4fr 1fr;
-  gap: var(--sp-4);
-  align-items: stretch;
+/* CodeMirror fills this box; the box owns the height so the editor scrolls internally. */
+.editor-host {
+  flex: 1;
+  min-height: 24rem;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  overflow: hidden;
+  background: var(--surface);
+}
 
-  @media (max-width: 52rem) {
+.console {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-3);
+  min-height: 11rem;
+}
+
+@media (max-width: 48rem) {
+  .console {
     grid-template-columns: 1fr;
   }
 }
 
-.pane {
+.io {
   display: flex;
   flex-direction: column;
   gap: var(--sp-2);
+  min-width: 0;
 }
 
 .pane-label {
@@ -85,36 +196,18 @@ header {
   color: var(--text-faint);
 }
 
-.side {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-4);
-}
-
-textarea {
+#stdin {
+  flex: 1;
+  min-height: 6rem;
   font-family: var(--font-mono);
   font-size: var(--fs-sm);
   line-height: 1.5;
-  tab-size: 4;
-  resize: vertical;
-  /* A long line scrolls inside the editor rather than widening the page. */
   white-space: pre;
   overflow: auto;
-}
-
-.source textarea {
-  min-height: 26rem;
-  height: 100%;
-}
-
-#stdin {
-  min-height: 5rem;
-  white-space: pre-wrap;
+  resize: vertical;
 }
 
 .output {
-  flex: 1;
-  min-height: 12rem;
   padding: var(--sp-3);
   background: var(--surface);
   border: 1px solid var(--border);
@@ -139,7 +232,6 @@ textarea {
       overflow-wrap: anywhere;
     }
 
-    /* stderr and compiler diagnostics read as failure without shouting. */
     &.err pre {
       color: var(--danger);
     }
@@ -158,5 +250,10 @@ textarea {
     &.bad {
       color: var(--danger);
     }
+  }
+
+  .muted {
+    color: var(--text-faint);
+    font-size: var(--fs-sm);
   }
 }
