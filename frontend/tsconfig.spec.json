@@ -4,6 +4,9 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "outDir": "./out-tsc/spec",
+    // Pin the source root explicitly: all specs live under src/app today, so TypeScript would
+    // otherwise infer './src/app' and warn that the root could shift if a spec is added elsewhere.
+    "rootDir": "src",
     "types": [
       "vitest/globals"
     ]
