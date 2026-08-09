@@ -17,16 +17,18 @@ a package.
 com.peerdsa
 ├── PeerDsaApplication.java     the @SpringBootApplication entry point
 ├── analytics/     bridge to the FastAPI service
-├── auth/          signup, login, refresh, logout, password reset
+├── auth/          signup, login, refresh, logout, password change, OAuth sign-in
+│   └── otp/       one-time codes: issue, verify, rate limit, delivery
 ├── common/        GlobalExceptionHandler
-├── config/        SecurityConfig, JwtProperties
+├── config/        SecurityConfig, the @ConfigurationProperties records, FrontendUrl
 ├── gamification/  XP, levels, badges
 ├── leaderboard/   global + peers rankings
+├── mail/          the one outbound-email transport, and the daily practice digest
 ├── notes/         per-problem notes
 ├── peers/         follow / unfollow / search
 ├── progress/      status, stars, and the SOLVED transition  ← the heart of the app
 ├── revision/      the spaced-repetition ladder
-├── security/      JwtService, JwtAuthenticationFilter
+├── security/      JwtService, JwtAuthenticationFilter, the OAuth2 handlers
 ├── sheet/         the Striver A2Z content (steps, sub-steps, problems, topics)
 ├── streak/        daily activity, heatmap, streak counters
 ├── sync/          LeetCode / Codeforces account linking and sync runs
@@ -36,6 +38,20 @@ com.peerdsa
 A typical package holds an entity, a repository, a service, and a controller. Controllers are thin;
 they do parameter handling and delegate. Business rules and `@Transactional` boundaries live in
 services.
+
+## Diagrams
+
+`docs/diagrams/` holds PlantUML sources — render with `plantuml docs/diagrams/*.puml`, or paste
+one into <https://www.plantuml.com/plantuml>.
+
+| File | What it shows |
+|---|---|
+| `class-auth.puml` | Where each authentication rule lives: the three JWT claims, the three password proofs, the OAuth refusals. |
+| `class-mail.puml` | One transport, two senders. Sign-in codes and the digest both go through `BrevoMailClient`. |
+| `flow-account-recovery.puml` | Code request → verify → the set-a-password step that makes it a recovery. |
+| `flow-google-signin.puml` | The redirect dance, and both ways it is refused. |
+| `flow-token-lifecycle.puml` | Rotation, the benign race, theft, and the two ceilings. |
+| `flow-daily-digest.puml` | One digest run, morning or evening. |
 
 ## The classes that matter most
 

@@ -22,6 +22,12 @@ interface Box {
  * A full-screen catcher swallows clicks so the app can't be operated mid-tour; the spotlight and
  * tooltip reposition on scroll and resize.
  */
+/** Laid out and painted. A hidden element still matches a selector but has nothing to point at. */
+function isVisible(el: HTMLElement): boolean {
+  const rect = el.getBoundingClientRect();
+  return rect.width > 0 && rect.height > 0;
+}
+
 @Component({
   selector: 'app-tour-overlay',
   host: {
@@ -223,7 +229,11 @@ export class TourOverlay {
           resolve(null);
           return;
         }
-        const el = document.querySelector<HTMLElement>(selector);
+        // All matches, not the first: the same data-tour marker is on both the desktop header
+        // nav and the mobile tab bar, and exactly one of them is displayed at any width. Taking
+        // querySelector's first hit would spotlight whichever is hidden, and a display:none
+        // element reports a 0x0 rect at the origin -- a tiny highlight in the top-left corner.
+        const el = [...document.querySelectorAll<HTMLElement>(selector)].find(isVisible);
         if (el) {
           resolve(el);
         } else if (++tries > 30) {

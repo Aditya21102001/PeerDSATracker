@@ -142,7 +142,23 @@ provideRouter(routes, withComponentInputBinding())
 `withComponentInputBinding()` is what lets `notes/:problemId` bind straight to a
 `problemId = input.required<string>()` on `NoteEditor`.
 
-**Password reset routes are conditional:**
+### Recovery and sign-in routes
+
+| Route | Guard | Purpose |
+|---|---|---|
+| `/signin` | guest | Username **or** email, plus "Forgot password?" and the Google button. |
+| `/code` | guest | Sign in with a one-time code, then set a password. The real recovery path. |
+| `/oauth/callback` | **none** | Where the backend lands the browser after Google, successful or refused. |
+| `/security` | auth | Change or set a password; offers the current password *or* a code. |
+
+`/oauth/callback` is deliberately **not** guest-guarded: establishing the session is the whole
+job of that route, and a guard would fire on the very reload that follows it.
+
+Both "Forgot password?" and "Signed up with Google?" point at `/code`. One destination, two
+wordings — somebody who forgot a password will not click "sign in with a code", and somebody
+who signed up with Google has no password to have forgotten.
+
+**The older link-by-email reset routes are conditional:**
 
 ```ts
 const resetRoutes: Routes = environment.resetEnabled ? [ /* forgot, reset */ ] : [];
@@ -154,6 +170,43 @@ bookmark falls through to the wildcard redirect. The backend 404s the matching e
 
 Note that `/reset` is deliberately **not** guest-guarded: a signed-in user following a reset link
 from their inbox should still reach the form. `/forgot` is guest-only.
+
+Nothing in the UI links to `/forgot` any more — `/code` supersedes it and has a working
+transport. The routes remain only so an old emailed link still resolves.
+
+## Accessibility
+
+The bar is **WCAG 2.1 AA**, and it is enforced by tests rather than by review — accessibility
+regressions are invisible to everyone who is not affected by them. A button that loses its
+label, an input whose `for` stops matching, a heading level skipped during a refactor: none of
+these look wrong, none break a build, and none are noticed by anybody using a mouse and a
+screen.
+
+| Spec | Covers |
+|---|---|
+| `a11y.spec.ts` | axe-core over every routed screen, WCAG 2.1 A + AA. Includes a **guard test** that deliberately breaks markup and asserts axe catches it — without it, a misconfigured rule set would show green ticks while checking nothing. |
+| `design-tokens.spec.ts` | Colour contrast, computed from the real tokens parsed out of `styles.scss`. axe **cannot** do this: its `color-contrast` rule needs a layout engine, and jsdom has none, so it reports "incomplete" rather than failing. |
+| `keyboard-a11y.spec.ts` | Behaviours axe cannot see — the skip link has a target on every page, one `main` per page, heading levels never skip, no control announced as nothing. |
+
+Things worth knowing before changing styles:
+
+- **`--border-control`, not `--border`, outlines form fields.** `--border` is 1.3:1 against
+  white — deliberately faint, and deliberately only for decorative separators. A field's edge
+  is how somebody knows the field is there, so it owes the 3:1 of WCAG 1.4.11.
+- **`--text-faint` is real text**, including placeholders, so it owes 4.5:1 on every surface it
+  can sit on. If the contrast test fails, darken the token — do not reclassify the text as
+  decorative.
+- **The skip link targets `#main-content`**, which every routed page carries on its `<main>`,
+  along with `tabindex="-1"`. Without the tabindex the browser scrolls but leaves focus on the
+  link, so the next Tab walks straight back into the nav the user just skipped.
+- **Reflow is 320px**, i.e. 400% zoom at a 1280px baseline (WCAG 1.4.10). No fixed pixel widths;
+  every breakpoint sits at 26rem or wider so it applies there; wide content (the leaderboard
+  table, the heatmap) scrolls inside its own `.scroll-x` box rather than widening the page.
+- **Touch targets** are keyed on `@media (pointer: coarse)`, not viewport width — a 1024px
+  tablet has the same thumbs as a 375px phone, and a width breakpoint sails straight past it.
+
+One caveat, stated plainly: axe in jsdom checks what lives in the markup. It is not a
+substitute for testing with a real screen reader.
 
 ## Theming
 

@@ -1,0 +1,102 @@
+@startuml flow-token-lifecycle
+' What happens to a session over its life: rotation, the race, theft, and the two ceilings.
+'
+' Render:  plantuml docs/diagrams/flow-token-lifecycle.puml
+
+' Explicit near-white, NOT transparent: the text is dark, and a transparent background
+' renders black on a dark viewer, which makes the whole diagram unreadable.
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam activity {
+  BackgroundColor #FDFDFD
+  BorderColor #5B5BD6
+  ArrowColor #59606F
+  DiamondBackgroundColor #EFF1F6
+  DiamondBorderColor #5B5BD6
+}
+skinparam note {
+  BackgroundColor #FFF8E1
+  BorderColor #C2670A
+}
+
+title Refresh-token lifecycle
+
+start
+
+:client presents a refresh token
+to POST /auth/refresh;
+
+if (hash found in refresh_tokens?) then (no)
+  #FFE0E0:401 Invalid refresh token;
+  note right: Revokes nothing. A forged\ntoken is not evidence about\nanybody's real session.
+  stop
+endif
+
+if (now >= sessionStartedAt + session-max?) then (yes)
+  #FFE0E0:401 Session expired;
+  note right
+    The **absolute cap**. Each rotation pushes
+    expiresAt another 30 days out, so a session
+    that is merely used often enough would never
+    end. sessionStartedAt is copied unchanged onto
+    every successor, so this measures from when the
+    user actually authenticated.
+
+    Nothing is revoked: outliving the cap is not
+    evidence of theft.
+  end note
+  stop
+endif
+
+if (token already revoked?) then (yes)
+  if (it has a successor, rotated within refresh-grace?) then (yes)
+    #E8F5E9:issue a fresh chain for the racer;
+    note right
+      A **rotation race**, not theft. Two tabs, or a
+      reload during an in-flight refresh, both present
+      the same token. Without this window the loser's
+      401 would revoke the whole family — including
+      the token the winner was handed milliseconds
+      earlier — and sign the user out everywhere.
+    end note
+  else (no)
+    #FFE0E0:revoke EVERY token for this user
+    (RefreshTokenRevoker, REQUIRES_NEW)
+    401 Refresh token reuse detected;
+    note right
+      REQUIRES_NEW because the 401 below would
+      otherwise roll the revocation back.
+
+      A token revoked without a successor was logged
+      out, so there is no rotation to date a grace
+      window from — replaying it is theft however
+      fresh it looks.
+    end note
+    stop
+  endif
+else (no)
+  if (expired?) then (yes)
+    #FFE0E0:401 Refresh token expired;
+    note right: Expiry is not theft.\nThe chain survives.
+    stop
+  endif
+  :issue the successor
+  revoke the presented token
+  link it via replacedBy;
+endif
+
+:mint an access token;
+
+note right
+  Always the **ordinary** kind. The vbc claim is
+  never carried across a refresh — a renewed
+  session is no longer "just verified", and
+  carrying it would turn a one-time proof into a
+  standing permission to rewrite the password.
+
+  sessionStartedAt is carried, unchanged.
+end note
+
+stop
+
+@enduml

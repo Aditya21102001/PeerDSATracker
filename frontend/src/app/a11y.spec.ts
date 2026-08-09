@@ -20,6 +20,7 @@ import { ProfilePage } from './features/profile/profile-page';
 import { RevisionPage } from './features/revision/revision-page';
 import { SheetPage } from './features/sheet/sheet-page';
 import { WelcomePage } from './features/welcome/welcome-page';
+import { MobileNav } from './shared/mobile-nav/mobile-nav';
 import { ThemeToggle } from './shared/theme-toggle';
 
 /**
@@ -35,8 +36,9 @@ import { ThemeToggle } from './shared/theme-toggle';
  * roles, labels, relationships, heading order, landmark structure, duplicate ids. It **cannot**
  * check anything that needs layout or paint — colour contrast, focus visibility, reflow, target
  * size. Those are covered separately by `design-tokens.spec.ts` (contrast, computed from the token
- * values) and `reflow.spec.ts` (fixed widths that would break 320px). Between them the automated
- * coverage is real, but it is not a substitute for testing with an actual screen reader.
+ * values) and `keyboard-a11y.spec.ts` (skip-link targets, landmarks, heading order, accessible
+ * names). Between them the automated coverage is real, but it is not a substitute for testing with
+ * an actual screen reader.
  */
 describe('accessibility (axe-core)', () => {
   /**
@@ -60,6 +62,7 @@ describe('accessibility (axe-core)', () => {
     ['revision', RevisionPage],
     ['profile', ProfilePage],
     ['theme toggle', ThemeToggle],
+    ['mobile nav', MobileNav],
   ];
 
   /**
@@ -67,7 +70,7 @@ describe('accessibility (axe-core)', () => {
    *
    * `region` requires every piece of content to sit inside a landmark. Components are rendered
    * here in isolation, outside the app shell that provides them, so it reports on the harness
-   * rather than the code. Landmark structure is asserted directly in `landmarks.spec.ts` instead.
+   * rather than the code. Landmark structure is asserted directly in `keyboard-a11y.spec.ts`.
    *
    * `color-contrast` cannot run in jsdom at all (no layout, no computed colours) — axe skips it
    * and would report it as "incomplete" rather than passing. It is genuinely checked in
@@ -112,7 +115,7 @@ describe('accessibility (axe-core)', () => {
   /**
    * Proves the harness can fail.
    *
-   * <p>Fifteen green ticks are worthless if the checker is silently a no-op — a misconfigured
+   * <p>A page of green ticks is worthless if the checker is silently a no-op — a misconfigured
    * `runOnly`, an element never attached to the document, an over-eager disabled-rules list, and
    * every screen "passes" while checking nothing. This deliberately broken markup exercises three
    * of the most common real failures and asserts axe catches all three. If this test ever passes

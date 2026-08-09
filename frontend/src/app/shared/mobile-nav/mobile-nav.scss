@@ -1,0 +1,246 @@
+/*
+ * Phone navigation. Absent entirely above 48rem, where the per-page header nav has room to
+ * breathe and a fixed bar would only steal vertical space from a laptop screen.
+ */
+:host {
+  display: none;
+}
+
+@media (max-width: 48rem) {
+  :host {
+    display: contents;
+  }
+}
+
+/* ------------------------------------------------------------------ the bar */
+
+.bar {
+  position: fixed;
+  inset: auto 0 0 0;
+  z-index: 40;
+
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  /* Frosted, so content scrolling underneath reads as depth rather than clutter. The solid
+     fallback above keeps it legible where backdrop-filter is unsupported. */
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  border-top: 1px solid var(--border);
+
+  /* iOS home-indicator inset. Without it the last row of labels sits under the gesture bar. */
+  padding-bottom: env(safe-area-inset-bottom, 0);
+
+  a,
+  button {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.15rem;
+
+    /* Comfortably past the 24px WCAG 2.5.8 minimum, and past the ~44px a thumb actually needs. */
+    min-height: 56px;
+    padding: var(--sp-2) var(--sp-1);
+
+    border: 0;
+    background: none;
+    color: var(--text-faint);
+    font: inherit;
+    font-size: var(--fs-xs);
+    font-weight: 500;
+    text-decoration: none;
+    cursor: pointer;
+
+    /* The indicator that slides in under the active tab. */
+    position: relative;
+    transition:
+      color var(--t-fast) var(--ease),
+      transform var(--t-fast) var(--ease);
+
+    &::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 50%;
+      width: 0;
+      height: 2px;
+      border-radius: 0 0 var(--r-full) var(--r-full);
+      background: linear-gradient(90deg, var(--accent), var(--flame));
+      transform: translateX(-50%);
+      transition: width var(--t-base) var(--ease);
+    }
+
+    /* Pressed, not hovered: a phone has no hover, and :active is the only honest feedback. */
+    &:active {
+      transform: scale(0.94);
+    }
+
+    &.on {
+      color: var(--accent);
+
+      &::before {
+        width: 60%;
+      }
+
+      .icon {
+        transform: translateY(-1px) scale(1.12);
+      }
+    }
+  }
+
+  .icon {
+    font-size: 1.15rem;
+    line-height: 1;
+    transition: transform var(--t-base) var(--ease-bounce);
+  }
+
+  .label {
+    /* Never wraps and never truncates: four tabs at 320px leaves ~76px each, which fits
+       "Leaderboard" nowhere -- which is why that one lives behind More. */
+    white-space: nowrap;
+  }
+}
+
+/* ------------------------------------------------------------------ the More sheet */
+
+.scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 41;
+  border: 0;
+  padding: 0;
+  background: #0009;
+  cursor: pointer;
+  animation: scrim-in var(--t-base) var(--ease) both;
+}
+
+.sheet {
+  position: fixed;
+  inset: auto 0 0 0;
+  z-index: 42;
+
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  border-radius: var(--r-lg) var(--r-lg) 0 0;
+  box-shadow: var(--shadow-lg);
+  padding: var(--sp-4) var(--sp-3) calc(var(--sp-3) + 56px + env(safe-area-inset-bottom, 0px));
+
+  animation: sheet-up var(--t-slow) var(--ease) both;
+
+  /* The grab handle. Decorative, so it is a pseudo-element rather than markup a screen
+     reader would have to skip. */
+  &::before {
+    content: '';
+    display: block;
+    width: 2.25rem;
+    height: 0.25rem;
+    margin: 0 auto var(--sp-3);
+    border-radius: var(--r-full);
+    background: var(--border-strong);
+  }
+
+  .sheet-title {
+    font-size: var(--fs-xs);
+    font-weight: 700;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    margin-bottom: var(--sp-2);
+    padding-inline: var(--sp-2);
+  }
+
+  ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  a,
+  .sign-out {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+    width: 100%;
+
+    min-height: 48px;
+    padding: var(--sp-2) var(--sp-2);
+    border: 0;
+    border-radius: var(--r-md);
+    background: none;
+    color: var(--text);
+    font: inherit;
+    font-size: var(--fs-md);
+    text-align: left;
+    text-decoration: none;
+    cursor: pointer;
+
+    transition: background var(--t-fast) var(--ease);
+
+    &:active {
+      background: var(--surface-2);
+    }
+
+    &.on {
+      color: var(--accent);
+      background: var(--accent-soft);
+      font-weight: 600;
+    }
+
+    .icon {
+      width: 1.5rem;
+      text-align: center;
+      font-size: 1.05rem;
+      flex: none;
+    }
+  }
+
+  .sign-out {
+    color: var(--danger);
+  }
+
+  /* Each row arrives just after the one above it. Cheap, and it makes the sheet feel like it
+     was built rather than pasted. */
+  li {
+    animation: row-in var(--t-base) var(--ease) both;
+
+    @for $i from 1 through 6 {
+      &:nth-child(#{$i}) {
+        animation-delay: #{$i * 22}ms;
+      }
+    }
+  }
+}
+
+@keyframes sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes scrim-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes row-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

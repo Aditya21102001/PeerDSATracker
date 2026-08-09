@@ -60,6 +60,8 @@ header {
 }
 
 .tile {
+  position: relative;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -74,10 +76,31 @@ header {
     box-shadow var(--t-base) var(--ease),
     border-color var(--t-base) var(--ease);
 
+  /* A hairline of brand colour along the top edge, which widens on hover. Cheap, and it gives
+     four otherwise identical boxes something to be. */
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0 auto auto 0;
+    height: 2px;
+    width: 0;
+    background: linear-gradient(90deg, var(--accent), var(--flame));
+    transition: width var(--t-slow) var(--ease);
+  }
+
   &:hover {
     transform: translateY(-2px);
     box-shadow: var(--shadow-md);
     border-color: var(--border-strong);
+
+    &::before {
+      width: 100%;
+    }
+  }
+
+  /* Touch has no hover, so give the press itself some feedback. */
+  &:active {
+    transform: scale(0.98);
   }
 
   .value {

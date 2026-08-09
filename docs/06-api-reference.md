@@ -27,28 +27,148 @@ field.
 | Method | Path | Auth | Body | Returns |
 |---|---|---|---|---|
 | POST | `/signup` | **public** | `{email, username, password}` | `201` + `TokenResponse` |
-| POST | `/login` | **public** | `{email, password}` | `TokenResponse` |
+| POST | `/login` | **public** | `{identifier, password}` | `TokenResponse` |
 | POST | `/refresh` | **public** | `{refreshToken}` | `TokenResponse` |
 | POST | `/logout` | | `{refreshToken}` | `204` |
+| POST | `/otp/request` | **public** | `{email}` | `202` + `OtpRequestResponse` |
+| POST | `/otp/verify` | **public** | `{email, code}` | `TokenResponse` |
+| POST | `/change-password` | yes | `{newPassword, currentPassword?, code?}` | `ChangePasswordResponse` |
+| GET | `/options` | **public** | — | `AuthOptions` |
 | POST | `/forgot` | **public** | `{email}` | `204` — **always** |
-| POST | `/reset` | **public** | `{token, newPassword}` | `204` |
-| GET | `/me` | | — | `MeResponse` |
+| POST | `/reset` | **public** | `{token, password}` | `204` |
+| GET | `/me` | yes | — | `MeResponse` |
 
 ```ts
-TokenResponse { accessToken: string; refreshToken: string; expiresInSeconds: number }
-MeResponse    { id, email, username, displayName, xp, totalSolved, currentStreak, longestStreak }
+TokenResponse          { accessToken, refreshToken, expiresInSeconds }
+OtpRequestResponse     { demoMode: boolean; demoCode: string | null }
+ChangePasswordResponse { username: string; tokens: TokenResponse }
+AuthOptions            { googleEnabled: boolean; otpDemoMode: boolean }
+MeResponse             { id, email, username, displayName, hasPassword,
+                         xp, totalSolved, currentStreak, longestStreak }
 ```
 
-Notes that matter:
+### Sign-in takes a username **or** an email
+
+`identifier` is tried as a username first, then as an email if it contains `@`. Both have to work:
+recovery is keyed by email while sign-in is keyed by username, and an account created through
+Google has a **generated** username its owner has never seen. If one person's username is another's
+email address, the username wins — the field is labelled "username".
+
+`email` is still accepted as a legacy alias, because the SPA and the backend deploy separately and
+for a few minutes the old SPA is still posting it.
+
+An account with **no password hash** (created through Google) is refused, not crashed on: the null
+never reaches the encoder, and a dummy hash is matched instead so a miss costs the same bcrypt as a
+wrong password. One message — `Invalid username or password` — for every way it can fail.
+
+### One-time codes
+
+`POST /otp/request` answers **202 whether or not the address is registered**. Anything else is a
+user-enumeration oracle. Two other outcomes are possible and neither leaks anything:
+
+- **429** — over the hourly budget for that address. The limit is applied *before* the account
+  lookup, so unregistered addresses are throttled identically. Otherwise a 429 would mean "this
+  address is registered".
+- **503** — the provider would not take the message. The code that was about to be issued is
+  **deleted**.
+
+`demoCode` is populated **only** when `OTP_DEMO_MODE=true`, never as a fallback when delivery
+fails. It is a development affordance: with it on, anyone who asks for a code for your address is
+handed it. It must be `false` in production.
+
+`POST /otp/verify` resolves the account from the address the code was **issued to**, which the
+server already knows — never from anything else in the request. The token it returns carries the
+`vbc` claim (below).
+
+### Changing a password: one endpoint, three proofs
+
+Tried in this order, and exactly one need hold:
+
+1. the caller's own token, if it was issued by code verification and is **within 15 minutes** of
+   issue (`vbc`) — nothing is sent in the body at all;
+2. a fresh one-time code;
+3. the current password.
+
+The first two are what make this a *recovery*: somebody who has forgotten their password has no
+current password to give, and an account created through Google has never had one.
+
+- The account comes from the **session**. There is no field in the body naming a user.
+- **One identical message for every proof failure.** Distinguishing "wrong current password" from
+  "wrong code" tells an attacker which half they got right.
+- The response reports the **username the password was set on**, and the SPA shows it — for a
+  Google-created account that name is genuinely news, and without it the next sign-in fails with
+  "invalid username or password" with nothing on screen to explain why.
+- Every existing refresh token is revoked and the caller is handed a replacement pair, so this
+  signs out the *other* devices rather than all of them.
+
+### Access-token claims
+
+| Claim | Meaning |
+|---|---|
+| `typ` | Only `access` authenticates a request. A scoped or challenge token added later cannot become a session merely by being a valid signature over a subject. |
+| `sst` | When the session began. Set once, copied onto every rotation, enforced against `app.jwt.session-max` — refresh expiry slides forward on each use, so without this a busy session never ends. |
+| `vbc` | "This session began by proving control of the registered address." Honoured only within `app.jwt.verified-window`, **never carried across a refresh**, and grants nothing else. |
+
+### Notes that still matter
 
 - **`/refresh` rotates.** The returned refresh token replaces the one you sent. Presenting a token
-  that was already rotated revokes **every** refresh token for that user — it is treated as theft.
-  The client's refresh must be single-flight.
-- **`/forgot` always returns 204**, registered email or not, rate-limited or not. Anything else is
-  a user-enumeration oracle.
-- **`/reset` revokes every refresh token** the user holds. A reset ends all other sessions.
-- `/forgot` and `/reset` return **404** when `RESET_ENABLED=false` (the production default — there
-  is no mailer).
+  that was already rotated revokes **every** refresh token for that user — it is treated as theft,
+  unless it is a rotation race inside `app.jwt.refresh-grace`. The client's refresh must be
+  single-flight.
+- **`/forgot` always returns 204**, registered email or not, rate-limited or not.
+- `/forgot` and `/reset` return **404** when `RESET_ENABLED=false` (the production default). That
+  older link-by-email flow still has no mailer; recovery in production goes through `/otp/*`, which
+  does. Nothing in the UI links to `/forgot` any more.
+
+---
+
+## OAuth2 — Google
+
+| Method | Path | Auth | Purpose |
+|---|---|---|---|
+| GET | `/oauth2/authorization/google` | **public** | Starts the flow. A full-page navigation, not a fetch. |
+| GET | `/login/oauth2/code/google` | **public** | Google's callback. Register this exact URL in the Google console. |
+
+Neither exists unless `app.oauth.google.client-id` and `client-secret` are both set — absent
+credentials mean the feature is not installed, and `GET /api/auth/options` reports
+`googleEnabled: false` so the SPA hides the button rather than showing one that 401s.
+
+Both hops must be on the **same origin**. Spring holds the pending authorization request in a
+session cookie, so starting the flow through a proxy and returning to the backend fails on a state
+mismatch — which is why production points `apiOrigin` straight at the backend rather than through
+Vercel's rewrite.
+
+The callback ends in a redirect to `<app.frontend-base-url>/oauth/callback` carrying either
+`#token=<refreshToken>` or `#error=<message>` — always the fragment, never the query string, so it
+never reaches a server log. The SPA spends the token immediately, so the value that briefly sat in
+the address bar is already rotated away.
+
+| Outcome | Result |
+|---|---|
+| Address already has an account | Signs in **with the role it already has**. No path here writes a role. |
+| Unknown address, `OAUTH_AUTO_PROVISION=false` | Refused, with a message telling them to sign up first. |
+| Unknown address, auto-provisioning on | Created with `OAUTH_DEFAULT_ROLE`, no password hash, generated username. Startup **fails** if that role is privileged. |
+| No email in the profile | Refused — there is nothing to match on. |
+
+Every refusal is caught and redirected. Letting one propagate would render the backend's error page,
+on the backend's domain, to somebody who clicked a button on the frontend.
+
+---
+
+## Mail — `/api/mail`
+
+| Method | Path | Auth | Body | Returns |
+|---|---|---|---|---|
+| GET | `/unsubscribe?u={id}&t={token}` | **public** | — | `200` HTML |
+| GET | `/preferences` | yes | — | `MailPreferences` |
+| POST | `/preferences` | yes | `{dailyDigest}` | `MailPreferences` |
+
+`/unsubscribe` needs no session **by design**: the person most likely to want out is the one who has
+abandoned the account and cannot sign in, and making them log in first is how an unsubscribe link
+becomes a "report spam" click — and complaint rate, not intent, is what gets a sending domain
+suspended. The token is an HMAC of the user id, carries no expiry (a link in a year-old email must
+still work), and is one-way: it can stop mail and do nothing else. Re-subscribing requires the
+authenticated toggle. A bad token returns the same page as a good one.
 
 ---
 

@@ -589,6 +589,37 @@ main[tabindex='-1']:focus {
   border: 0;
 }
 
+/*
+ * Entrance stagger for a list or grid: children arrive in sequence rather than all at once.
+ *
+ * Capped at 10 children and 24ms apart on purpose. Longer than about a quarter of a second in
+ * total and it stops reading as polish and starts reading as the page being slow — and everything
+ * after the tenth child simply arrives with the tenth, which nobody notices but which keeps a
+ * 500-row sheet from animating for twelve seconds.
+ *
+ * The global prefers-reduced-motion rule at the foot of this file collapses all of it.
+ */
+.stagger > * {
+  animation: rise-in var(--t-base) var(--ease) both;
+}
+
+@for $i from 1 through 10 {
+  .stagger > *:nth-child(#{$i}) {
+    animation-delay: #{($i - 1) * 24}ms;
+  }
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* Wide content (tables, the heatmap) scrolls inside its own box rather than
    widening the page. */
 .scroll-x {
@@ -616,6 +647,17 @@ main > header nav {
   main {
     padding-left: var(--sp-3) !important;
     padding-right: var(--sp-3) !important;
+
+    /*
+     * Bottom padding to clear the fixed bar is applied below, but only when the bar exists.
+     */
+  }
+
+  /* Clear the fixed navigation bar (56px + the iOS home-indicator inset). Without this the last
+     row of every page sits permanently underneath it, which on the sheet means the last problem
+     can be seen but never tapped. */
+  body.has-mobile-nav main {
+    padding-bottom: calc(var(--sp-7) + 56px + env(safe-area-inset-bottom, 0px)) !important;
   }
 
   main > header {
@@ -624,8 +666,23 @@ main > header nav {
     gap: var(--sp-2);
   }
 
-  /* Measured tap targets were 24px tall. A finger is ~44px; 40 is the floor worth
-     shipping. Padding, not height, so the text stays vertically centred. */
+  /*
+   * The per-page header nav is replaced by MobileNav here, not merely restyled.
+   *
+   * Wrapped onto a 375px screen at the 40px tap height accessibility requires, those eight links
+   * plus "Sign out" were four rows and about 160px of vertical space consumed before any content
+   * — and they read as an unstyled list of links rather than an application. They also sat at the
+   * very top, the hardest part of a phone screen to reach one-handed.
+   *
+   * Kept in the DOM rather than removed from the template, so the desktop markup stays simple and
+   * the tour can still find whichever nav is actually visible.
+   */
+  body.has-mobile-nav main > header nav {
+    display: none;
+  }
+
+  /* Signed out (/guide, the welcome page) there is no bar, so those header links stay — and they
+     keep a real tap target. Measured before this rule: 24px tall. A finger is ~44px. */
   main > header nav a,
   main > header nav button {
     display: inline-flex;

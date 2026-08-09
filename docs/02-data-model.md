@@ -15,6 +15,11 @@ To change the schema you add a new `V<n>__description.sql` under
 | `V4__nullable_problem_status.sql` | Makes `user_problem_status.status` nullable and adds `chk_ups_not_empty`. |
 | `V5__seed_badges.sql` | Seeds the 13 badges. |
 | `V6__password_reset_tokens.sql` | The password-reset token table. |
+| `V7__code_submissions.sql` | Saved editor drafts and run history. |
+| `V8__chat.sql` | Assistant conversations and messages. |
+| `V9__otp_codes_and_session_cap.sql` | One-time sign-in codes; `users.password_hash` becomes nullable; `refresh_tokens.session_started_at`. |
+| `V10__daily_digest_opt_out.sql` | `users.email_digest`, the digest opt-out. |
+| `V11__mail_quota.sql` | `mail_quota` — how many emails have actually gone out today. |
 
 Two of these have reasons worth internalising:
 
@@ -26,6 +31,14 @@ instead of the column type.
 via a status, a star, **or** a scheduled revision. Starring an otherwise untouched problem needs a
 row with no status. The V1 `CHECK (status IN (...))` still holds, because a `CHECK` evaluates to
 `NULL` (not `false`) for a `NULL` value, and `NULL` passes.
+
+**V9** carries three changes that belong together. `password_hash` becomes **nullable**,
+because an account created through Google has never had one — everything reading it must now
+treat `NULL` as "cannot sign in with a password" rather than handing it to the encoder.
+`refresh_tokens.session_started_at` is the anchor for the absolute session cap: rotation pushes
+`expires_at` forward every time, so without a fixed start a session that is merely *used* often
+enough never ends. And `otp_codes` stores codes hashed, with a deliberately odd shape — see
+below.
 
 **The seed is generated.** `tools/seed/build_striver_a2z.py` extracts the sheet from the
 takeuforward page's Next.js RSC payload and emits `V2__seed_sheet.sql`. The generated SQL is
@@ -142,6 +155,38 @@ Both store only the **SHA-256 hash** of the token. A database leak cannot be rep
 turns a stolen token into a dead session rather than a permanent backdoor.
 
 `password_reset_tokens` adds `used_at` (single use) and `expires_at` (30 minutes).
+
+### `otp_codes` — and why a row outlives its secret
+
+```sql
+id         bigserial PRIMARY KEY,
+email      text        NOT NULL,   -- always lowercase; OtpService normalises before writing
+code_hash  text,                   -- NULLABLE, and that is the interesting part
+expires_at timestamptz NOT NULL,
+created_at timestamptz NOT NULL DEFAULT now()
+```
+
+`code_hash` is nulled the moment a code is consumed or superseded. The credential is destroyed
+while the `(address, timestamp)` row survives, and it survives for a reason: requests are rate
+limited per destination by counting rows, and that count has to include codes already spent
+**and requests for addresses with no account at all**. Delete the row instead and two things
+break — anyone can clear their own budget by burning a code, and only registered addresses
+could ever be throttled, which turns the rate limit itself into an account-enumeration oracle.
+
+`text`, not `citext`, for the same reason as V3. Case-insensitivity comes from normalising in
+Java and a plain `(email, created_at)` index — a functional index on `lower(email)` would never
+be used, because the query compares the column directly.
+
+### `mail_quota` — one row per day
+
+`(day, sent)`. The digest runs twice daily and the send cap has to be a **daily** budget rather
+than a per-run one, or two runs of 200 quietly become 400 against a provider allowance of 300.
+Overspending it is not merely a truncated digest: the same allowance carries one-time sign-in
+codes, so a greedy morning run would leave people unable to sign in for the rest of the day.
+
+Persisted rather than counted in memory because Render restarts instances freely, and an
+in-memory counter resets to zero exactly when it would let the budget be spent twice. Keyed by
+calendar day, so it needs no cleanup job.
 
 ### `platform_accounts` and `sync_runs`
 

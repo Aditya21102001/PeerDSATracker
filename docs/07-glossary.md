@@ -154,3 +154,51 @@ becomes manual via the button on `/profile`.
 The app runs without `zone.js`. Change detection is driven by **signals**, not by monkey-patched
 async APIs. In practice: use `signal()`, `computed()`, and `input()`; never rely on a `setTimeout`
 to trigger a re-render.
+
+### `typ`, `sst`, `vbc` (JWT claims)
+
+Three claims on the access token, each carrying a rule.
+
+**`typ`** — what the token is for. Only `access` authenticates a request. Every token the app mints
+carries it, and anything else is refused by the authentication filter, so a scoped or challenge
+token added later cannot become a session merely by being a valid signature over a subject.
+
+**`sst`** — session start. Set once, copied unchanged onto every rotation, and checked against
+`app.jwt.session-max`. Refresh expiry slides forward on each use, so without a fixed anchor a
+session that is merely *used* often enough never ends — and neither would a stolen token.
+
+**`vbc`** — "verified by code": this session began by proving control of the registered address.
+It exists so somebody who has forgotten their password can set a new one without producing the old
+one. It is honoured only within `app.jwt.verified-window` (15 minutes), is **never carried across a
+refresh** — a renewed session is no longer "just verified" — and grants nothing else, ever.
+
+### Demo mode (`OTP_DEMO_MODE`)
+
+Returns the one-time code in the HTTP response instead of emailing it, so the flow works with no
+mail provider configured. It is a **separate branch**, taken before delivery is even attempted —
+never a fallback when a send fails. The shape that looks natural,
+
+```java
+if (!demoMode && delivery.send(email, code)) return null;
+return code;
+```
+
+hands a working credential to anyone who can make delivery fail, and making it fail is easy: ask
+for a code for an address the provider rejects. It must be `false` in production.
+
+### Rotation race vs. token theft
+
+Two tabs, or a reload during an in-flight refresh, both present the same refresh token. One wins the
+rotation; the loser's replay looks exactly like a stolen token being reused.
+
+The difference is the successor's age. A replay is a **race** when the presented token has a
+successor rotated within `app.jwt.refresh-grace` (seconds, never minutes) — the racer is handed a
+fresh chain and nothing is revoked. Otherwise it is **theft**, and every refresh token for that user
+dies. A token revoked *without* a successor was logged out, so there is no rotation to date a
+window from; replaying that is theft however fresh it looks.
+
+### Reflow (WCAG 1.4.10)
+
+Content must work at a **320 CSS px** viewport with no two-dimensional scrolling — which is what
+400% zoom on a 1280px screen actually means. Wide content may scroll inside its own container (the
+leaderboard table, the heatmap); the page itself may not.

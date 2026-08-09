@@ -1,0 +1,113 @@
+@startuml flow-google-signin
+' Google sign-in, including the two ways it is refused.
+'
+' Render:  plantuml docs/diagrams/flow-google-signin.puml
+
+' Explicit near-white, NOT transparent: the text is dark, and a transparent background
+' renders black on a dark viewer, which makes the whole diagram unreadable.
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam sequence {
+  ArrowColor #59606F
+  LifeLineBorderColor #C3CAD8
+  ParticipantBorderColor #5B5BD6
+  ParticipantBackgroundColor #FDFDFD
+}
+skinparam note {
+  BackgroundColor #FFF8E1
+  BorderColor #C2670A
+}
+
+title Google sign-in
+
+actor User
+participant Browser
+participant "Backend\n(Spring Security)" as Spring
+participant OAuth2SuccessHandler as Success
+participant OAuthSignInService as SignIn
+database users
+participant "SPA\n/oauth/callback" as SPA
+
+User -> Browser : clicks "Continue with Google"
+Browser -> Spring : GET /oauth2/authorization/google
+
+note right of Spring
+  Both hops must be the same origin. Spring keeps
+  the pending authorization request in a session
+  cookie; start on one origin and return to another
+  and the callback dies on a state mismatch. That is
+  why production points straight at the backend and
+  not through the Vercel rewrite.
+end note
+
+Spring --> Browser : 302 to Google
+Browser -> Google : consent
+Google --> Browser : 302 back with ?code=...
+Browser -> Spring : GET /login/oauth2/code/google
+Spring -> Spring : exchange the code, load the profile
+
+alt the provider declined, or state mismatched
+  Spring -> SPA : redirect #error=... (OAuth2FailureHandler)
+else identity verified
+  Spring -> Success : onAuthenticationSuccess(principal)
+  Success -> SignIn : signIn(email, name, picture)
+
+  alt no email in the profile
+    SignIn --> Success : **refused**
+    note right of SignIn : Matching is by address.\nWithout one there is nothing to match.
+  else an account already uses that address
+    SignIn -> users : find by email
+    SignIn --> Success : session for the existing account
+    note right of SignIn #E8F5E9
+      Signs in with the role it **already has**.
+      No setRole anywhere on this path — the
+      provider proves who somebody is, it does
+      not decide what they may do.
+    end note
+  else unknown address, auto-provisioning OFF
+    SignIn --> Success : **refused**
+    note right of SignIn #FFE0E0
+      The default. Otherwise anyone who reaches
+      the sign-in page becomes a user by clicking
+      one button.
+    end note
+  else unknown address, auto-provisioning ON
+    SignIn -> users : create with the configured default role,\nno password hash, generated username
+    SignIn --> Success : session for the new account
+    note right of SignIn
+      Startup **fails** if that default role is a
+      privileged one, so this can never mint an admin.
+      The generated username is one its owner has
+      never seen — which is why sign-in must also
+      accept an email.
+    end note
+  end
+
+  alt refused
+    Success -> SPA : redirect #error=<message>
+    note right of Success #FFE0E0
+      Every refusal is caught here. Letting one
+      propagate renders the backend's error page,
+      on the backend's domain, to somebody who
+      clicked a button on the frontend — it reads
+      as a crash with no way back.
+    end note
+  else signed in
+    Success -> SPA : redirect #token=<refreshToken>
+    note right of Success
+      The **fragment**, never the query string: a
+      fragment is not sent to any server, so it stays
+      out of access logs and Referer headers.
+    end note
+  end
+end
+
+SPA -> SPA : read the fragment, then history.replaceState
+SPA -> Spring : POST /auth/refresh
+note over SPA
+  Spent immediately, so the value that briefly sat
+  in the address bar is already rotated away.
+end note
+SPA --> User : dashboard
+
+@enduml

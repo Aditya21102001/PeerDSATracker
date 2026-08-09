@@ -14,6 +14,21 @@ and do not skip it. Everything else assumes you know why there are three service
 | 05 | [Analytics service](05-analytics.md) | What does the Python service do, and why is it separate? |
 | 06 | [API reference](06-api-reference.md) | Every HTTP endpoint, what it takes, what it returns. |
 | 07 | [Glossary](07-glossary.md) | What does "XP", "the ladder", "single-flight", "the sheet" mean here? |
+| — | [Diagrams](diagrams/) | PlantUML class and flow diagrams for authentication, recovery and the mail pipeline. |
+
+### Diagrams
+
+`docs/diagrams/*.puml`. Render with `plantuml docs/diagrams/*.puml`, or paste one into
+<https://www.plantuml.com/plantuml>.
+
+| File | What it shows |
+|---|---|
+| `class-auth.puml` | Where each authentication rule lives: the three JWT claims, the three password proofs, the OAuth refusals. |
+| `class-mail.puml` | One transport, two senders — sign-in codes and the digest both go through `BrevoMailClient`. |
+| `flow-account-recovery.puml` | Code request → verify → the set-a-password step that makes it a recovery rather than a permanent workaround. |
+| `flow-google-signin.puml` | The redirect dance, and both ways it is refused. |
+| `flow-token-lifecycle.puml` | Rotation, the benign race, theft, and the two ceilings. |
+| `flow-daily-digest.puml` | One digest run, morning or evening. |
 
 The root [README.md](../README.md) is the operational document: setup, environment variables,
 deployment, and the hard-won gotchas that will bite you (Neon's pooler versus Flyway, HTTP/2

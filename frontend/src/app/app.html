@@ -20,4 +20,11 @@
 <!-- Floating study assistant, only for signed-in users. -->
 @if (auth.isAuthenticated()) {
   <app-chat-widget />
+
+  <!--
+    Thumb-reachable navigation, phones only (the component hides itself above 48rem). Signed-in
+    only: a signed-out visitor has nowhere to navigate to, and a bar of links that all bounce to
+    /signin is noise.
+  -->
+  <app-mobile-nav />
 }

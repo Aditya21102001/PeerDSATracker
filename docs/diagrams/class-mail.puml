@@ -1,0 +1,150 @@
+@startuml class-mail
+' Outbound email: one transport, two senders.
+'
+' Render:  plantuml docs/diagrams/class-mail.puml
+'
+' The shape worth noticing is that BrevoMailClient is the ONLY thing that sends. Sign-in codes and
+' the practice digest both go through it, over HTTP, because Render blocks the outbound SMTP ports
+' and an SMTP mailer therefore passes every local test and then silently delivers nothing.
+
+' Explicit near-white, NOT transparent: the text is dark, and a transparent background
+' renders black on a dark viewer, which makes the whole diagram unreadable.
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam class {
+  BackgroundColor #FDFDFD
+  BorderColor #5B5BD6
+  ArrowColor #59606F
+}
+skinparam note {
+  BackgroundColor #FFF8E1
+  BorderColor #C2670A
+}
+hide empty members
+
+package "com.peerdsa.mail" {
+
+  class BrevoMailClient <<@Component>> {
+    +send(message) : boolean
+    +isConfigured() : boolean
+    +{static} mask(email) : String
+    -post(message) : boolean
+  }
+  class "BrevoMailClient.Message" as Message <<record>> {
+    to : String
+    subject : String
+    textBody : String
+    htmlBody : String
+  }
+
+  class DailyDigestScheduler <<@Component>> {
+    +sendMorningDigest()   <<09:00>>
+    +sendEveningReminder() <<18:15>>
+  }
+
+  class DailyDigestService <<@Service>> {
+    +sendDailyDigestToAllUsers(run) : RunReport
+    +sendDailyDigestFor(run, today) : RunReport
+    -subject(row, situation, run, today) : String
+    -htmlBody(row, line, run, today) : String
+    -{static} practisedToday(row, today) : boolean
+  }
+
+  enum DigestRun {
+    MORNING
+    EVENING
+  }
+
+  class DigestNarrator <<@Component>> {
+    +lineFor(situation, firstName, run) : String
+    +isAvailable() : boolean
+    +{static} situationOf(row, today) : Situation
+    -{static} clean(raw) : String
+  }
+
+  enum "DigestNarrator.Situation" as Situation {
+    NEVER_STARTED
+    SOLVED_TODAY
+    STREAK_ALIVE
+    STREAK_AT_RISK
+    RECENT_LAPSE
+    DORMANT
+    --
+    +fallback(run) : String
+  }
+
+  interface DigestRepository {
+    +subscribers(today) : List<DigestRow>
+  }
+  interface "DigestRepository.DigestRow" as DigestRow <<projection>> {
+    userId, email, username, displayName
+    xp, totalSolved, currentStreak, longestStreak
+    lastActiveDate, rank
+    solvedThisWeek, revisionsDue
+  }
+
+  class MailQuotaService <<@Service>> {
+    +remainingToday(day) : int
+    +record(day, count)   <<REQUIRES_NEW>>
+  }
+  class MailQuota <<@Entity>>
+  interface MailQuotaRepository
+
+  class UnsubscribeTokens <<@Component>> {
+    +tokenFor(userId) : String
+    +isValid(userId, token) : boolean
+  }
+
+  class MailPreferencesController <<@RestController>> {
+    +unsubscribe(u, t) : HTML  <<public>>
+    +update(principal, prefs)  <<authenticated>>
+  }
+}
+
+class "auth.otp.OtpDelivery" as OtpDelivery
+class "chat.OpenRouterClient" as OpenRouterClient
+
+' ----------------------------------------------------------------- relationships
+DailyDigestScheduler --> DailyDigestService
+DailyDigestService --> DigestRepository
+DailyDigestService --> DigestNarrator
+DailyDigestService --> MailQuotaService
+DailyDigestService --> UnsubscribeTokens
+DailyDigestService --> BrevoMailClient
+DailyDigestService ..> DigestRun
+DigestRepository --> DigestRow
+DigestNarrator --> Situation
+DigestNarrator --> OpenRouterClient : "one line only,\nnever a number"
+MailQuotaService --> MailQuotaRepository
+MailQuotaRepository --> MailQuota
+MailPreferencesController --> UnsubscribeTokens
+BrevoMailClient --> Message
+
+OtpDelivery --> BrevoMailClient : sign-in codes
+
+note right of BrevoMailClient
+  The single transport. HTTP, not SMTP.
+  Returns **false** rather than throwing, so
+  OtpService can destroy an undelivered code
+  instead of being tempted to return it.
+  Never logs a body; masks every address.
+end note
+
+note bottom of DigestNarrator
+  The model writes the encouragement.
+  It never writes a number -- every figure
+  comes from DigestRow. Rate limit, cold
+  start or no API key all fall back to
+  written copy and the mail still goes out.
+end note
+
+note bottom of MailQuotaService
+  One budget for the whole DAY, across both
+  runs, persisted so a restart cannot reset
+  it. The provider allowance is shared with
+  sign-in codes: overspending it stops people
+  signing in, which is far worse than a
+  missed nudge.
+end note
+
+@enduml

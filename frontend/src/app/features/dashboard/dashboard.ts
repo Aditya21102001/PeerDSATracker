@@ -52,7 +52,7 @@ import { Spinner } from '../../shared/spinner';
       } @else if (error()) {
         <p class="error" role="alert">{{ error() }}</p>
       } @else {
-        <section class="tiles" data-tour="stats">
+        <section class="tiles stagger" data-tour="stats">
           <div class="tile">
             <span class="value">{{ streak()?.current ?? 0 }}</span>
             <span class="label">Day streak</span>

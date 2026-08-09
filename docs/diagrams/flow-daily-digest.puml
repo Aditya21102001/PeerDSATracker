@@ -1,0 +1,127 @@
+@startuml flow-daily-digest
+' One digest run, morning or evening.
+'
+' Render:  plantuml docs/diagrams/flow-daily-digest.puml
+
+' Explicit near-white, NOT transparent: the text is dark, and a transparent background
+' renders black on a dark viewer, which makes the whole diagram unreadable.
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam activity {
+  BackgroundColor #FDFDFD
+  BorderColor #5B5BD6
+  ArrowColor #59606F
+  DiamondBackgroundColor #EFF1F6
+  DiamondBorderColor #5B5BD6
+}
+skinparam note {
+  BackgroundColor #FFF8E1
+  BorderColor #C2670A
+}
+
+title Daily practice digest — 09:00 and 18:15
+
+start
+
+:scheduler fires (app.mail.zone);
+
+if (MAIL_ENABLED?) then (no)
+  :log and stop;
+  stop
+endif
+
+if (mail transport configured?) then (no)
+  #FFE0E0:log at ERROR and stop;
+  note right
+    Loud on purpose. The alternative is a job that
+    appears to run every morning and delivers
+    nothing at all.
+  end note
+  stop
+endif
+
+:one query for every subscriber
+(DigestRepository.subscribers);
+
+note right
+  One query, not a loop. Rank, this week's solves
+  and the revision queue all arrive with the row —
+  four round trips per person against a cold Neon
+  instance is the difference between a run that
+  finishes and one still going at breakfast.
+
+  Ordered most-recently-active first: that is what
+  the budget cuts against.
+end note
+
+if (which run?) then (EVENING)
+  :drop anyone who has already practised today;
+  note right
+    The reason there is a second send rather than a
+    repeat. "You have already done your practice" at
+    6pm is noise, and two near-identical emails a day
+    is how people learn to ignore both.
+  end note
+else (MORNING)
+  :everyone subscribed;
+endif
+
+:budget = MailQuotaService.remainingToday();
+
+if (recipients > budget?) then (yes)
+  #FFE0E0:truncate, and log exactly how many were skipped;
+  note right
+    Announced, never silent. A job that quietly mails
+    half its users looks identical to one that mailed
+    all of them.
+
+    The budget is for the whole DAY across both runs,
+    and is shared with sign-in codes — overspending it
+    stops people signing in.
+  end note
+endif
+
+repeat :for each recipient;
+  :classify the situation from lastActiveDate
+  (streak alive / at risk / lapsed / dormant / new);
+  :DigestNarrator writes ONE line;
+
+  if (model available and usable reply?) then (yes)
+    :use it;
+  else (no)
+    :use the written fallback for
+    that situation and run;
+    note right
+      Rate limit, cold start, markdown, a preamble,
+      no API key — all the same here. Nothing about a
+      language model may stop the mail.
+    end note
+  endif
+
+  :render subject and body;
+  note right
+    Every **number** comes from the database row.
+    The model is forbidden from quoting statistics:
+    congratulating somebody on a streak they do not
+    have costs more trust than a plain template.
+
+    Greeting and subject follow the run, not the clock.
+  end note
+
+  :BrevoMailClient.send() — HTTP;
+repeat while (more recipients?) is (yes)
+->no;
+
+:MailQuotaService.record(sent)
+in its own transaction;
+note right
+  These messages cannot be un-sent, so forgetting
+  them because the run failed later would let the
+  next run spend the same budget again.
+end note
+
+:log sent / failed / skipped;
+
+stop
+
+@enduml

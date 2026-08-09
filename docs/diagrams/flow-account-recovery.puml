@@ -1,0 +1,129 @@
+@startuml flow-account-recovery
+' Recovering an account with a one-time code, and why it does not end at "signed in".
+'
+' Render:  plantuml docs/diagrams/flow-account-recovery.puml
+
+' Explicit near-white, NOT transparent: the text is dark, and a transparent background
+' renders black on a dark viewer, which makes the whole diagram unreadable.
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam sequence {
+  ArrowColor #59606F
+  LifeLineBorderColor #C3CAD8
+  ParticipantBorderColor #5B5BD6
+  ParticipantBackgroundColor #FDFDFD
+}
+skinparam note {
+  BackgroundColor #FFF8E1
+  BorderColor #C2670A
+}
+
+title Account recovery by one-time code
+
+actor User
+participant "SPA\n/code" as SPA
+participant AuthController as API
+participant OtpService as OTP
+database "otp_codes" as DB
+participant BrevoMailClient as Mail
+participant AuthService as Auth
+participant JwtService as JWT
+
+== 1. Ask for a code ==
+
+User -> SPA : enters email
+SPA -> API : POST /auth/otp/request
+API -> OTP : requestCode(email)
+
+OTP -> DB : count requests in the last hour
+
+note right of OTP
+  Rate limit is checked **before** the account
+  lookup. Throttling only real accounts would
+  make a 429 mean "this address is registered".
+end note
+
+alt over the hourly budget
+  OTP --> API : 429
+else address has no account
+  OTP -> DB : record the request, issue no code
+  note right of OTP : Counts towards the limit,\nbut holds no secret.
+  OTP --> API : null
+else registered
+  OTP -> DB : supersede outstanding, store SHA-256 of a new code
+
+  alt demo mode ON (development only)
+    OTP --> API : the code itself
+    note right of OTP #FFE0E0
+      A separate branch, taken before delivery
+      is attempted. Never a fallback.
+    end note
+  else demo mode OFF
+    OTP -> Mail : send(code)
+    alt provider accepted (HTTP 201)
+      Mail --> OTP : true
+      OTP --> API : null
+    else anything else
+      Mail --> OTP : false
+      OTP -> DB : **delete the stored code**
+      OTP --> API : 503
+      note right of OTP #FFE0E0
+        Nothing was sent, so nothing may be
+        honoured — and the code is never
+        returned to the caller.
+      end note
+    end
+  end
+end
+
+API --> SPA : 202 { demoMode, demoCode }
+note over SPA : Same wording whether or not the\naddress is registered.
+
+== 2. Redeem it ==
+
+User -> SPA : enters the six digits
+SPA -> API : POST /auth/otp/verify
+API -> Auth : loginWithCode(email, code)
+Auth -> OTP : verifyForSignIn(email, code)
+OTP -> DB : find by (email, hash), unexpired
+OTP -> DB : destroy the hash — single use
+
+note right of OTP
+  The account is resolved from the address the
+  code was **issued to**, stored on the row —
+  never from anything the caller sent with it.
+end note
+
+Auth -> JWT : generateCodeVerifiedAccessToken(...)
+JWT --> Auth : token carrying **vbc**
+Auth --> SPA : TokenResponse
+
+== 3. Set a password — presented, not offered ==
+
+note over SPA
+  Without this step the code becomes a permanent
+  second credential: somebody who forgot their
+  password signs in by code forever and never
+  actually recovers the account.
+end note
+
+User -> SPA : new password
+SPA -> API : POST /auth/change-password\n{ newPassword } — no proof sent
+API -> Auth : changePassword(principal, request, bearerToken)
+
+Auth -> JWT : isVerifiedByCode(bearerToken)
+JWT --> Auth : true, if within 15 min of issue
+
+Auth -> Auth : encode, save, revoke every refresh token
+Auth --> SPA : { username, tokens }
+
+note over SPA
+  The **username** is shown. Recovery found the
+  account by email, but sign-in wants a username
+  — and for a Google-created account those differ.
+  Without showing it, the next sign-in fails with
+  "invalid username or password" and nothing on
+  screen explains why.
+end note
+
+@enduml

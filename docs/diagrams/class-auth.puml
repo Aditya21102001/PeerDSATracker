@@ -1,0 +1,172 @@
+@startuml class-auth
+' Authentication and account recovery.
+'
+' Render:  plantuml docs/diagrams/class-auth.puml
+' or paste into https://www.plantuml.com/plantuml
+'
+' Only the collaborations that carry a rule are drawn. Getters, DTOs and Spring plumbing are
+' omitted deliberately -- the point of this diagram is to show WHERE each security decision is
+' made, so that a change lands in the one class that owns it.
+
+' Explicit near-white, NOT transparent: the text is dark, and a transparent background
+' renders black on a dark viewer, which makes the whole diagram unreadable.
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam class {
+  BackgroundColor #FDFDFD
+  BorderColor #5B5BD6
+  ArrowColor #59606F
+}
+skinparam note {
+  BackgroundColor #FFF8E1
+  BorderColor #C2670A
+}
+hide empty members
+
+package "com.peerdsa.auth" {
+
+  class AuthController <<@RestController>> {
+    +signup() : TokenResponse
+    +login() : TokenResponse
+    +refresh() : TokenResponse
+    +requestCode() : OtpRequestResponse
+    +verifyCode() : TokenResponse
+    +changePassword() : ChangePasswordResponse
+    +options() : AuthOptions
+    -bearerToken(request) : String
+  }
+
+  class AuthService <<@Service>> {
+    +login(request) : TokenResponse
+    +loginWithCode(email, code) : TokenResponse
+    +changePassword(principal, request, bearerToken) : ChangePasswordResponse
+    +refresh(rawToken) : TokenResponse
+    +issueSession(user) : TokenResponse
+    -findByIdentifier(raw) : Optional<User>
+    -requireWithinSessionCap(stored)
+    -noSuchUserHash : String
+  }
+
+  class OAuthSignInService <<@Service>> {
+    +signIn(email, name, picture) : TokenResponse
+    -provision(email, name, picture) : User
+    -generateUsername(email) : String
+  }
+
+  class RefreshToken <<@Entity>> {
+    -tokenHash : String
+    -expiresAt : Instant
+    -sessionStartedAt : Instant
+    -replacedBy : Long
+  }
+
+  class RefreshTokenRevoker {
+    +revokeAllForUser(userId) : int
+  }
+
+  class Tokens <<utility>> {
+    +random(bytes) : String
+    +digits(n) : String
+    +sha256(value) : String
+  }
+}
+
+package "com.peerdsa.auth.otp" {
+  class OtpService <<@Service>> {
+    +requestCode(email) : String
+    +verifyForSignIn(email, code) : User
+    +consumeForUser(user, code) : boolean
+  }
+  class OtpDelivery
+  class OtpCode <<@Entity>> {
+    -email : String
+    -codeHash : String
+    -expiresAt : Instant
+    +consume()
+  }
+  interface OtpCodeRepository
+}
+
+package "com.peerdsa.security" {
+  class JwtService <<@Service>> {
+    +generateAccessToken(id, email, sessionStart) : String
+    +generateCodeVerifiedAccessToken(..) : String
+    +extractUserId(token) : Long
+    +isVerifiedByCode(token) : boolean
+    -claims(token) : Claims
+  }
+  class JwtAuthenticationFilter
+  class OAuth2SuccessHandler
+  class OAuth2FailureHandler
+}
+
+package "com.peerdsa.config" {
+  class SecurityConfig
+  class OAuthClientConfig
+  class FrontendUrl
+}
+
+class User <<@Entity>> {
+  -email : String
+  -username : String
+  -passwordHash : String
+  -role : String
+  +hasPassword() : boolean
+}
+
+' ----------------------------------------------------------------- relationships
+AuthController --> AuthService
+AuthController --> OtpService
+AuthService --> OtpService : "proof #2 and code sign-in"
+AuthService --> JwtService
+AuthService --> RefreshToken : "issues and rotates"
+AuthService ..> RefreshTokenRevoker : "on detected theft\n(REQUIRES_NEW)"
+AuthService ..> Tokens
+
+OtpService --> OtpCodeRepository
+OtpService --> OtpDelivery
+OtpCodeRepository --> OtpCode
+OtpDelivery --> "com.peerdsa.mail.BrevoMailClient" : HTTP, never SMTP
+
+OAuth2SuccessHandler --> OAuthSignInService
+OAuth2SuccessHandler --> FrontendUrl
+OAuth2FailureHandler --> FrontendUrl
+OAuthSignInService --> AuthService : issueSession
+OAuthSignInService --> User
+
+JwtAuthenticationFilter --> JwtService
+SecurityConfig --> JwtAuthenticationFilter
+SecurityConfig ..> OAuth2SuccessHandler
+SecurityConfig ..> OAuth2FailureHandler
+OAuthClientConfig ..> SecurityConfig : "supplies ClientRegistrationRepository\n(empty when unconfigured)"
+
+note right of JwtService
+  Three claims, each load-bearing:
+  **typ** only "access" authenticates
+  **sst** session start, survives rotation
+  **vbc** proved control of the address,
+       honoured for 15 min, never refreshed
+end note
+
+note bottom of AuthService
+  changePassword accepts exactly one of
+  three proofs, in order:
+  1. a vbc token inside its window
+  2. a fresh one-time code
+  3. the current password
+  One identical message for every failure.
+end note
+
+note bottom of OtpService
+  Demo mode is a **separate branch**, not a
+  fallback. A failed send deletes the code
+  and answers 503 -- it never returns it.
+end note
+
+note right of OAuthSignInService
+  Never writes a role onto an existing
+  account. Unknown identities are refused
+  unless auto-provisioning is on.
+end note
+
+@enduml
