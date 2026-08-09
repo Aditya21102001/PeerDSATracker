@@ -23,6 +23,9 @@ import { InsightsService } from '../../core/services/insights.service';
         <nav>
           <a routerLink="/dashboard">Dashboard</a>
           <a routerLink="/sheet">Sheet</a>
+          <!-- "Account settings" is where people look for a password, and this page is the
+               closest thing to one, so the link belongs here as well as on the dashboard. -->
+          <a routerLink="/security">Password</a>
         </nav>
       </header>
 

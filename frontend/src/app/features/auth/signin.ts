@@ -42,9 +42,10 @@ import { AuthStore } from '../../core/services/auth.store';
         <div class="field">
           <div class="row">
             <label for="password">Password</label>
-            @if (resetEnabled) {
-              <a class="forgot" routerLink="/forgot">Forgot?</a>
-            }
+            <!-- Points at /code, not the older /forgot link-by-email flow, because /code is the
+                 one with a working transport. Ungated for the same reason: this is the affordance
+                 people actually scan for when they are locked out, so it must never be absent. -->
+            <a class="forgot" routerLink="/code">Forgot password?</a>
           </div>
           <input id="password" type="password" formControlName="password" autocomplete="current-password" />
           @if (showError('password')) {
@@ -62,9 +63,11 @@ import { AuthStore } from '../../core/services/auth.store';
       </form>
 
       <p class="alt">
-        <!-- The recovery route. Named for what it does, not "forgot password": it also covers
-             an account created through Google, which never had a password to forget. -->
-        <a routerLink="/code">Sign in with a code instead</a>
+        <!-- Same destination as "Forgot password?" above, worded for the other group who need it:
+             an account created through Google has no password to have forgotten, so somebody in
+             that position would never click a link about forgetting one. -->
+        Signed up with Google, or never set a password?
+        <a routerLink="/code">Sign in with a code</a>
       </p>
 
       @if (googleEnabled()) {
@@ -99,9 +102,6 @@ export class Signin {
   protected readonly busy = signal(false);
   protected readonly error = signal<string | null>(null);
   private readonly submitted = signal(false);
-
-  /** Hidden in production: the older emailed-link flow has no mailer, so it would go nowhere. */
-  protected readonly resetEnabled = environment.resetEnabled;
 
   /**
    * Asked of the backend rather than hard-coded, so the button cannot appear on a deployment with
