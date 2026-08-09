@@ -64,6 +64,11 @@ public class SecurityConfig {
         // Which sign-in methods this deployment offers. Read before anyone is signed in, by
         // definition, and it holds nothing secret.
         "/api/auth/options",
+        // One-click unsubscribe from a digest footer. Public by necessity: the person most likely
+        // to want out is the one who has abandoned the account and cannot sign in, and making them
+        // log in first is how an unsubscribe link becomes a "report spam" click. The link is HMAC
+        // signed (UnsubscribeTokens) and can do nothing but stop mail.
+        "/api/mail/unsubscribe",
     };
 
     /** The OAuth2 redirect dance. Public because the browser arrives here with no token at all. */

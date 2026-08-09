@@ -1,7 +1,8 @@
+import { HttpClient } from '@angular/common/http';
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { Platform, PlatformAccountView, SyncRunView } from '../../core/models/api.models';
+import { MailPreferences, Platform, PlatformAccountView, SyncRunView } from '../../core/models/api.models';
 import { InsightsService } from '../../core/services/insights.service';
 
 /**
@@ -77,6 +78,25 @@ import { InsightsService } from '../../core/services/insights.service';
         }
       </ul>
 
+      <section class="emails">
+        <h2>Emails</h2>
+        <label class="toggle">
+          <input
+            type="checkbox"
+            [checked]="dailyDigest()"
+            [disabled]="savingPrefs()"
+            (change)="setDailyDigest($event)"
+          />
+          <span>
+            Send me the morning practice digest
+            <small>
+              One email at 9am with your streak, your week, and what's due for revision. Every one
+              of them also has a one-click unsubscribe link.
+            </small>
+          </span>
+        </label>
+      </section>
+
       @if (runs().length) {
         <section>
           <h2>Recent syncs</h2>
@@ -100,6 +120,14 @@ import { InsightsService } from '../../core/services/insights.service';
 })
 export class ProfilePage {
   private readonly insights = inject(InsightsService);
+  private readonly http = inject(HttpClient);
+
+  /**
+   * Mirrors the server's setting rather than assuming it. Someone who unsubscribed from an email
+   * footer months ago must see this unticked when they arrive, not ticked and lying to them.
+   */
+  protected readonly dailyDigest = signal(true);
+  protected readonly savingPrefs = signal(false);
 
   protected platform: Platform = 'LEETCODE';
   protected handle = '';
@@ -161,9 +189,36 @@ export class ProfilePage {
     });
   }
 
+  /**
+   * Writes the new value straight through, then re-reads what the server actually stored. If the
+   * write fails the checkbox must snap back rather than sit there showing a preference that was
+   * never saved — this is the control someone uses when they want the mail to stop.
+   */
+  protected setDailyDigest(event: Event): void {
+    const wanted = (event.target as HTMLInputElement).checked;
+    this.savingPrefs.set(true);
+
+    this.http.post<MailPreferences>('/api/mail/preferences', { dailyDigest: wanted }).subscribe({
+      next: (saved) => {
+        this.savingPrefs.set(false);
+        this.dailyDigest.set(saved.dailyDigest);
+        this.flash(saved.dailyDigest ? 'Daily digest on.' : 'Daily digest off.');
+      },
+      error: () => {
+        this.savingPrefs.set(false);
+        this.dailyDigest.set(!wanted);
+        this.flash('Could not save that. Try again.');
+      },
+    });
+  }
+
   private reload(): void {
     this.insights.accounts().subscribe({ next: (a) => this.accounts.set(a) });
     this.insights.runs().subscribe({ next: (r) => this.runs.set(r.slice(0, 6)) });
+    this.http.get<MailPreferences>('/api/mail/preferences').subscribe({
+      next: (p) => this.dailyDigest.set(p.dailyDigest),
+      error: () => {},
+    });
   }
 
   private flash(text: string): void {

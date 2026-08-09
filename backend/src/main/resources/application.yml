@@ -46,23 +46,10 @@ spring:
     password: ${NEON_PASSWORD}
     locations: classpath:db/migration
 
-  # SMTP, used ONLY by the daily digest (DigestMailSender). Deliberately not used for one-time
-  # sign-in codes: managed hosts including Render block outbound SMTP ports, so this transport
-  # works locally and then fails in production. Codes go out over Brevo's HTTP API instead --
-  # see app.otp.email below and OtpDelivery.
-  mail:
-    host: ${MAIL_HOST:localhost}
-    port: ${MAIL_PORT:1025}
-    username: ${MAIL_USERNAME:}
-    password: ${MAIL_PASSWORD:}
-    protocol: ${MAIL_PROTOCOL:smtp}
-    default-encoding: UTF-8
-    properties:
-      mail:
-        smtp:
-          auth: ${MAIL_AUTH:false}
-          starttls:
-            enable: ${MAIL_START_TLS_ENABLE:false}
+  # NOTE: there is deliberately no spring.mail block. Nothing in this application sends over SMTP,
+  # because Render blocks the outbound SMTP ports -- a JavaMailSender passes every local test and
+  # then silently delivers nothing in production. All mail (sign-in codes AND the morning digest)
+  # goes through BrevoMailClient over HTTP, configured under app.otp.email below.
 
 server:
   # Overridable because 8080 is often already taken by another local service.
@@ -178,19 +165,24 @@ app:
     cron: "0 0 */6 * * *"
     throttle-millis: 2000
   mail:
-    # The daily digest. Sends over SMTP (spring.mail above), which is why it is off by default:
-    # on Render there is no reachable SMTP server.
+    # The morning practice digest: one personalised email per subscriber. Sender credentials are
+    # NOT here -- they are app.otp.email.*, shared with sign-in codes, so there is one mail account
+    # to configure and one transport to get right.
     enabled: ${MAIL_ENABLED:false}
-    from: ${MAIL_FROM:peerdsa@example.com}
-    host: ${MAIL_HOST:localhost}
-    port: ${MAIL_PORT:1025}
-    username: ${MAIL_USERNAME:}
-    password: ${MAIL_PASSWORD:}
-    protocol: ${MAIL_PROTOCOL:smtp}
-    start-tls-enable: ${MAIL_START_TLS_ENABLE:false}
-    auth: ${MAIL_AUTH:false}
-    cron: ${MAIL_CRON:0 0 8 * * *}
-    zone: ${MAIL_ZONE:UTC}
+    # 09:00 daily.
+    cron: ${MAIL_CRON:0 0 9 * * *}
+    # Which clock 9am is on, and which calendar decides "today" and "this week". Follows the
+    # streak zone so an email and a streak counter can never disagree about what day it is.
+    zone: ${MAIL_ZONE:${STREAK_ZONE:UTC}}
+    # Most messages one run may send. Brevo's free tier is 300/day and sign-in codes come out of
+    # the SAME allowance -- this leaves headroom so a morning digest can never consume the quota
+    # somebody needs to sign in that afternoon. Over the cap the run mails the most recently
+    # active subscribers and logs exactly how many it skipped.
+    daily-cap: ${MAIL_DAILY_CAP:200}
+    # This backend's own public origin, for unsubscribe links. Must be reachable from a mail
+    # client, and is the backend rather than the SPA so the link works even if the frontend is
+    # down. Derived from the Render-provided hostname when present.
+    public-base-url: ${MAIL_PUBLIC_BASE_URL:${RENDER_EXTERNAL_URL:}}
   openrouter:
     # The AI assistant. Blank key disables the feature: /api/chat then answers 503
     # "not configured" instead of calling upstream with an empty credential.

@@ -148,6 +148,36 @@ class ApplicationYamlBindingTest {
         assertThat(bind("app.oauth", OAuthProperties.class).google().configured()).isFalse();
     }
 
+    /**
+     * The digest's schedule and quota. The cap is the interesting one: Brevo's free allowance is
+     * shared with sign-in codes, so it must leave real headroom rather than sit at the limit --
+     * a morning digest that consumes the whole day's quota locks out everyone who then needs a
+     * code to sign in.
+     */
+    @Test
+    void digestPropertiesBindWithA9amScheduleAndHeadroomUnderTheProviderQuota() {
+        com.peerdsa.mail.DigestMailProperties digest =
+                bind("app.mail", com.peerdsa.mail.DigestMailProperties.class);
+
+        assertThat(digest.cron()).isEqualTo("0 0 9 * * *");
+        assertThat(digest.enabled()).isFalse(); // opt-in per deployment
+        assertThat(digest.dailyCap()).isPositive().isLessThan(300);
+        assertThat(digest.publicBaseUrl()).isNotBlank();
+    }
+
+    /** "9am" has to mean 9am where the audience is, and agree with the streak calendar. */
+    @Test
+    void theDigestClockFollowsTheStreakZone() {
+        StandardEnvironment kolkata = loadApplicationYaml();
+        kolkata.getPropertySources().addFirst(singleProperty("STREAK_ZONE", "Asia/Kolkata"));
+
+        assertThat(Binder.get(kolkata)
+                        .bind("app.mail", Bindable.of(com.peerdsa.mail.DigestMailProperties.class))
+                        .get()
+                        .zone())
+                .isEqualTo("Asia/Kolkata");
+    }
+
     /** Configuring a privileged default role must stop the application, not warn. */
     @Test
     void aPrivilegedOauthDefaultRoleFailsBinding() {
@@ -170,9 +200,24 @@ class ApplicationYamlBindingTest {
         assertThat(raw("spring.datasource.url")).isEqualTo("${NEON_POOLED_URL}");
         assertThat(raw("spring.flyway.url")).isEqualTo("${NEON_UNPOOLED_URL}");
         assertThat(environment.getProperty("spring.jpa.hibernate.ddl-auto")).isEqualTo("validate");
-        // And the mail block whose arrival, as a second top-level `spring:` key, is what deleted
-        // all of the above until the two blocks were merged.
-        assertThat(environment.getProperty("spring.mail.host")).isNotBlank();
+    }
+
+    /**
+     * There is deliberately no {@code spring.mail} block, and nothing may quietly reintroduce one.
+     *
+     * <p>An SMTP mailer is the trap this codebase has already fallen into twice: Render blocks the
+     * outbound SMTP ports, so a {@code JavaMailSender} passes every local test against a local relay
+     * and then silently delivers nothing in production. All mail goes over Brevo's HTTP API. A
+     * {@code spring.mail} block reappearing means somebody has wired a second, broken transport --
+     * and the first time that block was added it also happened to erase the datasource, because it
+     * arrived as a duplicate top-level {@code spring:} key.
+     */
+    @Test
+    void thereIsNoSmtpConfigurationBecauseNothingSendsOverSmtp() {
+        assertThat(environment.getProperty("spring.mail.host")).isNull();
+        assertThat(environment.getProperty("spring.mail.port")).isNull();
+        // The HTTP transport that replaced it is configured, and is the only one.
+        assertThat(environment.getProperty("app.otp.email.base-url")).contains("api.brevo.com");
     }
 
     /** Behind Render's TLS terminator this is what makes the OAuth2 redirect_uri come out https. */

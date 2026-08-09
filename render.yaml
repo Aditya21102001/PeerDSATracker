@@ -75,6 +75,17 @@ services:
       - key: OTP_EMAIL_FROM
         sync: false
 
+      # ------------------------------------------------- morning practice digest
+      # One personalised email per subscriber at 9am, over the same Brevo credentials as the
+      # sign-in codes. Flip to "true" to start sending; MAIL_ZONE follows STREAK_ZONE, so 9am
+      # means 9am for the audience. Unsubscribe links use RENDER_EXTERNAL_URL, which Render
+      # provides automatically.
+      - key: MAIL_ENABLED
+        value: "false"
+      # Under Brevo's 300/day free allowance, which sign-in codes also draw on.
+      - key: MAIL_DAILY_CAP
+        value: "200"
+
       # ------------------------------------------------------------- Google sign-in
       # Leave both unset to ship without the feature: no /oauth2/** endpoints are
       # registered and the frontend hides the button. If set, register

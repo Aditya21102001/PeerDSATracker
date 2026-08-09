@@ -43,11 +43,6 @@
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-actuator</artifactId>
     </dependency>
-    <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-mail</artifactId>
-    </dependency>
-
     <!--
       Google sign-in. Only the OAuth2 *client* side: this application redeems an authorization
       code and reads the resulting identity, then mints its own JWT. It is never a resource

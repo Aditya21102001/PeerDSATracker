@@ -202,3 +202,25 @@ h2 {
     white-space: nowrap;
   }
 }
+
+/* Email preferences. A checkbox rather than a link out, because turning the digest back ON is
+   only possible here — the emailed link is deliberately one-way. */
+.emails {
+  .toggle {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--sp-3);
+    cursor: pointer;
+
+    input {
+      margin-top: 0.25rem;
+      flex: none;
+    }
+
+    small {
+      display: block;
+      margin-top: var(--sp-1);
+      color: var(--text-muted);
+    }
+  }
+}

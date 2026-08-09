@@ -48,6 +48,15 @@ public class User {
     @Column(nullable = false)
     private String role = "USER";
 
+    /**
+     * Whether this account wants the morning practice digest. On by default -- being nudged is
+     * what a study tracker is for -- and cleared either from the in-app toggle or the one-click
+     * link in every digest footer. See {@link com.peerdsa.mail.UnsubscribeTokens} for why that
+     * link deliberately needs no session.
+     */
+    @Column(name = "email_digest", nullable = false)
+    private boolean emailDigest = true;
+
     // Denormalized counters, maintained at write time. See ProgressService.
     @Column(nullable = false)
     private int xp = 0;
@@ -130,6 +139,14 @@ public class User {
      */
     public void setRole(String role) {
         this.role = role;
+    }
+
+    public boolean isEmailDigest() {
+        return emailDigest;
+    }
+
+    public void setEmailDigest(boolean emailDigest) {
+        this.emailDigest = emailDigest;
     }
 
     /** False for an account that has only ever signed in through an identity provider. */

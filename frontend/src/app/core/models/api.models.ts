@@ -31,6 +31,12 @@ export interface Me {
   longestStreak: number;
 }
 
+/** Which emails this account wants, from /api/mail/preferences. */
+export interface MailPreferences {
+  /** The 9am practice digest. Also switchable from the one-click link in any digest footer. */
+  dailyDigest: boolean;
+}
+
 /**
  * Which sign-in methods this deployment offers, from GET /api/auth/options.
  *
