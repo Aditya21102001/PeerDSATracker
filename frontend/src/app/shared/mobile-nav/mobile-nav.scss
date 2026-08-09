@@ -14,7 +14,14 @@
 
 /* ------------------------------------------------------------------ the bar */
 
-.bar {
+/*
+ * `.tabbar`, not `.bar`. `.bar` is already a global primitive in styles.scss -- the XP/progress
+ * meter -- carrying `height: 0.5rem; overflow: hidden`. A component class of the same name does
+ * not override those (nothing here declares height), so the nav silently rendered 8px tall with
+ * its 56px buttons clipped out of view. It looked exactly like the bar had not shipped at all.
+ */
+
+.tabbar {
   position: fixed;
   inset: auto 0 0 0;
   z-index: 40;

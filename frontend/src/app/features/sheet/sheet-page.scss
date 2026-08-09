@@ -185,6 +185,25 @@ header {
     }
   }
 
+  /*
+   * The empty state is an <li> in the same list, so without this it inherits the row grid above
+   * and its text is laid into the first 1.75rem track -- rendering "No problems match those
+   * filters." one word per line down a 28px column.
+   */
+  li.empty {
+    display: block;
+    grid-template-columns: none;
+    text-align: center;
+    color: var(--text-muted);
+    border-style: dashed;
+    border-color: var(--border-strong);
+    padding: var(--sp-5) var(--sp-4);
+
+    &:hover {
+      transform: none;
+    }
+  }
+
   li.solved {
     background: color-mix(in srgb, var(--easy-soft) 60%, var(--surface));
 

@@ -167,6 +167,13 @@ tr.me {
   .tabs button {
     min-height: 40px;
     flex: 1;
+    /* "My peers" was breaking across two lines and pushing the control to 90px tall. */
+    white-space: nowrap;
+  }
+
+  /* Full width on a phone, so the two options split the row evenly. */
+  .tabs {
+    width: 100%;
   }
 
   th,

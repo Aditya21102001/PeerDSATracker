@@ -55,7 +55,7 @@ interface Destination {
       data-tour="nav" is on both this bar and the desktop header nav. Exactly one is displayed at
       any width, and the tour picks whichever is actually visible.
     -->
-    <nav class="bar" aria-label="Main" data-tour="nav">
+    <nav class="tabbar" aria-label="Main" data-tour="nav">
       @for (d of primary; track d.path) {
         <a
           [routerLink]="d.path"
@@ -122,7 +122,7 @@ export class MobileNav {
   /** In the bar. Ordered by how often they are actually used, not alphabetically. */
   protected readonly primary: Destination[] = [
     { path: '/dashboard', label: 'Home', icon: '⚡' },
-    { path: '/sheet', label: 'Sheet', icon: '☰' },
+    { path: '/sheet', label: 'Sheet', icon: '📋' }, // not ☰ — that is the More button's glyph
     { path: '/revision', label: 'Revise', icon: '↻' },
     { path: '/peers', label: 'Peers', icon: '👥' },
   ];

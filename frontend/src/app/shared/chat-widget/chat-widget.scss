@@ -334,6 +334,26 @@ header {
   }
 }
 
+/*
+ * Lift the launcher above the phone tab bar. Pinned to the viewport bottom it sat squarely on top
+ * of the "More" tab, covering a navigation control with a chat button -- and :host-context keys it
+ * to the body class MobileNav sets, so the launcher stays in the corner when there is no bar
+ * (signed out, or on a laptop).
+ */
+:host-context(body.has-mobile-nav) {
+  @media (max-width: 48rem) {
+    .fab {
+      bottom: calc(var(--sp-3) + 56px + env(safe-area-inset-bottom, 0px));
+    }
+
+    /* The panel has to clear it too, or its composer is behind the bar. */
+    .panel {
+      bottom: calc(var(--sp-3) + 56px + env(safe-area-inset-bottom, 0px));
+      max-height: calc(100dvh - 56px - env(safe-area-inset-bottom, 0px) - var(--sp-6));
+    }
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .fab,
   .panel {

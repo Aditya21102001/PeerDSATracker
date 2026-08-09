@@ -677,8 +677,15 @@ main > header nav {
    * Kept in the DOM rather than removed from the template, so the desktop markup stays simple and
    * the tour can still find whichever nav is actually visible.
    */
+  /*
+   * !important is load-bearing here, not laziness. Angular compiles a component's `header nav`
+   * into `header[_ngcontent-x] nav[_ngcontent-x]` -- specificity (0,2,2), because it stamps the
+   * attribute onto every compound. No global selector can beat that on specificity alone:
+   * `body.has-mobile-nav main > header nav` is only (0,1,4), and the class column decides.
+   * Without this the rule computes to display:flex and the old wrapped nav simply stays.
+   */
   body.has-mobile-nav main > header nav {
-    display: none;
+    display: none !important;
   }
 
   /* Signed out (/guide, the welcome page) there is no bar, so those header links stay — and they
