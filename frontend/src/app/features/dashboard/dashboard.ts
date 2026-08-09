@@ -33,6 +33,16 @@ import { Spinner } from '../../shared/spinner';
     <main id="main-content" tabindex="-1" class="dashboard">
       <header>
         <h1>⚡ The Grind ⚡</h1>
+        <!-- Who is signed in. Hidden on phones, where the More sheet carries the same block. -->
+        @if (me(); as user) {
+          <a class="account" routerLink="/security">
+            <span class="avatar" aria-hidden="true">{{ user.displayName?.charAt(0)?.toUpperCase() || user.username.charAt(0).toUpperCase() }}</span>
+            <span class="identity">
+              <strong>{{ user.displayName || user.username }}</strong>
+              <small>&#64;{{ user.username }}</small>
+            </span>
+          </a>
+        }
         <nav data-tour="nav">
           <a routerLink="/sheet">Sheet</a>
           <a routerLink="/revision">Revision</a>
@@ -171,6 +181,9 @@ export class Dashboard {
   protected readonly heatmap = signal<HeatmapDay[]>([]);
   protected readonly loading = signal(true);
   protected readonly error = signal<string | null>(null);
+
+  /** The signed-in account, for the header. Loaded by AuthStore on session restore. */
+  protected readonly me = this.auth.currentUser;
 
   protected readonly weakness = signal<WeaknessReport | null>(null);
 

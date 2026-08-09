@@ -2,6 +2,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { AuthStore } from '../../core/services/auth.store';
+import { LastSignInService } from '../../core/services/last-sign-in.service';
 
 /** Which proof the user is offering. */
 type Proof = 'password' | 'code';
@@ -12,9 +13,31 @@ type Proof = 'password' | 'code';
   template: `
     <main id="main-content" tabindex="-1" class="auth">
       <header>
-        <h1>Password</h1>
+        <h1>Account</h1>
         <nav><a routerLink="/dashboard">Dashboard</a></nav>
       </header>
+
+      <!--
+        The details the rest of the app never showed. The username matters most: sign-in asks for
+        one, and an account created through Google was given a generated username its owner has
+        never seen anywhere.
+      -->
+      @if (me(); as user) {
+        <dl class="account-details">
+          <div>
+            <dt>Username</dt>
+            <dd><strong>{{ user.username }}</strong></dd>
+          </div>
+          <div>
+            <dt>Email</dt>
+            <dd>{{ user.email }}</dd>
+          </div>
+          <div>
+            <dt>Sign in with</dt>
+            <dd>{{ signInSummary() }}</dd>
+          </div>
+        </dl>
+      }
 
       @if (hasPassword() === false) {
         <p class="tagline">
@@ -125,6 +148,7 @@ type Proof = 'password' | 'code';
 export class Security {
   private readonly fb = inject(FormBuilder);
   private readonly auth = inject(AuthStore);
+  private readonly lastSignIn = inject(LastSignInService);
 
   protected readonly busy = signal(false);
   protected readonly error = signal<string | null>(null);
@@ -140,6 +164,24 @@ export class Security {
   protected readonly hasPassword = computed(() => this.auth.currentUser()?.hasPassword);
 
   protected readonly proof = signal<Proof>('password');
+
+  /** The signed-in account. Loaded by AuthStore on session restore, so it is there on load. */
+  protected readonly me = this.auth.currentUser;
+
+  /**
+   * What this account can actually sign in with, plus the method last used on this device.
+   * Both matter: "you have a password" is the account's state, "you used Google here" is this
+   * browser's, and somebody returning after a break usually wants the second one.
+   */
+  protected readonly signInSummary = computed(() => {
+    const user = this.auth.currentUser();
+    if (!user) {
+      return '';
+    }
+    const ways = user.hasPassword ? 'Password or an emailed code' : 'An emailed code, or Google';
+    const last = this.lastSignIn.lastMethodLabel();
+    return last ? `${ways} · last used ${last} on this device` : ways;
+  });
 
   protected readonly form = this.fb.nonNullable.group({
     currentPassword: [''],

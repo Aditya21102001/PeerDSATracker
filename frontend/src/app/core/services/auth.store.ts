@@ -52,6 +52,8 @@ export class AuthStore {
         this.tokens.set(t);
         this.lastSignIn.remember('password');
       }),
+      // Load the profile now, so the header can name the account on the very first page.
+      switchMap((t) => this.loadMe().pipe(map(() => t))),
     );
   }
 
@@ -75,6 +77,7 @@ export class AuthStore {
         this.tokens.set(t);
         this.lastSignIn.remember('code');
       }),
+      switchMap((t) => this.loadMe().pipe(map(() => t))),
     );
   }
 
@@ -124,13 +127,26 @@ export class AuthStore {
    * /signin instead of letting a page load and fail.
    */
   restoreSession(): Observable<unknown> {
-    if (!this.tokens.refreshToken() || this.tokens.accessToken()) {
+    if (!this.tokens.refreshToken()) {
       return of(null);
     }
+    // Already holding an access token (a fresh sign-in, not a reload): just make sure the profile
+    // is loaded.
+    if (this.tokens.accessToken()) {
+      return this.loadMe().pipe(catchError(() => of(null)));
+    }
     return this.refreshOnce().pipe(
-      catchError(() => {
-        this.tokens.clear();
-        this.user.set(null);
+      // The profile is loaded here, not lazily by whichever page happens to want it. Without it
+      // `currentUser()` is null on every page after a reload, which is why nothing in the app
+      // could show who was signed in.
+      switchMap(() => this.loadMe()),
+      catchError((error) => {
+        // Only a dead refresh token ends the session. A failed /me is a bad moment for the API,
+        // not proof the session is over -- clearing tokens here would sign people out on a blip.
+        if (!this.tokens.accessToken()) {
+          this.tokens.clear();
+          this.user.set(null);
+        }
         return of(null);
       }),
     );

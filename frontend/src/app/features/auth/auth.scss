@@ -203,3 +203,38 @@ button[type='submit'] {
     color: var(--text);
   }
 }
+
+
+/* The account details on /security: what the rest of the app never told you. */
+.account-details {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  margin: 0;
+  padding: var(--sp-4);
+  background: var(--surface-2);
+  border-radius: var(--r-md);
+
+  div {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--sp-3);
+  }
+
+  dt {
+    font-size: var(--fs-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--text-faint);
+    flex: none;
+  }
+
+  dd {
+    margin: 0;
+    font-size: var(--fs-sm);
+    text-align: right;
+    /* A long email must wrap rather than widen the card. */
+    overflow-wrap: anywhere;
+  }
+}

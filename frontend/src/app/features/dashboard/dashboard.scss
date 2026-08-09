@@ -41,6 +41,58 @@ header {
   }
 }
 
+/*
+ * The signed-in account, in the header. Hidden on phones: the More sheet carries the same block,
+ * and the page header there is already tight.
+ */
+.account {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-1) var(--sp-2);
+  border-radius: var(--r-full);
+  text-decoration: none;
+  color: var(--text);
+  transition: background var(--t-fast) var(--ease);
+
+  &:hover {
+    background: var(--surface-2);
+  }
+
+  .avatar {
+    display: grid;
+    place-items: center;
+    width: 1.9rem;
+    height: 1.9rem;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--flame));
+    color: var(--on-accent);
+    font-weight: 700;
+    font-size: var(--fs-sm);
+    flex: none;
+  }
+
+  .identity {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.2;
+    min-width: 0;
+
+    strong {
+      font-size: var(--fs-sm);
+    }
+
+    small {
+      color: var(--text-muted);
+      font-size: var(--fs-xs);
+    }
+  }
+
+  @media (max-width: 48rem) {
+    display: none;
+  }
+}
+
 .link {
   border: 0;
   background: none;

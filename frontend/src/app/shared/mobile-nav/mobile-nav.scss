@@ -149,6 +149,60 @@
     background: var(--border-strong);
   }
 
+  /* The account row: who you are, and a way into the account page. */
+  .account {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+    min-height: 56px;
+    padding: var(--sp-2) var(--sp-2);
+    margin-bottom: var(--sp-3);
+    border-radius: var(--r-md);
+    text-decoration: none;
+    color: var(--text);
+    background: var(--surface-2);
+
+    &:active {
+      background: var(--accent-soft);
+    }
+
+    .avatar {
+      flex: none;
+      display: grid;
+      place-items: center;
+      width: 2.25rem;
+      height: 2.25rem;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), var(--flame));
+      color: var(--on-accent);
+      font-weight: 700;
+    }
+
+    .identity {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+
+      strong {
+        font-size: var(--fs-sm);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      small {
+        color: var(--text-muted);
+        font-size: var(--fs-xs);
+      }
+    }
+
+    .chev {
+      margin-left: auto;
+      color: var(--text-faint);
+      font-size: 1.2rem;
+    }
+  }
+
   .sheet-title {
     font-size: var(--fs-xs);
     font-weight: 700;

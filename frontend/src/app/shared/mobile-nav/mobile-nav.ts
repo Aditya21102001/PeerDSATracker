@@ -27,6 +27,22 @@ interface Destination {
       ></button>
 
       <div class="sheet" role="dialog" aria-modal="true" aria-label="More destinations">
+        <!--
+          Who is signed in. The app showed this nowhere at all, which matters more than it sounds:
+          an account created through Google gets a GENERATED username its owner has never seen, and
+          sign-in asks for a username. Somewhere has to say what it is.
+        -->
+        @if (me(); as user) {
+          <a class="account" routerLink="/security" (click)="closeMore()">
+            <span class="avatar" aria-hidden="true">{{ initial(user.displayName || user.username) }}</span>
+            <span class="identity">
+              <strong>{{ user.displayName || user.username }}</strong>
+              <small>&#64;{{ user.username }}</small>
+            </span>
+            <span class="chev" aria-hidden="true">›</span>
+          </a>
+        }
+
         <p class="sheet-title" id="more-title">More</p>
         <ul>
           @for (d of secondary; track d.path) {
@@ -105,6 +121,9 @@ export class MobileNav {
 
   protected readonly moreOpen = signal(false);
 
+  /** The signed-in account. Populated by AuthStore on session restore, so it is there on load. */
+  protected readonly me = this.auth.currentUser;
+
   constructor() {
     /*
      * Marks the document while this bar exists, so the global stylesheet can hide the per-page
@@ -136,6 +155,11 @@ export class MobileNav {
     { path: '/security', label: 'Password', icon: '🔒' },
     { path: '/guide', label: 'Guide', icon: '?' },
   ];
+
+  /** First letter, for the avatar circle. Purely decorative; the name is beside it. */
+  protected initial(name: string): string {
+    return name.trim().charAt(0).toUpperCase() || '?';
+  }
 
   protected toggleMore(): void {
     this.moreOpen.update((v) => !v);
