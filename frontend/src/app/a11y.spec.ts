@@ -20,6 +20,7 @@ import { ProfilePage } from './features/profile/profile-page';
 import { RevisionPage } from './features/revision/revision-page';
 import { SheetPage } from './features/sheet/sheet-page';
 import { WelcomePage } from './features/welcome/welcome-page';
+import { MasteryChart } from './shared/mastery-chart/mastery-chart';
 import { MobileNav } from './shared/mobile-nav/mobile-nav';
 import { ThemeToggle } from './shared/theme-toggle';
 
@@ -46,6 +47,16 @@ describe('accessibility (axe-core)', () => {
    * they show their empty/loading state, which is a state a real user sees and so is a state that
    * has to be accessible too.
    */
+  /** Inputs for the components that require them; everything else renders bare. */
+  const INPUTS: Record<string, Record<string, unknown>> = {
+    'mastery chart': {
+      topics: [
+        { topic: 'Arrays', mastery: 0.8, solved: 24, total: 30, gap: 6 },
+        { topic: 'Graphs', mastery: 0.2, solved: 3, total: 15, gap: 12 },
+      ],
+    },
+  };
+
   const SCREENS: [string, Type<unknown>][] = [
     ['welcome', WelcomePage],
     ['guide', GuidePage],
@@ -63,6 +74,7 @@ describe('accessibility (axe-core)', () => {
     ['profile', ProfilePage],
     ['theme toggle', ThemeToggle],
     ['mobile nav', MobileNav],
+    ['mastery chart', MasteryChart],
   ];
 
   /**
@@ -78,13 +90,16 @@ describe('accessibility (axe-core)', () => {
    */
   const DISABLED_RULES = { region: { enabled: false }, 'color-contrast': { enabled: false } };
 
-  const analyse = async (component: Type<unknown>) => {
+  const analyse = async (component: Type<unknown>, inputs: Record<string, unknown> = {}) => {
     await TestBed.configureTestingModule({
       imports: [component],
       providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
     }).compileComponents();
 
     const fixture = TestBed.createComponent(component);
+    for (const [name, value] of Object.entries(inputs)) {
+      fixture.componentRef.setInput(name, value);
+    }
     await fixture.whenStable();
 
     // axe needs the element attached to the document; a detached fixture root reports nothing.
@@ -147,7 +162,7 @@ describe('accessibility (axe-core)', () => {
 
   for (const [name, component] of SCREENS) {
     it(`${name} has no WCAG 2.1 AA violations`, async () => {
-      const results = await analyse(component);
+      const results = await analyse(component, INPUTS[name] ?? {});
 
       expect(results.violations, describeViolations(results.violations)).toEqual([]);
     });

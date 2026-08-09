@@ -6,6 +6,7 @@ import { Router, RouterLink } from '@angular/router';
 import { environment } from '../../../environments/environment';
 import { AuthOptions } from '../../core/models/api.models';
 import { AuthStore } from '../../core/services/auth.store';
+import { LastSignInService } from '../../core/services/last-sign-in.service';
 
 @Component({
   selector: 'app-signin',
@@ -16,6 +17,17 @@ import { AuthStore } from '../../core/services/auth.store';
         <h1>⚡ The Grind ⚡</h1>
         <p class="tagline">Your missions are waiting.</p>
       </header>
+
+      @if (lastMethod()) {
+        <!--
+          Answers the question people actually arrive with: "did I make a password here, or did I
+          use Google?" Getting it wrong costs a failed attempt whose only feedback is "invalid
+          username or password", which says nothing about which credential was wrong.
+        -->
+        <p class="last-method" role="status">
+          Last time on this device you signed in with <strong>{{ lastMethodLabel() }}</strong>.
+        </p>
+      }
 
       <dl class="stats">
         <div><dt>474</dt><dd>Problems</dd></div>
@@ -98,6 +110,15 @@ export class Signin {
   private readonly auth = inject(AuthStore);
   private readonly http = inject(HttpClient);
   private readonly router = inject(Router);
+  private readonly lastSignIn = inject(LastSignInService);
+
+  /**
+   * Read from this browser, never from the server. An endpoint that answered "that address uses
+   * Google" before authentication would be a worse enumeration oracle than any this codebase
+   * avoids elsewhere: it confirms the account exists AND names the credential to attack.
+   */
+  protected readonly lastMethod = this.lastSignIn.lastMethod;
+  protected readonly lastMethodLabel = this.lastSignIn.lastMethodLabel;
 
   protected readonly busy = signal(false);
   protected readonly error = signal<string | null>(null);

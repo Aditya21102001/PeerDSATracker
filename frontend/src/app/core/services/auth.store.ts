@@ -3,6 +3,7 @@ import { Service, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { Observable, catchError, finalize, map, of, shareReplay, switchMap, tap, throwError } from 'rxjs';
 import { ChangePasswordResponse, Me, OtpRequestResponse, TokenResponse } from '../models/api.models';
+import { LastSignInService } from './last-sign-in.service';
 import { TokenService } from './token.service';
 
 /**
@@ -17,6 +18,7 @@ import { TokenService } from './token.service';
 export class AuthStore {
   private readonly http = inject(HttpClient);
   private readonly tokens = inject(TokenService);
+  private readonly lastSignIn = inject(LastSignInService);
   private readonly router = inject(Router);
 
   /**
@@ -45,9 +47,12 @@ export class AuthStore {
    * through Google has a generated username its owner has never seen.
    */
   login(identifier: string, password: string): Observable<TokenResponse> {
-    return this.http
-      .post<TokenResponse>('/api/auth/login', { identifier, password })
-      .pipe(tap((t) => this.tokens.set(t)));
+    return this.http.post<TokenResponse>('/api/auth/login', { identifier, password }).pipe(
+      tap((t) => {
+        this.tokens.set(t);
+        this.lastSignIn.remember('password');
+      }),
+    );
   }
 
   /**
@@ -65,9 +70,12 @@ export class AuthStore {
    * the user straight to the set-a-password step rather than to the dashboard.
    */
   verifyCode(email: string, code: string): Observable<TokenResponse> {
-    return this.http
-      .post<TokenResponse>('/api/auth/otp/verify', { email, code })
-      .pipe(tap((t) => this.tokens.set(t)));
+    return this.http.post<TokenResponse>('/api/auth/otp/verify', { email, code }).pipe(
+      tap((t) => {
+        this.tokens.set(t);
+        this.lastSignIn.remember('code');
+      }),
+    );
   }
 
   /**
@@ -95,6 +103,8 @@ export class AuthStore {
    */
   adoptRefreshToken(refreshToken: string): Observable<Me> {
     this.tokens.setRefreshToken(refreshToken);
+    // Only Google reaches this method; the OAuth callback is its sole caller.
+    this.lastSignIn.remember('google');
     return this.refreshOnce().pipe(switchMap(() => this.loadMe()));
   }
 

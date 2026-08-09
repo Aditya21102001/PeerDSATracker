@@ -1,0 +1,185 @@
+/*
+ * Mastery ramp: one hue, light to dark, five steps.
+ *
+ * These values are not eyeballed. They were generated to hit contrast targets against each
+ * theme's card surface and then checked with the dataviz validator in ordinal mode:
+ * monotone lightness, adjacent lightness gaps >= 0.06, single hue (12 degrees spread), and a
+ * light end clearing 2:1 so the weakest bar cannot dissolve into the card behind it.
+ *
+ * Do not "brighten" a step in isolation. Changing one breaks the monotonicity the ramp depends
+ * on to read as an ordered scale; regenerate the set and re-run the validator.
+ */
+:host {
+  --m1: #ababea; /* 2.15:1 on #ffffff */
+  --m2: #8989e2; /* 3.12:1 */
+  --m3: #6b6bda; /* 4.43:1 */
+  --m4: #4e4ed3; /* 6.26:1 */
+  --m5: #3232c9; /* 8.62:1 */
+
+  display: block;
+}
+
+/*
+ * Dark mode is chosen, not flipped. The same hue re-stepped against #14171f, validated
+ * separately -- an automatic inversion of the light ramp lands on colours that either glow or
+ * vanish on a dark card.
+ */
+@media (prefers-color-scheme: dark) {
+  :host-context(:root:not([data-theme='light'])) {
+    --m1: #3535cc; /* 2.16:1 on #14171f */
+    --m2: #5555d5; /* 3.11:1 */
+    --m3: #7373dc; /* 4.45:1 */
+    --m4: #9090e3; /* 6.21:1 */
+    --m5: #afafeb; /* 8.66:1 */
+  }
+}
+
+:host-context(:root[data-theme='dark']) {
+  --m1: #3535cc;
+  --m2: #5555d5;
+  --m3: #7373dc;
+  --m4: #9090e3;
+  --m5: #afafeb;
+}
+
+.mastery {
+  margin: 0;
+}
+
+figcaption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+  margin-bottom: var(--sp-3);
+
+  .cap {
+    font-size: var(--fs-xs);
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+  }
+
+  /* The ramp legend. aria-hidden in the template: the caption and per-row values already say
+     what it means, so announcing five unlabelled swatches would be noise. */
+  .scale {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+    font-size: var(--fs-xs);
+    color: var(--text-faint);
+
+    i {
+      width: 0.85rem;
+      height: 0.6rem;
+      border-radius: 2px;
+
+      &[data-band='1'] { background: var(--m1); }
+      &[data-band='2'] { background: var(--m2); }
+      &[data-band='3'] { background: var(--m3); }
+      &[data-band='4'] { background: var(--m4); }
+      &[data-band='5'] { background: var(--m5); }
+    }
+  }
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+}
+
+/* The header carries the column meaning for assistive tech; sighted readers get it from the
+   caption and the row content, so it is not repeated visually. */
+thead th {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+tbody tr {
+  border-bottom: 1px solid var(--border);
+
+  &:last-child {
+    border-bottom: 0;
+  }
+}
+
+th[scope='row'] {
+  text-align: left;
+  font-weight: 500;
+  color: var(--text);
+  padding: var(--sp-2) var(--sp-2) var(--sp-2) 0;
+  /* Long topic names truncate rather than wrap the row to two lines. */
+  max-width: 8.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+td {
+  padding: var(--sp-2) 0;
+  vertical-align: middle;
+
+  &.num {
+    text-align: right;
+    padding-left: var(--sp-2);
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+}
+
+.track {
+  display: inline-block;
+  vertical-align: middle;
+  width: calc(100% - 3rem);
+  min-width: 2.5rem;
+  height: 0.5rem;
+  border-radius: var(--r-full);
+  /* The unfilled remainder, so a short bar still reads as "out of a whole". */
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.fill {
+  display: block;
+  height: 100%;
+  border-radius: var(--r-full);
+  background: var(--m3);
+  /* Grows on load. The global prefers-reduced-motion rule collapses this. */
+  animation: fill-in var(--t-slow) var(--ease) both;
+
+  &[data-band='1'] { background: var(--m1); }
+  &[data-band='2'] { background: var(--m2); }
+  &[data-band='3'] { background: var(--m3); }
+  &[data-band='4'] { background: var(--m4); }
+  &[data-band='5'] { background: var(--m5); }
+}
+
+.value {
+  display: inline-block;
+  width: 2.6rem;
+  text-align: right;
+  vertical-align: middle;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--fs-xs);
+}
+
+@keyframes fill-in {
+  from {
+    transform: scaleX(0);
+    transform-origin: left;
+  }
+  to {
+    transform: scaleX(1);
+    transform-origin: left;
+  }
+}

@@ -14,6 +14,7 @@ import { AuthStore } from '../../core/services/auth.store';
 import { InsightsService } from '../../core/services/insights.service';
 import { TourService } from '../../core/services/tour.service';
 import { HeatmapCalendar } from '../../shared/heatmap-calendar';
+import { MasteryChart } from '../../shared/mastery-chart/mastery-chart';
 import { MailSummaryCard, MailSummaryItem } from '../../shared/mail-summary-card/mail-summary-card';
 import { Spinner } from '../../shared/spinner';
 
@@ -27,7 +28,7 @@ import { Spinner } from '../../shared/spinner';
  */
 @Component({
   selector: 'app-dashboard',
-  imports: [HeatmapCalendar, MailSummaryCard, RouterLink, Spinner],
+  imports: [HeatmapCalendar, MailSummaryCard, MasteryChart, RouterLink, Spinner],
   template: `
     <main id="main-content" tabindex="-1" class="dashboard">
       <header>
@@ -113,30 +114,14 @@ import { Spinner } from '../../shared/spinner';
           } @else {
             @if (weakness(); as w) {
               <p class="muted">Overall mastery {{ (w.overallMastery * 100).toFixed(1) }}%</p>
-              <div class="topics">
-                <div>
-                  <h3>Weakest topics</h3>
-                  <ul>
-                    @for (t of w.weakest; track t.topic) {
-                      <li>
-                        <span>{{ t.topic }}</span>
-                        <span class="num">{{ t.solved }}/{{ t.total }}</span>
-                      </li>
-                    }
-                  </ul>
-                </div>
-                <div>
-                  <h3>Strongest topics</h3>
-                  <ul>
-                    @for (t of w.strongest; track t.topic) {
-                      <li>
-                        <span>{{ t.topic }}</span>
-                        <span class="num">{{ t.solved }}/{{ t.total }}</span>
-                      </li>
-                    }
-                  </ul>
-                </div>
-              </div>
+
+              <!--
+                Replaces the two "weakest"/"strongest" lists. Those showed only the extremes and
+                left the middle invisible, so there was no way to see the shape of your progress
+                — which topic is nearly done, which has barely started. One sorted chart shows
+                every topic at once and puts the weak tail at the bottom.
+              -->
+              <app-mastery-chart [topics]="allTopics()" />
             }
 
             @if (recommendations().length) {
@@ -187,6 +172,24 @@ export class Dashboard {
   protected readonly error = signal<string | null>(null);
 
   protected readonly weakness = signal<WeaknessReport | null>(null);
+
+  /**
+   * The two lists the analytics service returns, merged for the chart.
+   *
+   * De-duplicated by topic: with a small sheet the same topic can legitimately appear in both
+   * "weakest" and "strongest", and a chart listing it twice looks like a bug.
+   */
+  protected readonly allTopics = computed(() => {
+    const report = this.weakness();
+    if (!report) {
+      return [];
+    }
+    const byTopic = new Map<string, (typeof report.weakest)[number]>();
+    for (const t of [...report.strongest, ...report.weakest]) {
+      byTopic.set(t.topic, t);
+    }
+    return [...byTopic.values()];
+  });
   protected readonly recommendations = signal<Recommendation[]>([]);
   protected readonly dailyDigest = signal<MailSummaryItem>({
     title: 'DSA Tracker · morning',
