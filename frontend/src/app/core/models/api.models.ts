@@ -25,6 +25,12 @@ export interface Me {
    * to offer "set a password" rather than ask for a current one that has never existed.
    */
   hasPassword: boolean;
+  /**
+   * False for an account that was given a generated username and has never confirmed it. The SPA
+   * sends those people to /choose-username on arrival, so the name shown publicly is one they
+   * actually picked.
+   */
+  usernameChosen: boolean;
   xp: number;
   totalSolved: number;
   currentStreak: number;

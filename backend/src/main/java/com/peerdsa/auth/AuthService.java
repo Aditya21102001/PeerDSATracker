@@ -3,6 +3,7 @@ package com.peerdsa.auth;
 import com.peerdsa.auth.dto.AuthDtos.ChangePasswordRequest;
 import com.peerdsa.auth.dto.AuthDtos.ChangePasswordResponse;
 import com.peerdsa.auth.dto.AuthDtos.LoginRequest;
+import com.peerdsa.auth.dto.AuthDtos.MeResponse;
 import com.peerdsa.auth.dto.AuthDtos.SignupRequest;
 import com.peerdsa.auth.dto.AuthDtos.TokenResponse;
 import com.peerdsa.auth.otp.OtpDelivery;
@@ -264,6 +265,43 @@ public class AuthService {
             return false;
         }
         return passwordEncoder.matches(currentPassword, user.getPasswordHash());
+    }
+
+    /**
+     * Claims a username for an account that was provisioned one.
+     *
+     * <p>Accepting the generated name unchanged is a legitimate outcome: the point of the step is
+     * that the owner has <em>seen</em> it, not that they must replace it. So a request naming the
+     * current username succeeds and simply marks it chosen.
+     *
+     * @throws ResponseStatusException 409 if somebody else already holds it.
+     */
+    @Transactional
+    public MeResponse chooseUsername(User principal, String requested, int currentStreak) {
+        User user = users.findById(principal.getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unknown user"));
+
+        String username = requested.trim();
+        if (!username.equalsIgnoreCase(user.getUsername()) && users.existsByUsernameIgnoreCase(username)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "That username is taken");
+        }
+
+        user.setUsername(username);
+        user.setUsernameChosen(true);
+        users.save(user);
+        log.info("User {} chose the username {}", user.getId(), username);
+
+        return new MeResponse(
+                user.getId(),
+                user.getEmail(),
+                user.getUsername(),
+                user.getDisplayName(),
+                user.hasPassword(),
+                user.isUsernameChosen(),
+                user.getXp(),
+                user.getTotalSolved(),
+                currentStreak,
+                user.getLongestStreak());
     }
 
     /**

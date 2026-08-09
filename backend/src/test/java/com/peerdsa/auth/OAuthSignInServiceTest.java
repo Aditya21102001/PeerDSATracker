@@ -80,6 +80,8 @@ class OAuthSignInServiceTest {
         assertThat(saved.getValue().getRole()).isEqualTo("USER");
         // No password at all: it has never had one, and login must cope with that.
         assertThat(saved.getValue().hasPassword()).isFalse();
+        // And the generated username is marked unchosen, so the SPA asks before it goes public.
+        assertThat(saved.getValue().isUsernameChosen()).isFalse();
     }
 
     /**

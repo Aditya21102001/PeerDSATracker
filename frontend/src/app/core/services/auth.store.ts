@@ -111,6 +111,13 @@ export class AuthStore {
     return this.refreshOnce().pipe(switchMap(() => this.loadMe()));
   }
 
+  /** Claims a username for an account that was provisioned one. See ChooseUsername. */
+  chooseUsername(username: string): Observable<Me> {
+    return this.http
+      .post<Me>('/api/auth/username', { username })
+      .pipe(tap((me) => this.user.set(me)));
+  }
+
   loadMe(): Observable<Me> {
     return this.http.get<Me>('/api/auth/me').pipe(tap((me) => this.user.set(me)));
   }

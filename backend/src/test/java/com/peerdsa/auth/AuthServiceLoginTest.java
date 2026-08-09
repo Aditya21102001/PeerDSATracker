@@ -344,6 +344,61 @@ class AuthServiceLoginTest {
                 .doesNotThrowAnyException();
     }
 
+    // ------------------------------------------------------ claiming a provisioned username
+
+    /**
+     * The point of the step is that the owner has SEEN the name, not that they must replace it, so
+     * keeping the generated one is a legitimate outcome and must not collide with itself.
+     */
+    @Test
+    void keepingTheGeneratedUsernameSucceedsAndMarksItChosen() {
+        User provisioned = AuthTestFixtures.user(7L, "g@example.com", "aditya.yadav", null);
+        provisioned.setUsernameChosen(false);
+        when(users.findById(7L)).thenReturn(Optional.of(provisioned));
+        when(users.existsByUsernameIgnoreCase("aditya.yadav")).thenReturn(true);
+
+        var me = authService.chooseUsername(provisioned, "aditya.yadav", 0);
+
+        assertThat(me.username()).isEqualTo("aditya.yadav");
+        assertThat(me.usernameChosen()).isTrue();
+    }
+
+    @Test
+    void choosingADifferentFreeUsernameSucceeds() {
+        User provisioned = AuthTestFixtures.user(7L, "g@example.com", "aditya.yadav.4821", null);
+        provisioned.setUsernameChosen(false);
+        when(users.findById(7L)).thenReturn(Optional.of(provisioned));
+        when(users.existsByUsernameIgnoreCase("grindmaster")).thenReturn(false);
+
+        var me = authService.chooseUsername(provisioned, "  grindmaster  ", 0);
+
+        assertThat(me.username()).isEqualTo("grindmaster");
+        assertThat(provisioned.isUsernameChosen()).isTrue();
+    }
+
+    @Test
+    void choosingSomebodyElsesUsernameIsRejected() {
+        User provisioned = AuthTestFixtures.user(7L, "g@example.com", "aditya.yadav.4821", null);
+        when(users.findById(7L)).thenReturn(Optional.of(provisioned));
+        when(users.existsByUsernameIgnoreCase("taken")).thenReturn(true);
+
+        assertThatThrownBy(() -> authService.chooseUsername(provisioned, "taken", 0))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("taken");
+    }
+
+    /**
+     * Only accounts the provider created start unchosen; everybody else must never be prompted.
+     */
+    @Test
+    void anOrdinarySignupCountsAsHavingChosenItsUsername() {
+        authService.signup(new SignupRequest("new@example.com", "newbie", PASSWORD), "junit", "ip");
+
+        ArgumentCaptor<User> saved = ArgumentCaptor.forClass(User.class);
+        org.mockito.Mockito.verify(users).save(saved.capture());
+        assertThat(saved.getValue().isUsernameChosen()).isTrue();
+    }
+
     // ---------------------------------------------------------------------------- helpers
 
     private static LoginRequest login(String identifier) {

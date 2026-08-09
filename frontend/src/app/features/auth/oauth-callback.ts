@@ -59,7 +59,9 @@ export class OauthCallback {
     this.clearFragment();
 
     this.auth.adoptRefreshToken(token).subscribe({
-      next: () => void this.router.navigate(['/dashboard']),
+      // A newly provisioned account has a generated username nobody has seen. Send them to pick
+      // one before it appears on the public leaderboard.
+      next: (me) => void this.router.navigate([me.usernameChosen ? '/dashboard' : '/choose-username']),
       error: () =>
         this.error.set('That sign-in link has already been used or expired. Please try again.'),
     });

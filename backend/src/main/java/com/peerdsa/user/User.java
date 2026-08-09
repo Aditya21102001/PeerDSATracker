@@ -49,6 +49,14 @@ public class User {
     private String role = "USER";
 
     /**
+     * False only for an account provisioned through an identity provider, which was given a
+     * generated username its owner has never seen. The SPA asks them to confirm or change it on
+     * first arrival; until they do, the name on the public leaderboard is one they never picked.
+     */
+    @Column(name = "username_chosen", nullable = false)
+    private boolean usernameChosen = true;
+
+    /**
      * Whether this account wants the morning practice digest. On by default -- being nudged is
      * what a study tracker is for -- and cleared either from the in-app toggle or the one-click
      * link in every digest footer. See {@link com.peerdsa.mail.UnsubscribeTokens} for why that
@@ -139,6 +147,14 @@ public class User {
      */
     public void setRole(String role) {
         this.role = role;
+    }
+
+    public boolean isUsernameChosen() {
+        return usernameChosen;
+    }
+
+    public void setUsernameChosen(boolean usernameChosen) {
+        this.usernameChosen = usernameChosen;
     }
 
     public boolean isEmailDigest() {

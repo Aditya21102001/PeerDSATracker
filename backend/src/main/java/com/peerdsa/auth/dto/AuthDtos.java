@@ -43,6 +43,20 @@ public final class AuthDtos {
         }
     }
 
+    /**
+     * Claiming a username, for an account that was provisioned one.
+     *
+     * <p>Same rules as a self-chosen username at signup, deliberately: the value ends up on the
+     * public leaderboard, so it must not be able to be an email address or anything else that
+     * publishes information the owner did not intend to share.
+     */
+    public record ChooseUsernameRequest(
+            @NotBlank @Size(min = 3, max = 30)
+                    @Pattern(
+                            regexp = "^[a-zA-Z0-9._-]+$",
+                            message = "letters, digits, dot, hyphen and underscore only")
+                    String username) {}
+
     /** Wraps the opaque refresh token for {@code /refresh} and {@code /logout}. */
     public record RefreshRequest(@NotBlank String refreshToken) {}
 
@@ -131,6 +145,11 @@ public final class AuthDtos {
             String username,
             String displayName,
             boolean hasPassword,
+            /**
+             * False for an account that was given a generated username and has never confirmed
+             * it. The SPA sends those people to the "pick a username" step on arrival.
+             */
+            boolean usernameChosen,
             int xp,
             int totalSolved,
             int currentStreak,

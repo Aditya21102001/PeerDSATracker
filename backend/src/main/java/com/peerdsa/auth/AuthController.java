@@ -2,6 +2,7 @@ package com.peerdsa.auth;
 
 import com.peerdsa.auth.dto.AuthDtos.AuthOptions;
 import com.peerdsa.auth.dto.AuthDtos.ChangePasswordRequest;
+import com.peerdsa.auth.dto.AuthDtos.ChooseUsernameRequest;
 import com.peerdsa.auth.dto.AuthDtos.ChangePasswordResponse;
 import com.peerdsa.auth.dto.AuthDtos.ForgotRequest;
 import com.peerdsa.auth.dto.AuthDtos.LoginRequest;
@@ -166,6 +167,19 @@ public class AuthController {
         return ResponseEntity.noContent().build();
     }
 
+    /**
+     * Sets the username for an account that was provisioned one through Google.
+     *
+     * <p>Authenticated, and the account comes from the session. Validated with the same rules as a
+     * self-chosen username at signup -- the value ends up on the public leaderboard, so it must not
+     * be able to be an email address.
+     */
+    @PostMapping("/username")
+    public MeResponse chooseUsername(
+            @AuthenticationPrincipal User user, @Valid @RequestBody ChooseUsernameRequest request) {
+        return authService.chooseUsername(user, request.username(), streaks.effectiveCurrentStreak(user));
+    }
+
     @GetMapping("/me")
     public MeResponse me(@AuthenticationPrincipal User user) {
         return new MeResponse(
@@ -176,6 +190,7 @@ public class AuthController {
                 // False for an account that has only ever signed in through Google, so the UI can
                 // offer "set a password" rather than ask for a current one that does not exist.
                 user.hasPassword(),
+                user.isUsernameChosen(),
                 user.getXp(),
                 user.getTotalSolved(),
                 // The stored column goes stale the moment a day is missed.

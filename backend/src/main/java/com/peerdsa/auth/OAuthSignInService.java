@@ -88,6 +88,9 @@ public class OAuthSignInService {
         user.setDisplayName(name == null || name.isBlank() ? user.getUsername() : name.trim());
         user.setAvatarUrl(pictureUrl);
         user.setRole(properties.defaultRole());
+        // Generated, not chosen. The SPA prompts for a real one on first arrival -- otherwise the
+        // name shown to every other user on the leaderboard is one its owner has never seen.
+        user.setUsernameChosen(false);
         return users.save(user);
     }
 

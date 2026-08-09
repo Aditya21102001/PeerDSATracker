@@ -5,6 +5,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { describe, expect, it } from 'vitest';
 
+import { ChooseUsername } from './features/auth/choose-username';
 import { CodeSignin } from './features/auth/code-signin';
 import { Security } from './features/auth/security';
 import { Signin } from './features/auth/signin';
@@ -34,6 +35,7 @@ describe('keyboard accessibility', () => {
     ['signin', Signin],
     ['signup', Signup],
     ['code sign-in', CodeSignin],
+    ['choose username', ChooseUsername],
     ['security', Security],
     ['sheet', SheetPage],
     ['peers', PeersPage],
