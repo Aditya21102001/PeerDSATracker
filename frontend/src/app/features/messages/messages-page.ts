@@ -1,8 +1,9 @@
 import { Component, DestroyRef, ElementRef, computed, effect, inject, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { ConversationView, MessageView } from '../../core/models/api.models';
+import { ConversationView, MessageView, PeerView } from '../../core/models/api.models';
 import { MessagingService } from '../../core/services/messaging.service';
+import { PeerService } from '../../core/services/peer.service';
 
 @Component({
   selector: 'app-messages-page',
@@ -23,10 +24,10 @@ import { MessagingService } from '../../core/services/messaging.service';
         <section class="list" aria-label="Conversations">
           @if (loading()) {
             <p class="muted">Loading…</p>
-          } @else if (!conversations().length) {
+          } @else if (!conversations().length && !startable().length) {
             <p class="empty">
-              No conversations yet. You can message peers who follow you back —
-              <a routerLink="/peers">find some peers</a>.
+              No one to message yet. Direct messages need a <strong>mutual follow</strong> — you
+              follow them and they follow you back. <a routerLink="/peers">Find some peers</a>.
             </p>
           } @else {
             <ul>
@@ -45,6 +46,29 @@ import { MessagingService } from '../../core/services/messaging.service';
                     @if (c.unread > 0) {
                       <span class="badge" [attr.aria-label]="c.unread + ' unread'">{{ c.unread }}</span>
                     }
+                  </button>
+                </li>
+              }
+            </ul>
+          }
+
+          <!--
+            The bug this fixes: a mutual follow does not create a conversation, so somebody who
+            had just followed a peer (and been followed back) opened this tab, saw "no
+            conversations", and had no way to start one without knowing to go via /peers. These
+            are the people you CAN message but have not yet.
+          -->
+          @if (startable().length) {
+            <p class="sheet-title">Start a conversation</p>
+            <ul class="startable">
+              @for (p of startable(); track p.id) {
+                <li>
+                  <button type="button" (click)="startWith(p)">
+                    <span class="who">
+                      <strong>{{ p.displayName || p.username }}</strong>
+                      <small>&#64;{{ p.username }}</small>
+                    </span>
+                    <span class="go" aria-hidden="true">＋</span>
                   </button>
                 </li>
               }
@@ -124,12 +148,26 @@ import { MessagingService } from '../../core/services/messaging.service';
  */
 export class MessagesPage {
   private readonly messaging = inject(MessagingService);
+  private readonly peers = inject(PeerService);
   private readonly scroller = viewChild<ElementRef<HTMLElement>>('scroller');
 
   protected readonly conversations = signal<ConversationView[]>([]);
   protected readonly active = signal<ConversationView | null>(null);
   protected readonly messages = signal<MessageView[]>([]);
   protected readonly loading = signal(true);
+
+  /** Everyone I follow who follows me back. */
+  private readonly mutuals = signal<PeerView[]>([]);
+
+  /**
+   * Mutual follows I have no conversation with yet. A mutual follow does not create a thread, so
+   * without this the tab is empty for exactly the person who has just made a friend and come
+   * looking for them.
+   */
+  protected readonly startable = computed(() => {
+    const existing = new Set(this.conversations().map((c) => c.peerId));
+    return this.mutuals().filter((p) => !existing.has(p.id));
+  });
   protected readonly sending = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly live = this.messaging.live;
@@ -174,6 +212,18 @@ export class MessagesPage {
         );
       },
       error: () => this.error.set('Could not load that conversation.'),
+    });
+  }
+
+  /** Opens (or finds) the thread with someone I have not messaged before. */
+  protected startWith(p: PeerView): void {
+    this.messaging.openWith(p.id).subscribe({
+      next: (c) => {
+        this.conversations.update((list) => [c, ...list.filter((x) => x.id !== c.id)]);
+        this.open(c);
+      },
+      error: () =>
+        this.error.set('You can only message peers who follow you back.'),
     });
   }
 
@@ -233,6 +283,13 @@ export class MessagesPage {
         this.loading.set(false);
       },
       error: () => this.loading.set(false),
+    });
+
+    // Separate request, deliberately: an empty conversation list is the case that most needs
+    // this, so it must not be gated on conversations loading first.
+    this.peers.following().subscribe({
+      next: (list) => this.mutuals.set(list.filter((p) => p.followsYou)),
+      error: () => {},
     });
   }
 }

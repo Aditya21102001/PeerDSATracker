@@ -119,6 +119,67 @@ header {
   }
 }
 
+/* People you can message but have not yet. */
+.sheet-title {
+  margin: var(--sp-4) var(--sp-2) var(--sp-2);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.startable {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+
+  button {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-2);
+    min-height: 52px;
+    padding: var(--sp-2) var(--sp-3);
+    border: 0;
+    border-radius: var(--r-md);
+    background: none;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: background var(--t-fast) var(--ease);
+
+    &:hover {
+      background: var(--surface-2);
+    }
+  }
+
+  .who {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+
+    strong {
+      font-size: var(--fs-sm);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    small {
+      color: var(--text-faint);
+      font-size: var(--fs-xs);
+    }
+  }
+
+  .go {
+    flex: none;
+    color: var(--accent);
+    font-size: 1.1rem;
+  }
+}
+
 /* ------------------------------------------------------------------ the thread */
 
 .thread {
