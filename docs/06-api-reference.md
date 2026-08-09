@@ -172,6 +172,72 @@ authenticated toggle. A bad token returns the same page as a good one.
 
 ---
 
+## Messages — `/api/messages`
+
+Peer-to-peer direct messages. See `docs/diagrams/flow-direct-message.puml`.
+
+| Method | Path | Auth | Body | Returns |
+|---|---|---|---|---|
+| GET | `/conversations` | yes | — | `ConversationView[]` |
+| POST | `/conversations` | yes | `{peerId}` | `ConversationView` |
+| GET | `/conversations/{id}` | yes | — | `MessageView[]` (oldest first) |
+| POST | `/conversations/{id}` | yes | `{body}` | `MessageView` |
+| POST | `/conversations/{id}/read` | yes | — | `204` |
+| GET | `/unread` | yes | — | `{unread}` |
+| GET | `/stream` | yes | — | `text/event-stream` |
+
+```ts
+ConversationView { id, peerId, peerUsername, peerDisplayName, peerAvatarUrl,
+                   lastMessageAt, unread, canMessage }
+MessageView      { id, conversationId, senderId, mine, body, createdAt }
+```
+
+### Mutual follow is the permission model
+
+A conversation can only be opened, and a message only sent, between two people who **follow each
+other**. That is structural rather than a policy to moderate after the fact: anyone can sign up
+with an email address, and open messaging between strangers is a harassment and spam vector that
+needs a block list, a report path and someone to run them. Requiring mutual follow makes unwanted
+contact impossible to initiate, and makes unfollowing the block.
+
+The check runs on **every send**, not only when the conversation was opened — otherwise a
+conversation would be a permanent channel that no later action could close. History stays readable
+after an unfollow (deleting it would destroy both people's copy); it is new messages that stop, and
+`canMessage` goes false so the UI can explain rather than let a send fail.
+
+`PeerView.followsYou` exists for the same reason: without it the peers list would offer a "Message"
+button on every row and let a third of them 403.
+
+### Other rules
+
+- **404, not 403**, for a conversation the caller is not in. A 403 confirms the id exists, which
+  lets anyone count the application's conversations by walking ids.
+- **20 messages per minute per sender**, across all conversations — generous for a person, ruinous
+  for a script. Over it, **429**.
+- Fetching a thread also **marks it read**, so there is no separate call to forget.
+- Exactly one conversation per pair, guaranteed by the database (canonical ordering + UNIQUE), so
+  two people opening a thread simultaneously get the same row rather than one each.
+
+### The stream
+
+`GET /stream` is authenticated by the ordinary bearer token, which means a client **cannot use
+`EventSource`** — it has no way to set a header. The frontend uses `fetch` with
+`Accept: text/event-stream` and parses the body itself. A token in the query string would write
+credentials into every access log and proxy trace between the server and the browser.
+
+Delivery is best-effort: the message is committed before it is published, so a dead connection
+never fails a send, and the client sees it on its next fetch. The stream has a deliberate timeout
+and a 25-second keep-alive, so reconnection is the client's normal path rather than an error path
+that only runs in production.
+
+**The emitter registry is in-memory, so this is single-instance.** A message sent on one instance
+is only pushed to listeners on that instance. Correct for the current deployment, and the first
+thing to break on scaling out — the fix then is a shared broker (Redis pub/sub, Postgres
+`LISTEN/NOTIFY`), not more emitters. Worth knowing because the failure is silent: messages still
+save and still appear on the next fetch.
+
+---
+
 ## Sheet — `/api/sheet`
 
 | Method | Path | Query | Returns |

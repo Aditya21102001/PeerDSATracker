@@ -150,6 +150,7 @@ provideRouter(routes, withComponentInputBinding())
 | `/code` | guest | Sign in with a one-time code, then set a password. The real recovery path. |
 | `/oauth/callback` | **none** | Where the backend lands the browser after Google, successful or refused. |
 | `/security` | auth | Change or set a password; offers the current password *or* a code. |
+| `/messages` | auth | Direct messages with peers who follow you back. |
 
 `/oauth/callback` is deliberately **not** guest-guarded: establishing the session is the whole
 job of that route, and a guard would fire on the very reload that follows it.
@@ -173,6 +174,46 @@ from their inbox should still reach the form. `/forgot` is guest-only.
 
 Nothing in the UI links to `/forgot` any more — `/code` supersedes it and has a working
 transport. The routes remain only so an old emailed link still resolves.
+
+## Live data: the message stream
+
+`MessagingService` holds an SSE connection using `fetch`, not `EventSource` — `EventSource`
+cannot send an `Authorization` header, and the alternative (a token in the query string) writes
+credentials into every access log between here and the server. The AI assistant's stream uses
+the same approach.
+
+**The connection is expected to die.** Render's free tier drops idle connections, the server
+caps the stream deliberately, and phones suspend tabs. So reconnection is the normal path, with
+exponential backoff capped at 30s — and the unread count polls regardless of stream health. A
+permanently failing stream degrades the page to a slightly-late chat rather than losing
+messages, and the thread header shows a live/reconnecting dot instead of pretending.
+
+A sent message is appended when it arrives **back over the stream**, not optimistically, so a
+send and a receive take the same code path and cannot render differently.
+
+## Sign-in: the last-method hint
+
+The sign-in screen says "Last time on this device you signed in with Google", read from
+`localStorage` via `LastSignInService`.
+
+Deliberately client-side and per-device. The server knows the answer, but an endpoint that
+reported it **before authentication** would be a worse account-enumeration oracle than any this
+codebase avoids elsewhere: it confirms the account exists *and* names which credential to
+attack. Per-device is also the more useful statement — "you used Google on this laptop" is
+actionable in a way that "your account most recently used Google, from somewhere" is not. Only
+the method is stored, never an address, so a shared device reveals nothing about who used it.
+
+## Charts
+
+`MasteryChart` (topic mastery, in the Insights panel) follows one rule worth keeping: **bar
+length carries the value, colour only reinforces it, and the number is always present as
+text**. The five-step ramp is a single hue, light→dark, generated to hit contrast targets and
+then validated — monotone lightness, adjacent gaps, and a light end that still clears 2:1 so the
+weakest bar cannot dissolve into the card. Dark mode is separately re-stepped, not flipped.
+
+A red/amber/green ramp was rejected: those are reserved status colours, and a rainbow across a
+continuous magnitude is unreadable to anyone with a colour-vision deficiency. If you change a
+step, regenerate the whole set — changing one breaks the monotonicity the ramp relies on.
 
 ## Accessibility
 

@@ -20,6 +20,7 @@ To change the schema you add a new `V<n>__description.sql` under
 | `V9__otp_codes_and_session_cap.sql` | One-time sign-in codes; `users.password_hash` becomes nullable; `refresh_tokens.session_started_at`. |
 | `V10__daily_digest_opt_out.sql` | `users.email_digest`, the digest opt-out. |
 | `V11__mail_quota.sql` | `mail_quota` — how many emails have actually gone out today. |
+| `V12__direct_messages.sql` | `dm_conversations` and `dm_messages` — peer-to-peer chat. |
 
 Two of these have reasons worth internalising:
 
@@ -187,6 +188,34 @@ codes, so a greedy morning run would leave people unable to sign in for the rest
 Persisted rather than counted in memory because Render restarts instances freely, and an
 in-memory counter resets to zero exactly when it would let the budget be spent twice. Keyed by
 calendar day, so it needs no cleanup job.
+
+### `dm_conversations` — one row per pair, enforced
+
+```sql
+user_lo_id bigint NOT NULL,   -- always the lower of the two ids
+user_hi_id bigint NOT NULL,
+CONSTRAINT chk_dm_pair_ordered CHECK (user_lo_id < user_hi_id),
+CONSTRAINT uq_dm_pair UNIQUE (user_lo_id, user_hi_id)
+```
+
+The pair is stored in canonical order and the database enforces both the ordering and the
+uniqueness. That combination is what makes "exactly one conversation between two people" a
+guarantee rather than an intention: without it, two people opening a thread at the same moment
+create two rows and each then sees only their own half of the exchange — a race that is hard to
+reproduce and baffling to receive.
+
+Unread counts are **derived**, not stored: `lo_last_read_at` / `hi_last_read_at` versus the
+messages' `created_at`. A stored counter drifts out of step with the messages it describes, and
+the drift is always in the direction of a badge that will not clear.
+
+`last_message_at` is denormalised so the conversation list can sort without touching
+`dm_messages`.
+
+### `dm_messages`
+
+Immutable once written — there is no edit path, so there is no history to keep. The body length
+cap lives in the DTO rather than a CHECK: a CHECK rejects the write with a 500 after the request
+was already accepted, where validation rejects it with a 400 and a message.
 
 ### `platform_accounts` and `sync_runs`
 

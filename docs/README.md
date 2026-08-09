@@ -29,6 +29,7 @@ and do not skip it. Everything else assumes you know why there are three service
 | `flow-google-signin.puml` | The redirect dance, and both ways it is refused. |
 | `flow-token-lifecycle.puml` | Rotation, the benign race, theft, and the two ceilings. |
 | `flow-daily-digest.puml` | One digest run, morning or evening. |
+| `flow-direct-message.puml` | Who may message whom, and where each check happens. |
 
 The root [README.md](../README.md) is the operational document: setup, environment variables,
 deployment, and the hard-won gotchas that will bite you (Neon's pooler versus Flyway, HTTP/2

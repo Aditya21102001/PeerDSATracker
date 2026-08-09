@@ -24,6 +24,7 @@ com.peerdsa
 ├── gamification/  XP, levels, badges
 ├── leaderboard/   global + peers rankings
 ├── mail/          the one outbound-email transport, and the daily practice digest
+├── messaging/     peer-to-peer direct messages, and the SSE stream that delivers them
 ├── notes/         per-problem notes
 ├── peers/         follow / unfollow / search
 ├── progress/      status, stars, and the SOLVED transition  ← the heart of the app
@@ -52,6 +53,7 @@ one into <https://www.plantuml.com/plantuml>.
 | `flow-google-signin.puml` | The redirect dance, and both ways it is refused. |
 | `flow-token-lifecycle.puml` | Rotation, the benign race, theft, and the two ceilings. |
 | `flow-daily-digest.puml` | One digest run, morning or evening. |
+| `flow-direct-message.puml` | Who may message whom, and where each check happens. |
 
 ## The classes that matter most
 

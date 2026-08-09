@@ -1,0 +1,104 @@
+@startuml flow-direct-message
+' Direct messages: who may message whom, and where each check happens.
+'
+' Render:  plantuml docs/diagrams/flow-direct-message.puml
+
+' Explicit near-white, NOT transparent: the text is dark, and a transparent background
+' renders black on a dark viewer, which makes the whole diagram unreadable.
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam activity {
+  BackgroundColor #FDFDFD
+  BorderColor #5B5BD6
+  ArrowColor #59606F
+  DiamondBackgroundColor #EFF1F6
+  DiamondBorderColor #5B5BD6
+}
+skinparam note {
+  BackgroundColor #FFF8E1
+  BorderColor #C2670A
+}
+
+title Sending a direct message
+
+start
+
+:POST /api/messages/conversations/<id>
+with a message body;
+
+note right
+  The sender is the **session's** user. No endpoint
+  in this feature takes a user id from a body or a
+  path, so there is no request shape that could ask
+  to write as somebody else.
+end note
+
+if (conversation exists AND the sender is in it?) then (no)
+  #FFE0E0:**404** No such conversation;
+  note right
+    404, not 403. A 403 would confirm the id exists,
+    which lets anyone count how many conversations
+    the application holds by walking ids.
+  end note
+  stop
+endif
+
+if (do they still follow **each other**?) then (no)
+  #FFE0E0:**403** You can only message peers
+  who follow you back;
+  note right
+    Re-checked on **every send**, not only when the
+    conversation was opened. Unfollowing is how
+    somebody stops unwanted contact, so it has to
+    take effect immediately -- checked once at open,
+    a conversation would be a permanent channel that
+    no later action could close.
+
+    History stays readable. Deleting it would destroy
+    both people's copy of the exchange; refusing new
+    messages stops the contact, which is the part
+    that matters.
+  end note
+  stop
+endif
+
+if (sender over 20 messages/minute?) then (yes)
+  #FFE0E0:**429** Slow down a moment;
+  note right: Per sender, across every\nconversation. Generous for a\nperson, ruinous for a script.
+  stop
+endif
+
+#E8F5E9:save the message
+stamp last_message_at
+mark read for the sender;
+
+:publish to the **recipient's** open streams;
+:publish to the **sender's** other streams;
+
+note right
+  Both sides. The recipient sees it arrive; the
+  sender's other tabs stay in step, and the sending
+  tab appends the message when it comes back --
+  so a send and a receive take the same path and
+  cannot render differently.
+
+  Delivery is best-effort by design: the message is
+  already committed, so a dead stream must never
+  fail the send. The client picks it up on its next
+  fetch either way.
+end note
+
+:**200** with the saved message;
+
+stop
+
+' A diagram-level footnote. `note bottom` cannot follow `stop` -- after the flow ends there is
+' no activity for a note to attach to, which is a syntax error rather than a floating note.
+legend bottom
+  **Opening** a conversation runs the same mutual-follow check
+  before it will create one, and the pair is stored in canonical
+  order (lo id, hi id) under a UNIQUE -- so two people opening a
+  thread simultaneously get the same row rather than one each.
+endlegend
+
+@enduml
