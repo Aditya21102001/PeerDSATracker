@@ -120,8 +120,14 @@ app:
       # Both blank means Google sign-in is not installed at all: no /oauth2/** endpoints exist
       # and the frontend hides the button. Get them from the Google Cloud console, and register
       # <backend-origin>/login/oauth2/code/google as an authorized redirect URI.
-      client-id: ${GOOGLE_CLIENT_ID:}
-      client-secret: ${GOOGLE_CLIENT_SECRET:}
+      #
+      # SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_* is accepted as a fallback because it
+      # is the name every Spring Boot tutorial gives, and it is the name people reach for. It does
+      # NOT work on its own here: OAuthClientConfig declares the ClientRegistrationRepository bean,
+      # so Boot's own OAuth2 client auto-configuration backs off and never reads those properties.
+      # Without this fallback, setting them looks completely correct and does nothing at all.
+      client-id: ${GOOGLE_CLIENT_ID:${SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_CLIENT_ID:}}
+      client-secret: ${GOOGLE_CLIENT_SECRET:${SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_CLIENT_SECRET:}}
   reset:
     # The older emailed-link reset flow, superseded by the one-time code flow above (which does
     # have a working transport). ResetLinkDeliverer still only writes the link to the log, so an

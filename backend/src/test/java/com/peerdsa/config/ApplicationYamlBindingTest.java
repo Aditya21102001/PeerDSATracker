@@ -97,6 +97,40 @@ class ApplicationYamlBindingTest {
         assertThat(oauth.google().configured()).isFalse();
     }
 
+    /**
+     * Google credentials are accepted under the short names and under Spring's own long ones.
+     *
+     * <p>The long form is what every Spring Boot tutorial prints, so it is what people set. It
+     * cannot work by itself here: {@link OAuthClientConfig} declares the
+     * {@code ClientRegistrationRepository} bean, so Boot's OAuth2 client auto-configuration backs
+     * off and never looks at {@code spring.security.oauth2.client.registration.*}. Setting them
+     * would then look entirely correct and do nothing -- no error, no log, no button.
+     */
+    @Test
+    void googleCredentialsBindFromEitherTheShortOrTheSpringStandardEnvironmentVariables() {
+        StandardEnvironment shortNames = loadApplicationYaml();
+        shortNames.getPropertySources().addFirst(properties(
+                "GOOGLE_CLIENT_ID", "short-id",
+                "GOOGLE_CLIENT_SECRET", "short-secret"));
+
+        StandardEnvironment springNames = loadApplicationYaml();
+        springNames.getPropertySources().addFirst(properties(
+                "SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_CLIENT_ID", "long-id",
+                "SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_CLIENT_SECRET", "long-secret"));
+
+        assertThat(bindOauth(shortNames).google().configured()).isTrue();
+        assertThat(bindOauth(shortNames).google().clientId()).isEqualTo("short-id");
+
+        assertThat(bindOauth(springNames).google().configured()).isTrue();
+        assertThat(bindOauth(springNames).google().clientId()).isEqualTo("long-id");
+    }
+
+    /** With neither set, the feature must be absent rather than half-configured. */
+    @Test
+    void googleSignInIsAbsentWhenNeitherNamingIsSet() {
+        assertThat(bind("app.oauth", OAuthProperties.class).google().configured()).isFalse();
+    }
+
     /** Configuring a privileged default role must stop the application, not warn. */
     @Test
     void aPrivilegedOauthDefaultRoleFailsBinding() {
@@ -159,7 +193,20 @@ class ApplicationYamlBindingTest {
         return environment;
     }
 
+    private static OAuthProperties bindOauth(StandardEnvironment environment) {
+        return Binder.get(environment).bind("app.oauth", Bindable.of(OAuthProperties.class)).get();
+    }
+
     private static PropertySource<?> singleProperty(String key, String value) {
-        return new org.springframework.core.env.MapPropertySource("override", java.util.Map.of(key, value));
+        return properties(key, value);
+    }
+
+    /** An overriding property source from alternating key/value arguments. */
+    private static PropertySource<?> properties(String... keyValuePairs) {
+        java.util.Map<String, Object> values = new java.util.LinkedHashMap<>();
+        for (int i = 0; i < keyValuePairs.length; i += 2) {
+            values.put(keyValuePairs[i], keyValuePairs[i + 1]);
+        }
+        return new org.springframework.core.env.MapPropertySource("override", values);
     }
 }
