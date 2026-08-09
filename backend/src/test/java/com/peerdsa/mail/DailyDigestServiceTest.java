@@ -260,6 +260,28 @@ class DailyDigestServiceTest {
         verify(mail, never()).send(any());
     }
 
+    /**
+     * Shipped saying "Morning, Aditya" at 6:15pm. The greeting was hardcoded while everything
+     * around it -- subject, copy, audience -- had already been made run-aware.
+     */
+    @Test
+    void theGreetingMatchesTheTimeOfDay() {
+        when(digests.subscribers(any())).thenReturn(
+                List.of(row(1L, "a@b.com", 5, 3, "Aditya", TODAY.minusDays(1))));
+
+        service(true, 200).sendDailyDigestFor(DigestRun.EVENING, TODAY);
+        assertThat(captureMessage().htmlBody()).contains("Evening, Aditya").doesNotContain("Morning,");
+    }
+
+    @Test
+    void theMorningGreetingIsStillUsedInTheMorning() {
+        when(digests.subscribers(any())).thenReturn(
+                List.of(row(1L, "a@b.com", 5, 3, "Aditya", TODAY.minusDays(1))));
+
+        service(true, 200).sendDailyDigestFor(DigestRun.MORNING, TODAY);
+        assertThat(captureMessage().htmlBody()).contains("Morning, Aditya");
+    }
+
     // ---------------------------------------------------------------------------- helpers
 
     private BrevoMailClient.Message captureMessage() {

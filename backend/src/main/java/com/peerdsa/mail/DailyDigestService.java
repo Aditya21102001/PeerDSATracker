@@ -168,7 +168,7 @@ public class DailyDigestService {
                 row.getEmail(),
                 subject(row, situation, run, today),
                 textBody(row, line, today),
-                htmlBody(row, line, today)));
+                htmlBody(row, line, run, today)));
     }
 
     /**
@@ -232,7 +232,12 @@ public class DailyDigestService {
                         unsubscribeUrl(row));
     }
 
-    private String htmlBody(DigestRow row, String line, LocalDate today) {
+    /**
+     * The greeting takes the run, not the clock. It was hardcoded to "Morning" and duly greeted
+     * people with it at quarter past six in the evening -- the sort of detail that makes an email
+     * feel machine-generated no matter how personal the rest of it is.
+     */
+    private String htmlBody(DigestRow row, String line, DigestRun run, LocalDate today) {
         // Inline styles and a table-free layout: every email client strips <style> blocks, and
         // several ignore flexbox entirely.
         return """
@@ -242,7 +247,7 @@ public class DailyDigestService {
                               padding:28px;border:1px solid #e5e7eb">
 
                     <p style="margin:0 0 4px;color:#6b7280;font-size:13px">%s</p>
-                    <h1 style="margin:0 0 16px;font-size:20px;color:#111827">Morning, %s</h1>
+                    <h1 style="margin:0 0 16px;font-size:20px;color:#111827">%s, %s</h1>
 
                     <p style="margin:0 0 24px;font-size:16px;line-height:1.6;color:#374151">%s</p>
 
@@ -267,6 +272,7 @@ public class DailyDigestService {
                 """
                 .formatted(
                         escape(today.format(HEADER_DATE)),
+                        run == DigestRun.EVENING ? "Evening" : "Morning",
                         escape(firstName(row)),
                         escape(line),
                         stat("Current streak", "%d days".formatted(row.getCurrentStreak()),
