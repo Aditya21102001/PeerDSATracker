@@ -129,6 +129,7 @@ export class MobileNav {
 
   /** Behind "More". */
   protected readonly secondary: Destination[] = [
+    { path: '/messages', label: 'Messages', icon: '💬' },
     { path: '/leaderboard', label: 'Leaderboard', icon: '🏆' },
     { path: '/notes', label: 'Notes', icon: '✎' },
     { path: '/profile', label: 'Platforms', icon: '🔗' },

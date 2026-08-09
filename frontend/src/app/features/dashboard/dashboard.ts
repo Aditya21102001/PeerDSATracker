@@ -38,6 +38,7 @@ import { Spinner } from '../../shared/spinner';
           <a routerLink="/revision">Revision</a>
           <a routerLink="/notes">Notes</a>
           <a routerLink="/peers">Peers</a>
+          <a routerLink="/messages">Messages</a>
           <a routerLink="/leaderboard">Leaderboard</a>
           <a routerLink="/profile">Platforms</a>
           <!-- Set or change a password. Reachable from here because an account created through

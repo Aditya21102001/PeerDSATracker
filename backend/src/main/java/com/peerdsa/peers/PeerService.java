@@ -54,14 +54,14 @@ public class PeerService {
     @Transactional(readOnly = true)
     public List<PeerView> following(Long me) {
         List<Long> ids = follows.findByFollowerId(me).stream().map(Follow::getFolloweeId).toList();
-        return toViews(users.findAllById(ids), Set.copyOf(ids));
+        return toViews(users.findAllById(ids), Set.copyOf(ids), followerIds(me));
     }
 
     @Transactional(readOnly = true)
     public List<PeerView> followers(Long me) {
         List<Long> ids = follows.findByFolloweeId(me).stream().map(Follow::getFollowerId).toList();
         // A follower is not necessarily someone I follow back.
-        return toViews(users.findAllById(ids), followedIds(me));
+        return toViews(users.findAllById(ids), followedIds(me), Set.copyOf(ids));
     }
 
     @Transactional(readOnly = true)
@@ -70,14 +70,14 @@ public class PeerService {
             return List.of();
         }
         List<User> found = users.searchByUsername(q.trim(), me, PageRequest.of(0, SEARCH_LIMIT));
-        return toViews(found, followedIds(me));
+        return toViews(found, followedIds(me), followerIds(me));
     }
 
     private Set<Long> followedIds(Long me) {
         return follows.findByFollowerId(me).stream().map(Follow::getFolloweeId).collect(Collectors.toSet());
     }
 
-    private List<PeerView> toViews(List<User> found, Set<Long> followed) {
+    private List<PeerView> toViews(List<User> found, Set<Long> followed, Set<Long> followers) {
         return found.stream()
                 .map(u -> new PeerView(
                         u.getId(),
@@ -87,11 +87,23 @@ public class PeerService {
                         u.getXp(),
                         u.getTotalSolved(),
                         streaks.effectiveCurrentStreak(u),
-                        followed.contains(u.getId())))
+                        followed.contains(u.getId()),
+                        followers.contains(u.getId())))
                 .toList();
     }
 
-    /** Read model for a peer row, with {@code following} flagged relative to the viewer. */
+    private Set<Long> followerIds(Long me) {
+        return follows.findByFolloweeId(me).stream().map(Follow::getFollowerId).collect(Collectors.toSet());
+    }
+
+    /**
+     * Read model for a peer row, with both follow directions flagged relative to the viewer.
+     *
+     * <p>{@code followsYou} exists so the UI can tell whether messaging is possible. Direct
+     * messages require a mutual follow, and without this the peers list would have to offer a
+     * "Message" button on every row and let a third of them fail with a 403 -- which teaches
+     * people the button is broken rather than that the rule exists.
+     */
     public record PeerView(
             Long id,
             String username,
@@ -100,5 +112,6 @@ public class PeerService {
             int xp,
             int totalSolved,
             int currentStreak,
-            boolean following) {}
+            boolean following,
+            boolean followsYou) {}
 }

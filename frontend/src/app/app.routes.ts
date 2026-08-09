@@ -80,6 +80,13 @@ export const routes: Routes = [
     loadComponent: () => import('./features/sheet/sheet-page').then((m) => m.SheetPage),
   },
   {
+    // Direct messages. Only between peers who follow each other -- the backend enforces it, and
+    // this page explains it rather than letting a send fail.
+    path: 'messages',
+    canActivate: [authGuard],
+    loadComponent: () => import('./features/messages/messages-page').then((m) => m.MessagesPage),
+  },
+  {
     path: 'peers',
     canActivate: [authGuard],
     loadComponent: () => import('./features/peers/peers-page').then((m) => m.PeersPage),

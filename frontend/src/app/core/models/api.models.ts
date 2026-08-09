@@ -250,6 +250,12 @@ export interface PeerView {
   currentStreak: number;
   /** Whether the signed-in user follows this person. */
   following: boolean;
+  /**
+   * Whether they follow back. Both directions are needed because direct messages require a mutual
+   * follow — without this the list would offer a "Message" button on every row and let a third of
+   * them fail with a 403, which teaches people the button is broken rather than that a rule exists.
+   */
+  followsYou: boolean;
 }
 
 /** One ranked row; also returned directly as an array by /api/leaderboard/peers. */
@@ -336,4 +342,31 @@ export interface ChatConversationDetail {
   id: number;
   title: string;
   messages: ChatMessage[];
+}
+
+/**
+ * A direct-message thread, from /api/messages/conversations.
+ *
+ * `canMessage` goes false once the two no longer follow each other. History stays readable; it is
+ * the composer that disappears, so the UI can explain rather than let a send fail.
+ */
+export interface ConversationView {
+  id: number;
+  peerId: number;
+  peerUsername: string;
+  peerDisplayName: string | null;
+  peerAvatarUrl: string | null;
+  lastMessageAt: string | null;
+  unread: number;
+  canMessage: boolean;
+}
+
+/** One direct message. `mine` is computed per viewer, so the client never needs its own user id. */
+export interface MessageView {
+  id: number;
+  conversationId: number;
+  senderId: number;
+  mine: boolean;
+  body: string;
+  createdAt: string;
 }

@@ -1,9 +1,10 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { Subject, debounceTime, distinctUntilChanged, merge, switchMap, tap } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { PeerView } from '../../core/models/api.models';
+import { MessagingService } from '../../core/services/messaging.service';
 import { PeerService } from '../../core/services/peer.service';
 import { Spinner } from '../../shared/spinner';
 
@@ -76,6 +77,11 @@ type Tab = 'search' | 'following' | 'followers';
               <button type="button" [class.following]="p.following" (click)="toggleFollow(p)">
                 {{ p.following ? 'Following' : 'Follow' }}
               </button>
+              @if (p.following && p.followsYou) {
+                <!-- Shown only when a message could actually be sent. Offering it otherwise would
+                     mean a 403 on click, which reads as a broken button rather than a rule. -->
+                <button type="button" class="message" (click)="message(p)">Message</button>
+              }
             </li>
           } @empty {
             <li class="empty">{{ emptyMessage() }}</li>
@@ -88,6 +94,8 @@ type Tab = 'search' | 'following' | 'followers';
 })
 export class PeersPage {
   private readonly peers = inject(PeerService);
+  private readonly messaging = inject(MessagingService);
+  private readonly router = inject(Router);
 
   protected readonly tabs: Tab[] = ['search', 'following', 'followers'];
   protected readonly tab = signal<Tab>('search');
@@ -182,6 +190,15 @@ export class PeersPage {
           this.people.update((list) => list.filter((p) => p.id !== peer.id));
         }
       },
+    });
+  }
+
+  /** Opens (or finds) the thread with this peer and goes there. */
+  protected message(p: PeerView): void {
+    this.messaging.openWith(p.id).subscribe({
+      next: () => void this.router.navigate(['/messages']),
+      // Only reachable if the follow changed between render and click.
+      error: () => void this.router.navigate(['/messages']),
     });
   }
 

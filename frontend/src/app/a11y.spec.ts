@@ -14,6 +14,7 @@ import { Signin } from './features/auth/signin';
 import { Signup } from './features/auth/signup';
 import { GuidePage } from './features/guide/guide-page';
 import { LeaderboardPage } from './features/leaderboard/leaderboard-page';
+import { MessagesPage } from './features/messages/messages-page';
 import { NotesPage } from './features/notes/notes-page';
 import { PeersPage } from './features/peers/peers-page';
 import { ProfilePage } from './features/profile/profile-page';
@@ -69,6 +70,7 @@ describe('accessibility (axe-core)', () => {
     ['sheet', SheetPage],
     ['peers', PeersPage],
     ['leaderboard', LeaderboardPage],
+    ['messages', MessagesPage],
     ['notes', NotesPage],
     ['revision', RevisionPage],
     ['profile', ProfilePage],
