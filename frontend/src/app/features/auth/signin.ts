@@ -1,8 +1,10 @@
+import { HttpClient } from '@angular/common/http';
 import { Component, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AbstractControl, FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { environment } from '../../../environments/environment';
+import { AuthOptions } from '../../core/models/api.models';
 import { AuthStore } from '../../core/services/auth.store';
 
 @Component({
@@ -23,10 +25,17 @@ import { AuthStore } from '../../core/services/auth.store';
 
       <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
         <div class="field">
-          <label for="email">Email</label>
-          <input id="email" type="email" formControlName="email" autocomplete="email" />
-          @if (showError('email')) {
-            <p class="field-error" role="alert">Enter a valid email address.</p>
+          <label for="identifier">Username or email</label>
+          <input
+            id="identifier"
+            type="text"
+            formControlName="identifier"
+            autocomplete="username"
+            autocapitalize="none"
+            spellcheck="false"
+          />
+          @if (showError('identifier')) {
+            <p class="field-error" role="alert">Enter your username or email address.</p>
           }
         </div>
 
@@ -52,6 +61,18 @@ import { AuthStore } from '../../core/services/auth.store';
         </button>
       </form>
 
+      <p class="alt">
+        <!-- The recovery route. Named for what it does, not "forgot password": it also covers
+             an account created through Google, which never had a password to forget. -->
+        <a routerLink="/code">Sign in with a code instead</a>
+      </p>
+
+      @if (googleEnabled()) {
+        <!-- A plain link, not a fetch: this is a full-page navigation that has to leave the SPA
+             and come back, and the backend needs to set its own cookie on the way out. -->
+        <a class="btn btn-ghost provider" [href]="googleUrl">Continue with Google</a>
+      }
+
       <p class="foot">New here? <a routerLink="/signup">Join the Force!</a></p>
     </main>
   `,
@@ -60,38 +81,60 @@ import { AuthStore } from '../../core/services/auth.store';
 /**
  * Sign-in form, reached only through guestGuard so a signed-in visitor is redirected away.
  *
- * On success login() has merely stored the tokens — unlike signup it does not load the
- * profile — and we hand off to /dashboard.
+ * The field takes a username *or* an email. Both have to work: recovery is keyed by email while
+ * sign-in is keyed by username, so someone who has just recovered their account by email would
+ * otherwise be locked out — and an account created through Google has a generated username its
+ * owner has never seen. The backend tries username first, so the label's promise holds even when
+ * one person's username is another's email address.
+ *
+ * On success login() has merely stored the tokens — unlike signup it does not load the profile —
+ * and we hand off to /dashboard.
  */
 export class Signin {
   private readonly fb = inject(FormBuilder);
   private readonly auth = inject(AuthStore);
+  private readonly http = inject(HttpClient);
   private readonly router = inject(Router);
 
   protected readonly busy = signal(false);
   protected readonly error = signal<string | null>(null);
   private readonly submitted = signal(false);
 
-  /** Hidden in production: there is no mailer, so the link would go nowhere. */
+  /** Hidden in production: the older emailed-link flow has no mailer, so it would go nowhere. */
   protected readonly resetEnabled = environment.resetEnabled;
 
+  /**
+   * Asked of the backend rather than hard-coded, so the button cannot appear on a deployment with
+   * no Google credentials — where it would 401 and read as a broken site.
+   */
+  protected readonly googleEnabled = signal(false);
+
+  /** Absolute in production. See environment.prod.ts for why it must not go through the proxy. */
+  protected readonly googleUrl = `${environment.apiOrigin}/oauth2/authorization/google`;
+
   protected readonly form = this.fb.nonNullable.group({
-    email: ['', [Validators.required, Validators.email]],
+    identifier: ['', [Validators.required]],
     password: ['', [Validators.required]],
   });
 
   constructor() {
-    // A pasted email routinely carries a trailing newline. Never trim the password.
-    const email = this.form.controls.email;
-    email.valueChanges.pipe(takeUntilDestroyed()).subscribe((value) => {
+    // A pasted username or address routinely carries a trailing newline. Never trim the password.
+    const identifier = this.form.controls.identifier;
+    identifier.valueChanges.pipe(takeUntilDestroyed()).subscribe((value) => {
       const trimmed = value.trim();
       if (trimmed !== value) {
-        email.setValue(trimmed, { emitEvent: false });
+        identifier.setValue(trimmed, { emitEvent: false });
       }
+    });
+
+    this.http.get<AuthOptions>('/api/auth/options').subscribe({
+      next: (options) => this.googleEnabled.set(options.googleEnabled),
+      // A failed probe simply means no button. Never block sign-in on it.
+      error: () => this.googleEnabled.set(false),
     });
   }
 
-  protected showError(name: 'email' | 'password'): boolean {
+  protected showError(name: 'identifier' | 'password'): boolean {
     const control: AbstractControl = this.form.controls[name];
     return control.invalid && (control.touched || this.submitted());
   }
@@ -106,15 +149,15 @@ export class Signin {
     }
 
     this.busy.set(true);
-    const { email, password } = this.form.getRawValue();
-    this.auth.login(email, password).subscribe({
+    const { identifier, password } = this.form.getRawValue();
+    this.auth.login(identifier, password).subscribe({
       next: () => {
         this.busy.set(false);
         void this.router.navigate(['/dashboard']);
       },
       error: (err) => {
         this.busy.set(false);
-        this.error.set(err?.error?.message ?? 'Invalid email or password.');
+        this.error.set(err?.error?.message ?? 'Invalid username or password.');
       },
     });
   }

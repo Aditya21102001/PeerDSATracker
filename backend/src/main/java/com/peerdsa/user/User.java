@@ -31,7 +31,12 @@ public class User {
     @Column(nullable = false)
     private String username;
 
-    @Column(name = "password_hash", nullable = false)
+    /**
+     * Null for an account created through an identity provider, which has never had a password.
+     * Never hand this to a {@code PasswordEncoder} without a null check: {@code matches} throws on
+     * a null hash rather than returning false, so the "wrong password" path would 500.
+     */
+    @Column(name = "password_hash")
     private String passwordHash;
 
     @Column(name = "display_name")
@@ -110,8 +115,26 @@ public class User {
         return avatarUrl;
     }
 
+    public void setAvatarUrl(String avatarUrl) {
+        this.avatarUrl = avatarUrl;
+    }
+
     public String getRole() {
         return role;
+    }
+
+    /**
+     * Deliberately the only way to change a role, and deliberately not called from any sign-in
+     * path. An identity provider proves who someone is; it does not get to decide what they may
+     * do -- signing in through Google must leave an existing account's role exactly as it was.
+     */
+    public void setRole(String role) {
+        this.role = role;
+    }
+
+    /** False for an account that has only ever signed in through an identity provider. */
+    public boolean hasPassword() {
+        return passwordHash != null && !passwordHash.isBlank();
     }
 
     public int getXp() {

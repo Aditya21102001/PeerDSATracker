@@ -3,5 +3,17 @@
     "target": "http://localhost:8081",
     "secure": false,
     "changeOrigin": true
+  },
+  "/oauth2": {
+    "comment": "Start of a Google sign-in. Proxied so the whole flow happens on :4300 — Spring keeps the pending authorization request in a session cookie, and that cookie is only sent back if the callback below arrives at the same origin the start went out from.",
+    "target": "http://localhost:8081",
+    "secure": false,
+    "changeOrigin": false
+  },
+  "/login/oauth2": {
+    "comment": "The callback Google redirects to. Must be proxied alongside /oauth2, and registered in the Google console as http://localhost:4300/login/oauth2/code/google. changeOrigin is false so Spring builds that same redirect_uri from the incoming Host header.",
+    "target": "http://localhost:8081",
+    "secure": false,
+    "changeOrigin": false
   }
 }

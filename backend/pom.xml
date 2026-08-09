@@ -43,6 +43,24 @@
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-actuator</artifactId>
     </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-mail</artifactId>
+    </dependency>
+
+    <!--
+      Google sign-in. Only the OAuth2 *client* side: this application redeems an authorization
+      code and reads the resulting identity, then mints its own JWT. It is never a resource
+      server, so spring-boot-starter-oauth2-resource-server is deliberately absent.
+
+      Note that adding this jar alone changes nothing at runtime. OAuthClientConfig supplies an
+      empty ClientRegistrationRepository and SecurityConfig declines to install the login filters
+      unless app.oauth.google.client-id/secret are both set.
+    -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-oauth2-client</artifactId>
+    </dependency>
 
     <!--
       Same per-library autoconfiguration split as spring-boot-flyway: RestClient.Builder

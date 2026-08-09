@@ -52,6 +52,27 @@ export const routes: Routes = [
     canActivate: [guestGuard],
     loadComponent: () => import('./features/auth/signup').then((m) => m.Signup),
   },
+  {
+    // Sign in with a one-time code, then set a password. Guest-only, and always routed: unlike
+    // the older /forgot flow this has a working transport (Brevo's HTTP API), and in demo mode it
+    // works with no mail provider at all.
+    path: 'code',
+    canActivate: [guestGuard],
+    loadComponent: () => import('./features/auth/code-signin').then((m) => m.CodeSignin),
+  },
+  {
+    // Where the backend lands the browser after a Google sign-in, successful or refused.
+    // Deliberately NOT guest-only: this route's whole job is to establish the session, and a
+    // guard that redirects a signed-in visitor would fire on the very reload that follows.
+    path: 'oauth/callback',
+    loadComponent: () => import('./features/auth/oauth-callback').then((m) => m.OauthCallback),
+  },
+  {
+    // Change or set a password. Authenticated: the backend resolves the account from the session.
+    path: 'security',
+    canActivate: [authGuard],
+    loadComponent: () => import('./features/auth/security').then((m) => m.Security),
+  },
   ...resetRoutes,
   {
     path: 'sheet',

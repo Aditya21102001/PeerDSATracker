@@ -31,6 +31,15 @@ public class RefreshToken {
     @Column(name = "expires_at", nullable = false)
     private Instant expiresAt;
 
+    /**
+     * When the user actually authenticated, set once and copied unchanged onto every successor.
+     * Distinct from {@link #createdAt}, which restarts at each rotation: this is the anchor the
+     * absolute session cap is measured from, and without it a token that is merely refreshed often
+     * enough never expires.
+     */
+    @Column(name = "session_started_at", nullable = false)
+    private Instant sessionStartedAt;
+
     @Column(nullable = false)
     private boolean revoked = false;
 
@@ -49,10 +58,17 @@ public class RefreshToken {
 
     protected RefreshToken() {}
 
-    public RefreshToken(Long userId, String tokenHash, Instant expiresAt, String userAgent, String ip) {
+    public RefreshToken(
+            Long userId,
+            String tokenHash,
+            Instant expiresAt,
+            Instant sessionStartedAt,
+            String userAgent,
+            String ip) {
         this.userId = userId;
         this.tokenHash = tokenHash;
         this.expiresAt = expiresAt;
+        this.sessionStartedAt = sessionStartedAt;
         this.userAgent = userAgent;
         this.ip = ip;
     }
@@ -67,6 +83,10 @@ public class RefreshToken {
 
     public Instant getExpiresAt() {
         return expiresAt;
+    }
+
+    public Instant getSessionStartedAt() {
+        return sessionStartedAt;
     }
 
     public boolean isRevoked() {

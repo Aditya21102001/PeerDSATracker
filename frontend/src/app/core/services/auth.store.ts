@@ -2,7 +2,7 @@ import { HttpBackend, HttpClient } from '@angular/common/http';
 import { Service, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { Observable, catchError, finalize, map, of, shareReplay, switchMap, tap, throwError } from 'rxjs';
-import { Me, TokenResponse } from '../models/api.models';
+import { ChangePasswordResponse, Me, OtpRequestResponse, TokenResponse } from '../models/api.models';
 import { TokenService } from './token.service';
 
 /**
@@ -39,10 +39,63 @@ export class AuthStore {
     );
   }
 
-  login(email: string, password: string): Observable<TokenResponse> {
+  /**
+   * `identifier` is a username *or* an email — the backend tries username first. Both have to
+   * work: recovery is keyed by email while sign-in is keyed by username, and an account created
+   * through Google has a generated username its owner has never seen.
+   */
+  login(identifier: string, password: string): Observable<TokenResponse> {
     return this.http
-      .post<TokenResponse>('/api/auth/login', { email, password })
+      .post<TokenResponse>('/api/auth/login', { identifier, password })
       .pipe(tap((t) => this.tokens.set(t)));
+  }
+
+  /**
+   * Asks for a one-time code. Answers 202 whether or not the address is registered, so the screen
+   * must show the same confirmation either way — anything else reveals which addresses have
+   * accounts.
+   */
+  requestCode(email: string): Observable<OtpRequestResponse> {
+    return this.http.post<OtpRequestResponse>('/api/auth/otp/request', { email });
+  }
+
+  /**
+   * Redeems a code. The token this stores carries the backend's `vbc` claim for a few minutes,
+   * which is what lets {@link setPassword} work with no current password — so the caller must send
+   * the user straight to the set-a-password step rather than to the dashboard.
+   */
+  verifyCode(email: string, code: string): Observable<TokenResponse> {
+    return this.http
+      .post<TokenResponse>('/api/auth/otp/verify', { email, code })
+      .pipe(tap((t) => this.tokens.set(t)));
+  }
+
+  /**
+   * Sets a new password, given one of three proofs: nothing at all if the current session came
+   * from a code sign-in minutes ago, otherwise a fresh code or the current password.
+   *
+   * The change revokes every other session, so the response carries replacement tokens for this
+   * one — store them, or the next request 401s and signs the user out mid-recovery.
+   */
+  setPassword(newPassword: string, proof: { currentPassword?: string; code?: string } = {}) {
+    return this.http
+      .post<ChangePasswordResponse>('/api/auth/change-password', {
+        newPassword,
+        currentPassword: proof.currentPassword ?? null,
+        code: proof.code ?? null,
+      })
+      .pipe(tap((r) => this.tokens.set(r.tokens)));
+  }
+
+  /**
+   * Completes a Google sign-in. The backend redirects to /oauth/callback with only the refresh
+   * token in the URL fragment — a fragment never reaches a server, so it stays out of access logs
+   * and Referer headers. Spending it immediately for an access token also rotates it, so the value
+   * that briefly sat in the address bar is dead by the time the page settles.
+   */
+  adoptRefreshToken(refreshToken: string): Observable<Me> {
+    this.tokens.setRefreshToken(refreshToken);
+    return this.refreshOnce().pipe(switchMap(() => this.loadMe()));
   }
 
   loadMe(): Observable<Me> {

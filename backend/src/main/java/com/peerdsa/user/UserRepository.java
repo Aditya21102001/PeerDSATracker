@@ -20,6 +20,13 @@ public interface UserRepository extends JpaRepository<User, Long> {
      */
     Optional<User> findByEmailIgnoreCase(String email);
 
+    /**
+     * Sign-in tries this first. Recovery is keyed by email while sign-in is keyed by username, and
+     * an account provisioned through an identity provider has a generated username its owner has
+     * never seen -- so both have to work, and the username has to win a collision.
+     */
+    Optional<User> findByUsernameIgnoreCase(String username);
+
     boolean existsByEmailIgnoreCase(String email);
 
     boolean existsByUsernameIgnoreCase(String username);

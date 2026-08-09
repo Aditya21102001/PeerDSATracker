@@ -8,19 +8,25 @@ import java.util.Base64;
 import java.util.HexFormat;
 
 /** Opaque bearer tokens. Generated once, stored only as a hash. */
-final class Tokens {
+public final class Tokens {
 
     private static final SecureRandom RANDOM = new SecureRandom();
 
     private Tokens() {}
 
-    static String random(int bytes) {
+    public static String random(int bytes) {
         byte[] buffer = new byte[bytes];
         RANDOM.nextBytes(buffer);
         return Base64.getUrlEncoder().withoutPadding().encodeToString(buffer);
     }
 
-    static String sha256(String value) {
+    /** Numeric code of {@code digits} length, zero padded, from a CSPRNG. */
+    public static String digits(int digits) {
+        int bound = (int) Math.pow(10, digits);
+        return String.format("%0" + digits + "d", RANDOM.nextInt(bound));
+    }
+
+    public static String sha256(String value) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             return HexFormat.of().formatHex(digest.digest(value.getBytes(StandardCharsets.UTF_8)));

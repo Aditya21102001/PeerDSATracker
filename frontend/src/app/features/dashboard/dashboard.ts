@@ -14,6 +14,7 @@ import { AuthStore } from '../../core/services/auth.store';
 import { InsightsService } from '../../core/services/insights.service';
 import { TourService } from '../../core/services/tour.service';
 import { HeatmapCalendar } from '../../shared/heatmap-calendar';
+import { MailSummaryCard, MailSummaryItem } from '../../shared/mail-summary-card/mail-summary-card';
 import { Spinner } from '../../shared/spinner';
 
 /**
@@ -26,7 +27,7 @@ import { Spinner } from '../../shared/spinner';
  */
 @Component({
   selector: 'app-dashboard',
-  imports: [HeatmapCalendar, RouterLink, Spinner],
+  imports: [HeatmapCalendar, MailSummaryCard, RouterLink, Spinner],
   template: `
     <main class="dashboard">
       <header>
@@ -38,6 +39,9 @@ import { Spinner } from '../../shared/spinner';
           <a routerLink="/peers">Peers</a>
           <a routerLink="/leaderboard">Leaderboard</a>
           <a routerLink="/profile">Platforms</a>
+          <!-- Set or change a password. Reachable from here because an account created through
+               Google has never had one, and its owner has nowhere else to go looking. -->
+          <a routerLink="/security">Password</a>
           <a routerLink="/guide">Guide</a>
           <button type="button" class="link" (click)="signOut()">Sign out</button>
         </nav>
@@ -87,6 +91,11 @@ import { Spinner } from '../../shared/spinner';
 
         <section class="card" data-tour="heatmap">
           <app-heatmap-calendar [days]="heatmap()" [today]="today" />
+        </section>
+
+        <section class="card">
+          <h2>Daily digest</h2>
+          <app-mail-summary-card [item]="dailyDigest()" />
         </section>
 
         <section class="card">
@@ -179,6 +188,22 @@ export class Dashboard {
 
   protected readonly weakness = signal<WeaknessReport | null>(null);
   protected readonly recommendations = signal<Recommendation[]>([]);
+  protected readonly dailyDigest = signal<MailSummaryItem>({
+    title: 'DSA Tracker · morning',
+    senderName: 'Kasukabe Task Force',
+    senderEmail: 'pranjalgaur.20.12@gmail.com',
+    timestamp: '07:44',
+    subject: 'Ding ding! Aditya Yadav, round one.',
+    summary:
+      'You are 0/369 solved overall and 0/139 on Both, with Jyoti sitting 7 spots ahead. The theme is consistent daily effort over perfection.',
+    highlights: [
+      'Estimate before you architect: turn daily work into simple, repeatable progress.',
+      'Keep the streak alive with one focused study block today.',
+      'Use the revision queue to close the gap with your current peer.',
+    ],
+    footer: 'Action Kamen approves of consistent ticks.',
+    accent: '☀️',
+  });
   /** The analytics service is optional; the dashboard must render without it. */
   protected readonly insightsDown = signal(false);
   /** True while InsightsService is retrying through a Render cold start. */

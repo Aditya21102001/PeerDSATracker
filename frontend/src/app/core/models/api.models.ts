@@ -20,10 +20,55 @@ export interface Me {
   email: string;
   username: string;
   displayName: string | null;
+  /**
+   * False for an account that has only ever signed in through Google. The security panel uses it
+   * to offer "set a password" rather than ask for a current one that has never existed.
+   */
+  hasPassword: boolean;
   xp: number;
   totalSolved: number;
   currentStreak: number;
   longestStreak: number;
+}
+
+/**
+ * Which sign-in methods this deployment offers, from GET /api/auth/options.
+ *
+ * Asked of the backend rather than hard-coded in an environment file, so the two cannot drift: a
+ * "Continue with Google" button on a backend without Google credentials 401s and looks like a
+ * broken site rather than an absent feature.
+ */
+export interface AuthOptions {
+  googleEnabled: boolean;
+  /** True when the backend returns codes in the response instead of emailing them. Dev only. */
+  otpDemoMode: boolean;
+}
+
+/**
+ * Answer to POST /api/auth/otp/request.
+ *
+ * `demoCode` is populated only when the backend is running with OTP_DEMO_MODE=true, so the flow
+ * can be exercised with no mail provider configured. It is never populated as a fallback when
+ * delivery fails — that case is a 503. Treat a non-null value as a development affordance and say
+ * so on screen, never as "the code arrived".
+ */
+export interface OtpRequestResponse {
+  demoMode: boolean;
+  demoCode: string | null;
+}
+
+/**
+ * Answer to POST /api/auth/change-password.
+ *
+ * `username` matters: recovery finds the account by email, but sign-in wants a username, and for
+ * an account created through Google those differ. Show it, or the user sets a correct password and
+ * is then told "invalid username or password" with nothing to explain why.
+ *
+ * `tokens` replaces the caller's session — the change revoked every existing refresh token.
+ */
+export interface ChangePasswordResponse {
+  username: string;
+  tokens: TokenResponse;
 }
 
 /** A sheet problem with the caller's own status/star, from /api/sheet/problems[/{id}]. */

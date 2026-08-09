@@ -24,6 +24,18 @@ export class TokenService {
     localStorage.setItem(REFRESH_KEY, tokens.refreshToken);
   }
 
+  /**
+   * Adopts a refresh token with no access token alongside it — the OAuth2 callback's shape, where
+   * only the refresh token comes back in the URL fragment. The caller must immediately refresh to
+   * obtain an access token; until it does, `accessToken()` is deliberately null and every request
+   * takes the interceptor's refresh path.
+   */
+  setRefreshToken(refreshToken: string): void {
+    this.access.set(null);
+    this.refresh.set(refreshToken);
+    localStorage.setItem(REFRESH_KEY, refreshToken);
+  }
+
   clear(): void {
     this.access.set(null);
     this.refresh.set(null);

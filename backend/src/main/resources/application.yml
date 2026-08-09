@@ -1,3 +1,10 @@
+# NOTE FOR ANYONE EDITING THIS FILE
+# There is exactly ONE top-level `spring:` key, and it must stay that way. YAML has no notion of
+# merging two mappings with the same key: a second `spring:` further down does not add to this one,
+# it REPLACES it wholesale -- silently dropping datasource, jpa and flyway, so the application
+# starts with no database at all (or, on a stricter parser, refuses to start with a duplicate-key
+# error). Add new Spring settings under the existing block. Same rule for `app:` and `logging:`.
+
 spring:
   application:
     name: peerdsa-backend
@@ -39,13 +46,38 @@ spring:
     password: ${NEON_PASSWORD}
     locations: classpath:db/migration
 
+  # SMTP, used ONLY by the daily digest (DigestMailSender). Deliberately not used for one-time
+  # sign-in codes: managed hosts including Render block outbound SMTP ports, so this transport
+  # works locally and then fails in production. Codes go out over Brevo's HTTP API instead --
+  # see app.otp.email below and OtpDelivery.
+  mail:
+    host: ${MAIL_HOST:localhost}
+    port: ${MAIL_PORT:1025}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    protocol: ${MAIL_PROTOCOL:smtp}
+    default-encoding: UTF-8
+    properties:
+      mail:
+        smtp:
+          auth: ${MAIL_AUTH:false}
+          starttls:
+            enable: ${MAIL_START_TLS_ENABLE:false}
+
 server:
   # Overridable because 8080 is often already taken by another local service.
   port: ${SERVER_PORT:8080}
+  # Render terminates TLS at its edge and forwards X-Forwarded-Proto/Host. Without this the
+  # application believes it is serving plain http on its internal hostname, and the OAuth2
+  # redirect_uri it builds ("{baseUrl}/login/oauth2/code/google") comes out as http://<internal>,
+  # which Google rejects because it does not match the console entry. Set to `none` only if
+  # something in front is NOT stripping client-supplied X-Forwarded-* headers.
+  forward-headers-strategy: ${FORWARD_HEADERS_STRATEGY:framework}
 
 app:
-  # Where reset links point. Must match where the SPA is actually served.
-  frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:4300}
+  # Where reset links point and where the OAuth2 callback sends the browser back to. Must be where
+  # the SPA is actually served: a wrong value here silently sends production users to localhost.
+  frontend-base-url: ${APP_FRONTEND_URL:${FRONTEND_BASE_URL:http://localhost:4300}}
   jwt:
     secret: ${JWT_SECRET}
     access-ttl: PT15M
@@ -53,11 +85,48 @@ app:
     # Two tabs refreshing at once present the same token. Replaying a just-rotated token
     # inside this window is a race, not theft. Seconds, never minutes.
     refresh-grace: ${REFRESH_GRACE:PT30S}
+    # The absolute ceiling on one session, measured from when the user actually authenticated and
+    # carried across every rotation. refresh-ttl slides forward on each use, so without this a
+    # session that is merely used often enough -- or a stolen token -- never expires.
+    session-max: ${SESSION_MAX:P90D}
+    # How long a token issued by code verification may set a password without the old one.
+    # Separate from access-ttl on purpose: lengthening a session must not lengthen this.
+    verified-window: ${OTP_VERIFIED_WINDOW:PT15M}
+  otp:
+    # Returns the code in the HTTP response instead of emailing it, so the flow works with no mail
+    # provider. MUST be false in production: it hands a working credential to whoever asked.
+    demo-mode: ${OTP_DEMO_MODE:true}
+    ttl: PT10M
+    length: 6
+    # Per destination address per hour, counted whether or not that address has an account --
+    # throttling only real accounts would make a 429 mean "this address is registered".
+    max-per-hour: ${OTP_MAX_PER_HOUR:5}
+    email:
+      # `brevo` or `none`. Brevo's free tier is 300 emails/day and needs only an API key plus a
+      # sender address verified in their console; an unverified sender is rejected outright.
+      provider: ${OTP_EMAIL_PROVIDER:brevo}
+      api-key: ${OTP_EMAIL_API_KEY:}
+      from: ${OTP_EMAIL_FROM:}
+      from-name: ${OTP_EMAIL_FROM_NAME:PeerDSATracker}
+      base-url: ${OTP_EMAIL_BASE_URL:https://api.brevo.com/v3/smtp/email}
+  oauth:
+    # May a Google identity with no account here create one? Off by default. Turning this on
+    # means anyone who can reach the sign-in page can become a user of this system.
+    auto-provision: ${OAUTH_AUTO_PROVISION:false}
+    # What such an account gets. Startup FAILS if this names a privileged role -- see
+    # OAuthProperties. Never make it ADMIN.
+    default-role: ${OAUTH_DEFAULT_ROLE:USER}
+    google:
+      # Both blank means Google sign-in is not installed at all: no /oauth2/** endpoints exist
+      # and the frontend hides the button. Get them from the Google Cloud console, and register
+      # <backend-origin>/login/oauth2/code/google as an authorized redirect URI.
+      client-id: ${GOOGLE_CLIENT_ID:}
+      client-secret: ${GOOGLE_CLIENT_SECRET:}
   reset:
-    # OFF in production until a real mailer exists. ResetLinkDeliverer writes the
-    # link to the log, so an enabled /forgot would promise an email it cannot send
-    # and would leak working reset links to anyone who can read the log stream.
-    # When false, /forgot and /reset return 404.
+    # The older emailed-link reset flow, superseded by the one-time code flow above (which does
+    # have a working transport). ResetLinkDeliverer still only writes the link to the log, so an
+    # enabled /forgot in production would promise an email it cannot send and leak working reset
+    # links to anyone who can read the log stream. When false, /forgot and /reset return 404.
     enabled: ${RESET_ENABLED:true}
     ttl: PT30M
     # Per user, per hour. Exceeding it silently does nothing (still a 204).
@@ -88,6 +157,20 @@ app:
     # endpoint is soft rate-limited with no published budget.
     cron: "0 0 */6 * * *"
     throttle-millis: 2000
+  mail:
+    # The daily digest. Sends over SMTP (spring.mail above), which is why it is off by default:
+    # on Render there is no reachable SMTP server.
+    enabled: ${MAIL_ENABLED:false}
+    from: ${MAIL_FROM:peerdsa@example.com}
+    host: ${MAIL_HOST:localhost}
+    port: ${MAIL_PORT:1025}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    protocol: ${MAIL_PROTOCOL:smtp}
+    start-tls-enable: ${MAIL_START_TLS_ENABLE:false}
+    auth: ${MAIL_AUTH:false}
+    cron: ${MAIL_CRON:0 0 8 * * *}
+    zone: ${MAIL_ZONE:UTC}
   openrouter:
     # The AI assistant. Blank key disables the feature: /api/chat then answers 503
     # "not configured" instead of calling upstream with an empty credential.

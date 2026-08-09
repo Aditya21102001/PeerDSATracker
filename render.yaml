@@ -47,12 +47,51 @@ services:
       - key: MANAGEMENT_HEALTH_DB_ENABLED
         value: "false"
 
-      # No mailer: /api/auth/forgot and /reset return 404 while this is false.
+      # The older emailed-link reset flow has no mailer: /api/auth/forgot and /reset return
+      # 404 while this is false. Recovery in production goes through one-time codes instead
+      # (/api/auth/otp/*), which do have a working transport -- see OTP_* below.
       - key: RESET_ENABLED
         value: "false"
 
       - key: STREAK_ZONE
         value: Asia/Kolkata
+
+      # ---------------------------------------------------- one-time codes by email
+      # MUST be false here. Demo mode returns the code in the HTTP response, which hands a
+      # working credential to whoever asks for one against any address.
+      - key: OTP_DEMO_MODE
+        value: "false"
+
+      # HTTP API, not SMTP: Render blocks the outbound SMTP ports, so a JavaMailSender
+      # implementation passes every local test and then silently sends nothing here.
+      - key: OTP_EMAIL_PROVIDER
+        value: brevo
+
+      # Brevo API key, and a sender address verified in the Brevo console. An unverified
+      # sender is rejected, delivery fails, and /api/auth/otp/request answers 503 --
+      # deliberately, rather than falling back to returning the code.
+      - key: OTP_EMAIL_API_KEY
+        sync: false
+      - key: OTP_EMAIL_FROM
+        sync: false
+
+      # ------------------------------------------------------------- Google sign-in
+      # Leave both unset to ship without the feature: no /oauth2/** endpoints are
+      # registered and the frontend hides the button. If set, register
+      # https://<this service>.onrender.com/login/oauth2/code/google in the Google console.
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+
+      # A Google identity with no account here is REFUSED. Turning this on means anyone
+      # who reaches the sign-in page can create an account by clicking one button.
+      - key: OAUTH_AUTO_PROVISION
+        value: "false"
+
+      # Startup fails if this names a privileged role. Keep it USER.
+      - key: OAUTH_DEFAULT_ROLE
+        value: USER
 
       # --- set in the dashboard, never committed ---
       - key: NEON_POOLED_URL # app datasource, the "-pooler" host

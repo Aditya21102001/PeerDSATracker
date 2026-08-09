@@ -1,5 +1,8 @@
 package com.peerdsa.auth;
 
+import static com.peerdsa.auth.AuthTestFixtures.GRACE;
+import static com.peerdsa.auth.AuthTestFixtures.SESSION_MAX;
+import static com.peerdsa.auth.AuthTestFixtures.jwtProperties;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -10,16 +13,19 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.peerdsa.auth.dto.AuthDtos.LoginRequest;
+import com.peerdsa.auth.otp.OtpService;
 import com.peerdsa.config.JwtProperties;
 import com.peerdsa.security.JwtService;
 import com.peerdsa.user.User;
 import com.peerdsa.user.UserRepository;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Base64;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.stubbing.Answer;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -31,14 +37,16 @@ import org.springframework.web.server.ResponseStatusException;
  * the whole chain must die. The revocation is committed in a REQUIRES_NEW transaction
  * (RefreshTokenRevoker) precisely because the 401 that reports the theft would otherwise
  * roll it back -- these tests pin that the revoker is actually invoked.
+ *
+ * <p>Also covers the absolute session cap: rotation pushes {@code expiresAt} forward every time,
+ * so {@code sessionStartedAt} is the only thing that ever ends a busy session.
  */
 class AuthServiceTest {
-
-    private static final Duration GRACE = Duration.ofSeconds(30);
 
     private UserRepository users;
     private RefreshTokenRepository refreshTokens;
     private RefreshTokenRevoker revoker;
+    private OtpService otpService;
     private JwtService jwtService;
     private AuthService authService;
 
@@ -47,32 +55,29 @@ class AuthServiceTest {
         users = mock(UserRepository.class);
         refreshTokens = mock(RefreshTokenRepository.class);
         revoker = mock(RefreshTokenRevoker.class);
+        otpService = mock(OtpService.class);
 
         PasswordEncoder encoder = new BCryptPasswordEncoder();
-        JwtProperties properties = new JwtProperties(
-                "test-secret-that-is-definitely-long-enough-for-hs256",
-                Duration.ofMinutes(15),
-                Duration.ofDays(30),
-                GRACE);
+        JwtProperties properties = jwtProperties();
         jwtService = new JwtService(properties);
 
-        authService = new AuthService(users, refreshTokens, revoker, encoder, jwtService, properties);
+        authService =
+                new AuthService(users, refreshTokens, revoker, encoder, jwtService, properties, otpService);
 
         // save() returns its argument, as Spring Data does. findByTokenHash is stubbed
         // per test, since each one cares about a specific token state.
         when(refreshTokens.save(any())).thenAnswer((Answer<RefreshToken>) i -> i.getArgument(0));
         when(refreshTokens.findByTokenHash(any())).thenReturn(Optional.empty());
 
-        User user = new User();
-        user.setEmail("a@b.com");
-        user.setPasswordHash(encoder.encode("Passw0rd!"));
+        User user = AuthTestFixtures.user(1L, "a@b.com", "aditya", encoder.encode("Passw0rd!"));
         when(users.findByEmailIgnoreCase("a@b.com")).thenReturn(Optional.of(user));
+        when(users.findByUsernameIgnoreCase(any())).thenReturn(Optional.empty());
         when(users.findById(any())).thenReturn(Optional.of(user));
     }
 
     @Test
     void loginIssuesBothTokensWithTheConfiguredAccessTtl() {
-        var tokens = authService.login(new LoginRequest("a@b.com", "Passw0rd!"), "junit", "127.0.0.1");
+        var tokens = authService.login(login("a@b.com", "Passw0rd!"), "junit", "127.0.0.1");
 
         assertThat(tokens.accessToken()).isNotBlank();
         assertThat(tokens.refreshToken()).isNotBlank();
@@ -81,23 +86,19 @@ class AuthServiceTest {
 
     @Test
     void anAccessTokenRoundTripsToTheUserIdItWasIssuedFor() {
-        String token = jwtService.generateAccessToken(1234L, "a@b.com");
+        String token = jwtService.generateAccessToken(1234L, "a@b.com", Instant.now());
 
         assertThat(jwtService.extractUserId(token)).isEqualTo(1234L);
     }
 
     @Test
     void aTamperedOrForgedAccessTokenYieldsNoUserId() {
-        String token = jwtService.generateAccessToken(1234L, "a@b.com");
+        String token = jwtService.generateAccessToken(1234L, "a@b.com", Instant.now());
         String[] parts = token.split("\\.");
 
         // Re-sign the same claims with a different secret.
-        JwtProperties otherSecret = new JwtProperties(
-                "a-completely-different-secret-of-sufficient-length!!",
-                Duration.ofMinutes(15),
-                Duration.ofDays(30),
-                GRACE);
-        String forged = new JwtService(otherSecret).generateAccessToken(1234L, "a@b.com");
+        String forged = new JwtService(jwtProperties("a-completely-different-secret-of-sufficient-length!!"))
+                .generateAccessToken(1234L, "a@b.com", Instant.now());
 
         // Swap the payload for one claiming a different subject.
         String tamperedPayload = Base64.getUrlEncoder()
@@ -120,7 +121,7 @@ class AuthServiceTest {
      */
     @Test
     void aSignatureOfTheWrongLengthIsRejected() {
-        String token = jwtService.generateAccessToken(1234L, "a@b.com");
+        String token = jwtService.generateAccessToken(1234L, "a@b.com", Instant.now());
 
         assertThat(jwtService.extractUserId(token + "xy")).isNull();
     }
@@ -132,18 +133,18 @@ class AuthServiceTest {
 
     @Test
     void loginWithAWrongPasswordIsUnauthorized() {
-        assertThatThrownBy(() -> authService.login(new LoginRequest("a@b.com", "wrong"), "junit", "127.0.0.1"))
+        assertThatThrownBy(() -> authService.login(login("a@b.com", "wrong"), "junit", "127.0.0.1"))
                 .isInstanceOf(ResponseStatusException.class)
-                .hasMessageContaining("Invalid credentials");
+                .hasMessageContaining("Invalid username or password");
     }
 
     @Test
     void loginWithAnUnknownEmailIsUnauthorizedNotNotFound() {
         when(users.findByEmailIgnoreCase("nobody@b.com")).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> authService.login(new LoginRequest("nobody@b.com", "x"), "junit", "127.0.0.1"))
+        assertThatThrownBy(() -> authService.login(login("nobody@b.com", "x"), "junit", "127.0.0.1"))
                 .isInstanceOf(ResponseStatusException.class)
-                .hasMessageContaining("Invalid credentials");
+                .hasMessageContaining("Invalid username or password");
     }
 
     @Test
@@ -157,7 +158,7 @@ class AuthServiceTest {
 
     @Test
     void anExpiredRefreshTokenIsRejected() {
-        RefreshToken expired = new RefreshToken(1L, "hash", java.time.Instant.now().minusSeconds(60), "j", "ip");
+        RefreshToken expired = token(Instant.now().minusSeconds(60), Instant.now().minusSeconds(120));
         when(refreshTokens.findByTokenHash(any())).thenReturn(Optional.of(expired));
 
         assertThatThrownBy(() -> authService.refresh("anything", "junit", "127.0.0.1"))
@@ -170,7 +171,7 @@ class AuthServiceTest {
 
     @Test
     void reusingAnAlreadyRevokedTokenIsTreatedAsTheftAndKillsTheChain() {
-        RefreshToken revoked = new RefreshToken(1L, "hash", java.time.Instant.now().plusSeconds(600), "j", "ip");
+        RefreshToken revoked = token(Instant.now().plusSeconds(600), Instant.now());
         revoked.revoke();
         when(refreshTokens.findByTokenHash(any())).thenReturn(Optional.of(revoked));
 
@@ -190,7 +191,7 @@ class AuthServiceTest {
      */
     @Test
     void aRotationRaceInsideTheGraceWindowIsNotTheft() {
-        RefreshToken rotated = rotatedToken(java.time.Instant.now().minusSeconds(2));
+        RefreshToken rotated = rotatedToken(Instant.now().minusSeconds(2), Instant.now());
 
         var tokens = authService.refresh("the-loser-of-the-race", "junit", "127.0.0.1");
 
@@ -202,7 +203,7 @@ class AuthServiceTest {
 
     @Test
     void replayingARotatedTokenAfterTheGraceWindowIsStillTheft() {
-        rotatedToken(java.time.Instant.now().minus(GRACE).minusSeconds(1));
+        rotatedToken(Instant.now().minus(GRACE).minusSeconds(1), Instant.now());
 
         assertThatThrownBy(() -> authService.refresh("stolen-later", "junit", "127.0.0.1"))
                 .isInstanceOf(ResponseStatusException.class)
@@ -217,8 +218,7 @@ class AuthServiceTest {
      */
     @Test
     void replayingALoggedOutTokenIsTheftEvenImmediately() {
-        RefreshToken loggedOut =
-                new RefreshToken(1L, "hash", java.time.Instant.now().plusSeconds(600), "j", "ip");
+        RefreshToken loggedOut = token(Instant.now().plusSeconds(600), Instant.now());
         loggedOut.revoke(); // no setReplacedBy: logout does not rotate
         when(refreshTokens.findByTokenHash(any())).thenReturn(Optional.of(loggedOut));
 
@@ -229,31 +229,74 @@ class AuthServiceTest {
         verify(revoker).revokeAllForUser(1L);
     }
 
+    // ---------------------------------------------------------------- the absolute session cap
+
+    /**
+     * The reason the cap exists. Every rotation sets a brand-new {@code expiresAt} 30 days out, so
+     * a token refreshed even once a month is forever valid on its own terms; only
+     * {@code sessionStartedAt}, copied unchanged along the chain, ever ends it.
+     */
+    @Test
+    void aSessionPastTheAbsoluteCapCannotRefreshEvenThoughTheTokenItselfIsFresh() {
+        Instant startedLongAgo = Instant.now().minus(SESSION_MAX).minusSeconds(60);
+        RefreshToken stillValid = token(Instant.now().plus(Duration.ofDays(30)), startedLongAgo);
+        when(refreshTokens.findByTokenHash(any())).thenReturn(Optional.of(stillValid));
+
+        assertThatThrownBy(() -> authService.refresh("well-within-its-own-ttl", "junit", "127.0.0.1"))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Session expired");
+
+        // Outliving the cap is not evidence of theft, so nothing else is punished for it.
+        verify(revoker, never()).revokeAllForUser(anyLong());
+    }
+
+    @Test
+    void aRefreshCarriesTheOriginalSessionStartOntoTheSuccessorRatherThanRestartingIt() {
+        Instant startedAt = Instant.now().minus(Duration.ofDays(40));
+        RefreshToken current = token(Instant.now().plusSeconds(600), startedAt);
+        when(refreshTokens.findByTokenHash(any())).thenReturn(Optional.of(current));
+
+        authService.refresh("healthy", "junit", "127.0.0.1");
+
+        ArgumentCaptor<RefreshToken> saved = ArgumentCaptor.forClass(RefreshToken.class);
+        verify(refreshTokens).save(saved.capture());
+        assertThat(saved.getValue().getSessionStartedAt()).isEqualTo(startedAt);
+    }
+
+    @Test
+    void logoutRevokesOnlyThePresentedToken() {
+        RefreshToken t = token(Instant.now().plusSeconds(600), Instant.now());
+        when(refreshTokens.findByTokenHash(any())).thenReturn(Optional.of(t));
+
+        authService.logout("raw");
+
+        assertThat(t.isRevoked()).isTrue();
+        verify(revoker, never()).revokeAllForUser(anyLong());
+    }
+
+    // ---------------------------------------------------------------------------- helpers
+
+    private static LoginRequest login(String identifier, String password) {
+        return new LoginRequest(identifier, null, password);
+    }
+
+    private static RefreshToken token(Instant expiresAt, Instant sessionStartedAt) {
+        return new RefreshToken(1L, "hash", expiresAt, sessionStartedAt, "junit", "ip");
+    }
+
     /** A revoked token whose successor was rotated at {@code rotatedAt}. */
-    private RefreshToken rotatedToken(java.time.Instant rotatedAt) {
-        RefreshToken presented =
-                new RefreshToken(1L, "hash", java.time.Instant.now().plusSeconds(600), "j", "ip");
+    private RefreshToken rotatedToken(Instant rotatedAt, Instant sessionStartedAt) {
+        RefreshToken presented = token(Instant.now().plusSeconds(600), sessionStartedAt);
         presented.revoke();
         presented.setReplacedBy(2L);
 
         RefreshToken successor =
-                new RefreshToken(1L, "hash2", java.time.Instant.now().plusSeconds(600), "j", "ip");
+                new RefreshToken(1L, "hash2", Instant.now().plusSeconds(600), sessionStartedAt, "j", "ip");
         // createdAt is written by the database default, so it has no setter.
         ReflectionTestUtils.setField(successor, "createdAt", rotatedAt);
 
         when(refreshTokens.findByTokenHash(any())).thenReturn(Optional.of(presented));
         when(refreshTokens.findById(2L)).thenReturn(Optional.of(successor));
         return presented;
-    }
-
-    @Test
-    void logoutRevokesOnlyThePresentedToken() {
-        RefreshToken token = new RefreshToken(1L, "hash", java.time.Instant.now().plusSeconds(600), "j", "ip");
-        when(refreshTokens.findByTokenHash(any())).thenReturn(Optional.of(token));
-
-        authService.logout("raw");
-
-        assertThat(token.isRevoked()).isTrue();
-        verify(revoker, never()).revokeAllForUser(anyLong());
     }
 }
