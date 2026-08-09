@@ -11,7 +11,7 @@ import { AuthStore } from '../../core/services/auth.store';
   selector: 'app-signin',
   imports: [ReactiveFormsModule, RouterLink],
   template: `
-    <main class="auth">
+    <main id="main-content" tabindex="-1" class="auth">
       <header>
         <h1>⚡ The Grind ⚡</h1>
         <p class="tagline">Your missions are waiting.</p>

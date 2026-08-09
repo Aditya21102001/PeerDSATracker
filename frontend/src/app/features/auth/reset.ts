@@ -7,7 +7,7 @@ import { Router, RouterLink } from '@angular/router';
   selector: 'app-reset',
   imports: [ReactiveFormsModule, RouterLink],
   template: `
-    <main class="auth">
+    <main id="main-content" tabindex="-1" class="auth">
       <h1>Choose a new password</h1>
 
       @if (!token()) {

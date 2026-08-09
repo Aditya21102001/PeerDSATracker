@@ -17,7 +17,7 @@ type Scope = 'global' | 'peers';
   selector: 'app-leaderboard-page',
   imports: [RouterLink, Spinner],
   template: `
-    <main class="leaderboard">
+    <main id="main-content" tabindex="-1" class="leaderboard">
       <header>
         <h1>Leaderboard</h1>
         <nav>

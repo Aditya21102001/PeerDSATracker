@@ -20,7 +20,7 @@ const STATUSES: readonly ProblemStatus[] = ['SOLVED', 'ATTEMPTED', 'REVISIT'];
   selector: 'app-sheet-page',
   imports: [FormsModule, RouterLink, Spinner],
   template: `
-    <main class="sheet">
+    <main id="main-content" tabindex="-1" class="sheet">
       <header>
         <div class="title">
           <h1>The Grind Sheet</h1>

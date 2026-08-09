@@ -8,7 +8,11 @@
     // otherwise infer './src/app' and warn that the root could shift if a spec is added elsewhere.
     "rootDir": "src",
     "types": [
-      "vitest/globals"
+      "vitest/globals",
+      // design-tokens.spec.ts reads styles.scss off disk to check contrast against the real
+      // tokens rather than a copy of them. Specs run in Node (jsdom is only the DOM), so fs and
+      // path are genuinely available here; nothing in src/app itself may import them.
+      "node"
     ]
   },
   "include": [

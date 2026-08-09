@@ -19,13 +19,23 @@
   --bg: #f6f7fb;
   --surface: #ffffff;
   --surface-2: #eff1f6;
+  /* Decorative separators and card edges only. Deliberately faint, and deliberately NOT used
+     to outline a control: at 1.3:1 against white it is well under the 3:1 that WCAG 1.4.11 asks
+     of anything a user has to find. --border-control below is what form fields use. */
   --border: #dee2ec;
-  --border-strong: #c3cad8;
+  /* 3.04:1 on the lightest surface. Outlines ghost buttons and empty states. */
+  --border-strong: #7b8ba9;
+  /* The boundary of a text field, a select, a checkbox. This is what tells somebody where the
+     control is, so it owes the full 3:1 of WCAG 1.4.11 -- inputs previously used --border and
+     were effectively edgeless for anyone who cannot pick a 1.3:1 edge out of a white page. */
+  --border-control: #7b8ba9;
 
   /* --- text ------------------------------------------------------------ */
   --text: #14161c;
   --text-muted: #59606f;
-  --text-faint: #858d9c;
+  /* 4.54:1 on the darkest surface. Was #858d9c (2.96:1) -- below AA, and it is used for
+     placeholder text, which is real text people have to read. */
+  --text-faint: #666e7e;
 
   /* --- brand ----------------------------------------------------------- */
   --accent: #5b5bd6;
@@ -34,7 +44,8 @@
   --on-accent: #ffffff;
 
   /* --- gamification ---------------------------------------------------- */
-  --xp: #c2670a;
+  /* 4.56:1 on every surface; was #c2670a (3.55:1). XP figures are text. */
+  --xp: #a75909;
   --xp-soft: #d977061a;
   --flame: #e04f27;
   --flame-soft: #f0562f1a;
@@ -107,12 +118,14 @@
   --surface: #14171f;
   --surface-2: #1b1f2a;
   --border: #262b38;
-  --border-strong: #39404f;
+  --border-strong: #5f6a83;
+  --border-control: #5f6a83;
 
   /* Not #fff either — softened so long sessions don't glare. */
   --text: #e7e9f0;
   --text-muted: #98a1b2;
-  --text-faint: #6b7383;
+  /* 4.51:1 on the lightest dark surface; was #6b7383 (3.45:1). */
+  --text-faint: #7f8696;
 
   --accent: #8b8bf5;
   --accent-hover: #a5a5ff;
@@ -426,7 +439,8 @@ textarea {
   width: 100%;
   padding: 0.65rem 0.85rem;
   background: var(--surface);
-  border: 1px solid var(--border);
+  /* Not --border: a field's edge is how you know the field is there. WCAG 1.4.11. */
+  border: 1px solid var(--border-control);
   border-radius: var(--r-md);
   font-size: var(--fs-sm);
   color: var(--text);
@@ -504,6 +518,46 @@ textarea {
   border-radius: var(--r-md);
   padding: var(--sp-4);
   text-align: center;
+}
+
+/*
+ * The skip link (see app.html). Off-screen until focused, then pinned to the top-left and fully
+ * visible. Deliberately NOT built on .sr-only: that class stays 1px whatever happens, so a
+ * skip link using it is announced but never seen, which fails 2.4.7 for sighted keyboard users.
+ */
+.skip-link {
+  position: absolute;
+  top: var(--sp-2);
+  left: var(--sp-2);
+  z-index: 1000;
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--surface);
+  color: var(--text);
+  border: 2px solid var(--accent);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-lg);
+  font-weight: 600;
+  text-decoration: none;
+
+  /* Moved out of view rather than display:none, so it stays focusable and in the tab order. */
+  transform: translateY(-200%);
+  transition: transform var(--t-fast) var(--ease);
+
+  &:focus {
+    transform: translateY(0);
+  }
+}
+
+/*
+ * The skip link's target. tabindex="-1" makes <main> focusable so focus genuinely lands there;
+ * without it the browser scrolls but leaves focus on the link, and the next Tab walks straight
+ * back into the nav the user just skipped.
+ *
+ * No focus ring, because this element is not in the tab order -- it only ever receives focus
+ * because the user deliberately asked to come here, and outlining the whole page would be noise.
+ */
+main[tabindex='-1']:focus {
+  outline: none;
 }
 
 .sr-only {

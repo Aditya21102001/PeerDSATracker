@@ -10,7 +10,7 @@ type Proof = 'password' | 'code';
   selector: 'app-security',
   imports: [ReactiveFormsModule, RouterLink],
   template: `
-    <main class="auth">
+    <main id="main-content" tabindex="-1" class="auth">
       <header>
         <h1>Password</h1>
         <nav><a routerLink="/dashboard">Dashboard</a></nav>

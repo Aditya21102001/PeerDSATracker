@@ -18,7 +18,7 @@ import { Spinner } from '../../shared/spinner';
   selector: 'app-revision-page',
   imports: [RouterLink, Spinner],
   template: `
-    <main class="revision">
+    <main id="main-content" tabindex="-1" class="revision">
       <header>
         <h1>Revision queue</h1>
         <nav>

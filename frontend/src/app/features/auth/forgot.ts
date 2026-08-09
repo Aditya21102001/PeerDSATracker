@@ -7,7 +7,7 @@ import { RouterLink } from '@angular/router';
   selector: 'app-forgot',
   imports: [ReactiveFormsModule, RouterLink],
   template: `
-    <main class="auth">
+    <main id="main-content" tabindex="-1" class="auth">
       <h1>Forgot your password?</h1>
       <p class="tagline">We'll send a reset link if that email is registered.</p>
 

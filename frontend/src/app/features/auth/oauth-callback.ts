@@ -6,7 +6,7 @@ import { AuthStore } from '../../core/services/auth.store';
   selector: 'app-oauth-callback',
   imports: [RouterLink],
   template: `
-    <main class="auth">
+    <main id="main-content" tabindex="-1" class="auth">
       @if (error()) {
         <h1>Couldn't sign you in</h1>
         <p class="error" role="alert">{{ error() }}</p>

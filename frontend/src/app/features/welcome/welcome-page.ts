@@ -12,7 +12,7 @@ import { RouterLink } from '@angular/router';
   selector: 'app-welcome-page',
   imports: [RouterLink],
   template: `
-    <main class="welcome">
+    <main id="main-content" tabindex="-1" class="welcome">
       <section class="hero">
         <h1>⚡ The Grind ⚡</h1>
         <p class="tagline">Conquer the Striver A2Z sheet — and actually keep coming back.</p>

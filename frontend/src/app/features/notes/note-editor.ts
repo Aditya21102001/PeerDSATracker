@@ -13,7 +13,7 @@ import { Problem } from '../../core/models/api.models';
   selector: 'app-note-editor',
   imports: [FormsModule, RouterLink],
   template: `
-    <main class="editor">
+    <main id="main-content" tabindex="-1" class="editor">
       <header>
         <a routerLink="/notes">← All notes</a>
         <a [routerLink]="['/code', problemId()]">Code</a>

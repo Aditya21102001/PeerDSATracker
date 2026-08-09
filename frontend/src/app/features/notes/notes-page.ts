@@ -12,7 +12,7 @@ import { Spinner } from '../../shared/spinner';
   selector: 'app-notes-page',
   imports: [RouterLink, Spinner],
   template: `
-    <main class="notes">
+    <main id="main-content" tabindex="-1" class="notes">
       <header>
         <h1>Notes</h1>
         <nav>

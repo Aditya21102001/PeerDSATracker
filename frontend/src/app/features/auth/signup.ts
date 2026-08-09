@@ -8,7 +8,7 @@ import { AuthStore } from '../../core/services/auth.store';
   selector: 'app-signup',
   imports: [ReactiveFormsModule, RouterLink],
   template: `
-    <main class="auth">
+    <main id="main-content" tabindex="-1" class="auth">
       <header>
         <h1>Join the Force</h1>
         <p class="tagline">474 problems. Zero excuses.</p>

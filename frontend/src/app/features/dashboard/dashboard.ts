@@ -29,7 +29,7 @@ import { Spinner } from '../../shared/spinner';
   selector: 'app-dashboard',
   imports: [HeatmapCalendar, MailSummaryCard, RouterLink, Spinner],
   template: `
-    <main class="dashboard">
+    <main id="main-content" tabindex="-1" class="dashboard">
       <header>
         <h1>⚡ The Grind ⚡</h1>
         <nav data-tour="nav">

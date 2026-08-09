@@ -23,7 +23,7 @@ import { Spinner } from '../../shared/spinner';
   selector: 'app-code-editor',
   imports: [FormsModule, RouterLink, Spinner, CodeMirror],
   template: `
-    <main class="code">
+    <main id="main-content" tabindex="-1" class="code">
       <header>
         <a routerLink="/sheet">← Sheet</a>
         <nav>

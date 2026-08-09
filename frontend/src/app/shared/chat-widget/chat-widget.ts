@@ -13,10 +13,11 @@ import { Spinner } from '../spinner';
   imports: [Spinner],
   template: `
     <button
+      #launcher
       type="button"
       class="fab"
       [attr.aria-expanded]="open()"
-      aria-label="Open the study assistant"
+      [attr.aria-label]="open() ? 'Close the study assistant' : 'Open the study assistant'"
       (click)="toggle()"
     >
       @if (open()) {
@@ -109,6 +110,7 @@ import { Spinner } from '../spinner';
           <label class="sr-only" for="chat-input">Message the assistant</label>
           <textarea
             id="chat-input"
+            #composer
             rows="1"
             placeholder="Ask anything…"
             [value]="draft()"
@@ -126,10 +128,17 @@ import { Spinner } from '../spinner';
     }
   `,
   styleUrl: './chat-widget.scss',
+  host: {
+    // Escape closes the panel from anywhere inside it. Without this the only way out is to find
+    // and click the ✕, which for a keyboard user means tabbing through the whole conversation.
+    '(keydown.escape)': 'onEscape($event)',
+  },
 })
 export class ChatWidget {
   private readonly chat = inject(ChatService);
   private readonly threadEl = viewChild<ElementRef<HTMLElement>>('thread');
+  private readonly composerEl = viewChild<ElementRef<HTMLTextAreaElement>>('composer');
+  private readonly launcherEl = viewChild<ElementRef<HTMLButtonElement>>('launcher');
 
   protected readonly open = signal(false);
   protected readonly historyOpen = signal(false);
@@ -158,14 +167,45 @@ export class ChatWidget {
 
   protected toggle(): void {
     this.open.update((v) => !v);
-    if (this.open() && !this.conversations().length) {
-      this.loadConversations();
+    if (this.open()) {
+      if (!this.conversations().length) {
+        this.loadConversations();
+      }
+      // Move focus into the panel. A dialog that opens without taking focus is invisible to a
+      // screen reader user -- nothing is announced, and their next Tab continues from wherever
+      // they were on the page behind it.
+      this.focusComposer();
     }
   }
 
   protected close(): void {
+    const wasOpen = this.open();
     this.open.set(false);
     this.historyOpen.set(false);
+    if (wasOpen) {
+      // Focus goes back where it came from. Otherwise closing the panel destroys the focused
+      // element and the browser drops focus to <body>, restarting the tab order at the top.
+      this.launcherEl()?.nativeElement.focus();
+    }
+  }
+
+  /** Escape closes, and only when there is something open to close. */
+  protected onEscape(event: Event): void {
+    if (!this.open()) {
+      return;
+    }
+    // Close the history drawer first, so one Escape does not discard both layers at once.
+    if (this.historyOpen()) {
+      this.historyOpen.set(false);
+    } else {
+      this.close();
+    }
+    event.stopPropagation();
+  }
+
+  private focusComposer(): void {
+    // After the panel has actually rendered; the textarea does not exist until then.
+    queueMicrotask(() => this.composerEl()?.nativeElement.focus());
   }
 
   protected toggleHistory(): void {

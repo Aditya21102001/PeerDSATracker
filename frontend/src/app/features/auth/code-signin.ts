@@ -10,7 +10,7 @@ type Step = 'address' | 'code' | 'password' | 'done';
   selector: 'app-code-signin',
   imports: [ReactiveFormsModule, RouterLink],
   template: `
-    <main class="auth">
+    <main id="main-content" tabindex="-1" class="auth">
       <h1>Sign in with a code</h1>
 
       @switch (step()) {

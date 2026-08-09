@@ -19,7 +19,7 @@ type Tab = 'search' | 'following' | 'followers';
   selector: 'app-peers-page',
   imports: [FormsModule, RouterLink, Spinner],
   template: `
-    <main class="peers">
+    <main id="main-content" tabindex="-1" class="peers">
       <header>
         <h1>Peers</h1>
         <nav>

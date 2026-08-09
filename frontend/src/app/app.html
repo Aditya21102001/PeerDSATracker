@@ -1,3 +1,14 @@
+<!--
+  Bypass block (WCAG 2.4.1, Level A). Every page repeats the same nav, so a keyboard or screen
+  reader user would otherwise tab through it on every single route before reaching the content
+  they came for.
+
+  It targets #main-content, which each routed page's <main> carries. Visually hidden until it
+  takes focus, at which point it must be plainly visible -- a skip link nobody can see when it is
+  focused is the same as no skip link at all.
+-->
+<a class="skip-link" href="#main-content">Skip to main content</a>
+
 <!-- One toggle for the whole app, so every page — including sign-in — can switch theme. -->
 <app-theme-toggle class="theme-switch" />
 

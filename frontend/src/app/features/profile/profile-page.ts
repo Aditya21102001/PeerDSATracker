@@ -18,7 +18,7 @@ import { InsightsService } from '../../core/services/insights.service';
   selector: 'app-profile-page',
   imports: [FormsModule, RouterLink],
   template: `
-    <main class="profile">
+    <main id="main-content" tabindex="-1" class="profile">
       <header>
         <h1>Linked platforms</h1>
         <nav>

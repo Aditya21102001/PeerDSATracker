@@ -49,7 +49,7 @@ interface GuideStats {
   selector: 'app-guide-page',
   imports: [RouterLink, Spinner],
   template: `
-    <main class="guide">
+    <main id="main-content" tabindex="-1" class="guide">
       <header>
         <h1>How The Grind works</h1>
         <nav>
