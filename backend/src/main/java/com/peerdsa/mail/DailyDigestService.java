@@ -41,6 +41,7 @@ public class DailyDigestService {
     private final BrevoMailClient mail;
     private final DigestNarrator narrator;
     private final UnsubscribeTokens unsubscribeTokens;
+    private final MailQuotaService quota;
     private final FrontendUrl frontendUrl;
     private final DigestMailProperties properties;
 
@@ -49,12 +50,14 @@ public class DailyDigestService {
             BrevoMailClient mail,
             DigestNarrator narrator,
             UnsubscribeTokens unsubscribeTokens,
+            MailQuotaService quota,
             FrontendUrl frontendUrl,
             DigestMailProperties properties) {
         this.digests = digests;
         this.mail = mail;
         this.narrator = narrator;
         this.unsubscribeTokens = unsubscribeTokens;
+        this.quota = quota;
         this.frontendUrl = frontendUrl;
         this.properties = properties;
     }
@@ -64,8 +67,8 @@ public class DailyDigestService {
 
     /** The scheduled entry point: today, on the configured clock. */
     @Transactional(readOnly = true)
-    public RunReport sendDailyDigestToAllUsers() {
-        return sendDailyDigestFor(LocalDate.now(ZoneId.of(properties.zone())));
+    public RunReport sendDailyDigestToAllUsers(DigestRun run) {
+        return sendDailyDigestFor(run, LocalDate.now(ZoneId.of(properties.zone())));
     }
 
     /**
@@ -76,7 +79,7 @@ public class DailyDigestService {
      * quietly change meaning depending on what day the suite happens to run.
      */
     @Transactional(readOnly = true)
-    public RunReport sendDailyDigestFor(LocalDate today) {
+    public RunReport sendDailyDigestFor(DigestRun run, LocalDate today) {
         if (!properties.enabled()) {
             log.info("Daily digest is disabled (MAIL_ENABLED=false); nothing sent.");
             return new RunReport(0, 0, 0);
@@ -95,21 +98,38 @@ public class DailyDigestService {
         // base is what every footer link points at. A wrong zone mails people in the middle of
         // their afternoon; a wrong base produces links that 404.
         log.info(
-                "Daily digest: treating {} as today in zone {}; unsubscribe links point at {}",
-                today, properties.zone(), properties.publicBaseUrl());
+                "Daily digest ({}): treating {} as today in zone {}; unsubscribe links point at {}",
+                run.label(), today, properties.zone(), properties.publicBaseUrl());
 
-        List<DigestRow> subscribers = digests.subscribers(today);
+        List<DigestRow> all = digests.subscribers(today);
 
-        int cap = properties.dailyCap();
-        int skippedByCap = Math.max(0, subscribers.size() - cap);
-        List<DigestRow> recipients = skippedByCap == 0 ? subscribers : subscribers.subList(0, cap);
+        // The evening run is a nudge, not a repeat. Anyone who has already practised today is
+        // dropped: "you have already done your practice" at 6pm is noise, and an identical email
+        // twice a day is how people learn to ignore both.
+        List<DigestRow> subscribers = run == DigestRun.EVENING
+                ? all.stream().filter(row -> !practisedToday(row, today)).toList()
+                : all;
+
+        if (run == DigestRun.EVENING) {
+            log.info(
+                    "Evening run: {} of {} subscribers have not practised today", subscribers.size(), all.size());
+        }
+
+        // A budget for the whole DAY, not for this run. Two runs of the per-run cap would be twice
+        // the provider's allowance -- and overspending it stops one-time sign-in codes being
+        // delivered, which is a far worse failure than a missed nudge.
+        int budget = quota.remainingToday(today);
+        int skippedByCap = Math.max(0, subscribers.size() - budget);
+        List<DigestRow> recipients =
+                skippedByCap == 0 ? subscribers : subscribers.subList(0, Math.max(0, budget));
 
         if (skippedByCap > 0) {
             log.warn(
-                    "Daily digest capped at {} of {} subscribers; {} skipped. The provider's daily"
-                            + " allowance is shared with sign-in codes -- raise MAIL_DAILY_CAP only"
-                            + " alongside the plan that pays for it.",
-                    cap, subscribers.size(), skippedByCap);
+                    "Daily digest ({}) capped: {} of {} recipients skipped, {} of today's allowance"
+                            + " of {} already used. The allowance is shared with sign-in codes --"
+                            + " raise MAIL_DAILY_CAP only alongside the plan that pays for it.",
+                    run.label(), skippedByCap, subscribers.size(),
+                    properties.dailyCap() - budget, properties.dailyCap());
         }
         if (!narrator.isAvailable()) {
             log.info("No language model configured; digests will use their written fallback lines.");
@@ -118,32 +138,55 @@ public class DailyDigestService {
         int sent = 0;
         int failed = 0;
         for (DigestRow row : recipients) {
-            if (send(row, today)) {
+            if (send(row, run, today)) {
                 sent++;
             } else {
                 failed++;
             }
         }
 
+        // Recorded in its own transaction: these messages cannot be un-sent, so forgetting them
+        // because the run failed later would let the next run spend the same budget again.
+        quota.record(today, sent);
+
         log.info(
-                "Daily digest run for {}: {} sent, {} failed, {} skipped by the cap.",
-                today, sent, failed, skippedByCap);
+                "Daily digest ({}) for {}: {} sent, {} failed, {} skipped by the cap.",
+                run.label(), today, sent, failed, skippedByCap);
         return new RunReport(sent, failed, skippedByCap);
     }
 
-    private boolean send(DigestRow row, LocalDate today) {
+    /** True when their last active day is today, so the evening nudge would be pointless. */
+    private static boolean practisedToday(DigestRow row, LocalDate today) {
+        return row.getLastActiveDate() != null && !row.getLastActiveDate().isBefore(today);
+    }
+
+    private boolean send(DigestRow row, DigestRun run, LocalDate today) {
         Situation situation = DigestNarrator.situationOf(row, today);
-        String line = narrator.lineFor(situation, firstName(row));
+        String line = narrator.lineFor(situation, firstName(row), run);
 
         return mail.send(new BrevoMailClient.Message(
-                row.getEmail(), subject(row, situation, today), textBody(row, line, today), htmlBody(row, line, today)));
+                row.getEmail(),
+                subject(row, situation, run, today),
+                textBody(row, line, today),
+                htmlBody(row, line, today)));
     }
 
     /**
      * The subject carries the one fact most likely to make somebody open it, which differs by
      * situation. A single fixed subject line every morning is what trains people to ignore it.
      */
-    private String subject(DigestRow row, Situation situation, LocalDate today) {
+    private String subject(DigestRow row, Situation situation, DigestRun run, LocalDate today) {
+        if (run == DigestRun.EVENING) {
+            // Everyone reaching here has not practised today, so the evening subject can say so
+            // outright -- which is the single most useful thing it could tell them.
+            return switch (situation) {
+                case STREAK_ALIVE, STREAK_AT_RISK -> row.getCurrentStreak() > 0
+                        ? "Your %d-day streak ends at midnight".formatted(row.getCurrentStreak())
+                        : "Still time to practise today";
+                case NEVER_STARTED -> "Still time for your first problem";
+                default -> "Still time to practise today";
+            };
+        }
         return switch (situation) {
             case STREAK_AT_RISK -> "Your %d-day streak ends today".formatted(row.getCurrentStreak());
             case STREAK_ALIVE -> row.getCurrentStreak() > 1

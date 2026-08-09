@@ -13,11 +13,15 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * verified sender for the whole application.
  *
  * @param enabled master switch. Off means the scheduled run does nothing at all.
- * @param cron when to run, in {@link #zone}. Defaults to 09:00 daily.
+ * @param cron the morning run, in {@link #zone}. Defaults to 09:00 daily.
+ * @param eveningCron the evening reminder, which goes only to people who have not practised that
+ *     day. Defaults to 18:15. Sending the identical email twice would teach people to ignore
+ *     both; this one says something the morning run could not yet know.
  * @param zone which clock "9am" is on, and which calendar decides what "today" and "this week"
  *     mean. Follows the streak zone by default, so a digest and a streak never disagree about
  *     what day it is.
- * @param dailyCap the most messages one run may send. Brevo's free tier allows 300 a day and
+ * @param dailyCap the most messages that may be sent in a DAY, across both runs and persisted in
+ *     {@code mail_quota} so an instance restart cannot reset it. Brevo's free tier allows 300 a day and
  *     sign-in codes come out of the same allowance, so this deliberately leaves headroom: a
  *     morning digest run must never consume the quota somebody needs to sign in that afternoon.
  *     Over the cap, the run mails the most recently active subscribers and logs how many it
@@ -28,7 +32,12 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  */
 @ConfigurationProperties(prefix = "app.mail")
 public record DigestMailProperties(
-        boolean enabled, String cron, String zone, int dailyCap, String publicBaseUrl) {
+        boolean enabled,
+        String cron,
+        String eveningCron,
+        String zone,
+        int dailyCap,
+        String publicBaseUrl) {
 
     /** Where unsubscribe links point when nothing else says. Only ever right on a developer box. */
     private static final String LOCAL_DEFAULT = "http://localhost:8080";

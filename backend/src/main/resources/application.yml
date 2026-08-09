@@ -169,15 +169,20 @@ app:
     # NOT here -- they are app.otp.email.*, shared with sign-in codes, so there is one mail account
     # to configure and one transport to get right.
     enabled: ${MAIL_ENABLED:false}
-    # 09:00 daily.
+    # 09:00 daily: the full digest, to everyone subscribed.
     cron: ${MAIL_CRON:0 0 9 * * *}
+    # 18:15 daily: a reminder, and ONLY to people who have not practised yet that day. Sending the
+    # same email twice is how people learn to ignore both; this one says something the morning one
+    # could not know. Both runs share one daily budget (see daily-cap).
+    evening-cron: ${MAIL_EVENING_CRON:0 15 18 * * *}
     # Which clock 9am is on, and which calendar decides "today" and "this week". Follows the
     # streak zone so an email and a streak counter can never disagree about what day it is.
     zone: ${MAIL_ZONE:${STREAK_ZONE:UTC}}
-    # Most messages one run may send. Brevo's free tier is 300/day and sign-in codes come out of
-    # the SAME allowance -- this leaves headroom so a morning digest can never consume the quota
-    # somebody needs to sign in that afternoon. Over the cap the run mails the most recently
-    # active subscribers and logs exactly how many it skipped.
+    # Most messages that may be sent in a DAY, across both runs and counted in the database
+    # (mail_quota) so a restart cannot reset it. Brevo's free tier is 300/day and sign-in codes
+    # come out of the SAME allowance -- this leaves headroom so the digest can never consume the
+    # quota somebody needs to sign in. Over budget, a run mails the most recently active
+    # subscribers and logs exactly how many it skipped.
     daily-cap: ${MAIL_DAILY_CAP:200}
     # This backend's own public origin, for unsubscribe links. Must be reachable from a mail
     # client, and is the backend rather than the SPA so the link works even if the frontend is

@@ -45,8 +45,8 @@ class DigestNarratorTest {
     void withNoModelConfiguredItUsesTheWrittenFallbackAndNeverCallsUpstream() {
         DigestNarrator offline = new DigestNarrator(openRouter, properties(""));
 
-        assertThat(offline.lineFor(Situation.STREAK_ALIVE, "Aditya"))
-                .isEqualTo(Situation.STREAK_ALIVE.fallback());
+        assertThat(offline.lineFor(Situation.STREAK_ALIVE, "Aditya", DigestRun.MORNING))
+                .isEqualTo(Situation.STREAK_ALIVE.fallback(DigestRun.MORNING));
         verify(openRouter, never()).streamReply(any(), any());
     }
 
@@ -55,14 +55,14 @@ class DigestNarratorTest {
         when(openRouter.streamReply(any(), any()))
                 .thenThrow(new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "rate limited"));
 
-        assertThat(narrator.lineFor(Situation.DORMANT, "Sam")).isEqualTo(Situation.DORMANT.fallback());
+        assertThat(lineForRun(Situation.DORMANT, "Sam")).isEqualTo(Situation.DORMANT.fallback(DigestRun.MORNING));
     }
 
     @Test
     void aGoodReplyIsUsedVerbatim() {
         when(openRouter.streamReply(any(), any())).thenReturn("Ten minutes today beats an hour on Sunday.");
 
-        assertThat(narrator.lineFor(Situation.STREAK_ALIVE, "Aditya"))
+        assertThat(lineForRun(Situation.STREAK_ALIVE, "Aditya"))
                 .isEqualTo("Ten minutes today beats an hour on Sunday.");
     }
 
@@ -72,15 +72,15 @@ class DigestNarratorTest {
     void aPreambleIsRejectedInFavourOfTheFallback() {
         when(openRouter.streamReply(any(), any())).thenReturn("Here is the line: go practise.");
 
-        assertThat(narrator.lineFor(Situation.RECENT_LAPSE, "Sam"))
-                .isEqualTo(Situation.RECENT_LAPSE.fallback());
+        assertThat(lineForRun(Situation.RECENT_LAPSE, "Sam"))
+                .isEqualTo(Situation.RECENT_LAPSE.fallback(DigestRun.MORNING));
     }
 
     @Test
     void surroundingQuotesAndMarkdownAreStripped() {
         when(openRouter.streamReply(any(), any())).thenReturn("  \"**Back to it today.**\"  ");
 
-        assertThat(narrator.lineFor(Situation.RECENT_LAPSE, "Sam")).isEqualTo("Back to it today.");
+        assertThat(lineForRun(Situation.RECENT_LAPSE, "Sam")).isEqualTo("Back to it today.");
     }
 
     @Test
@@ -88,7 +88,7 @@ class DigestNarratorTest {
         when(openRouter.streamReply(any(), any()))
                 .thenReturn("Back to it today.\n\nLet me know if you'd like another version!");
 
-        assertThat(narrator.lineFor(Situation.RECENT_LAPSE, "Sam")).isEqualTo("Back to it today.");
+        assertThat(lineForRun(Situation.RECENT_LAPSE, "Sam")).isEqualTo("Back to it today.");
     }
 
     /** This text is interpolated into an HTML email. Markup from a model is never wanted. */
@@ -96,21 +96,21 @@ class DigestNarratorTest {
     void aReplyContainingMarkupIsRejected() {
         when(openRouter.streamReply(any(), any())).thenReturn("<b>Go practise</b>");
 
-        assertThat(narrator.lineFor(Situation.STREAK_ALIVE, "Sam")).isEqualTo(Situation.STREAK_ALIVE.fallback());
+        assertThat(lineForRun(Situation.STREAK_ALIVE, "Sam")).isEqualTo(Situation.STREAK_ALIVE.fallback(DigestRun.MORNING));
     }
 
     @Test
     void anOverlongRambleIsRejected() {
         when(openRouter.streamReply(any(), any())).thenReturn("word ".repeat(200));
 
-        assertThat(narrator.lineFor(Situation.STREAK_ALIVE, "Sam")).isEqualTo(Situation.STREAK_ALIVE.fallback());
+        assertThat(lineForRun(Situation.STREAK_ALIVE, "Sam")).isEqualTo(Situation.STREAK_ALIVE.fallback(DigestRun.MORNING));
     }
 
     @Test
     void anEmptyReplyFallsBack() {
         when(openRouter.streamReply(any(), any())).thenReturn("   ");
 
-        assertThat(narrator.lineFor(Situation.NEVER_STARTED, "Sam")).isEqualTo(Situation.NEVER_STARTED.fallback());
+        assertThat(lineForRun(Situation.NEVER_STARTED, "Sam")).isEqualTo(Situation.NEVER_STARTED.fallback(DigestRun.MORNING));
     }
 
     // -------------------------------------------------------------------- situation classification
@@ -137,13 +137,37 @@ class DigestNarratorTest {
 
     /** Every situation has real written copy, so a fallback is never a placeholder. */
     @Test
-    void everySituationHasAUsableFallback() {
+    void everySituationHasAUsableFallbackForBothRuns() {
         for (Situation situation : Situation.values()) {
-            assertThat(situation.fallback()).isNotBlank().doesNotContain("TODO").hasSizeLessThan(200);
+            for (DigestRun run : DigestRun.values()) {
+                assertThat(situation.fallback(run))
+                        .as("%s / %s", situation, run)
+                        .isNotBlank()
+                        .doesNotContain("TODO")
+                        .hasSizeLessThan(200);
+            }
+        }
+    }
+
+    /**
+     * The evening copy has to acknowledge that the day is nearly gone. "Pick one today and the
+     * second gets easier" reads as a morning email that arrived eight hours late.
+     */
+    @Test
+    void theEveningFallbackDiffersFromTheMorningOne() {
+        for (Situation situation : Situation.values()) {
+            assertThat(situation.fallback(DigestRun.EVENING))
+                    .as("%s", situation)
+                    .isNotEqualTo(situation.fallback(DigestRun.MORNING));
         }
     }
 
     // ---------------------------------------------------------------------------- helpers
+
+    /** Morning by default; the evening variant has its own test below. */
+    private String lineForRun(DigestNarrator.Situation s, String name) {
+        return narrator.lineFor(s, name, DigestRun.MORNING);
+    }
 
     private static OpenRouterProperties properties(String apiKey) {
         return new OpenRouterProperties(

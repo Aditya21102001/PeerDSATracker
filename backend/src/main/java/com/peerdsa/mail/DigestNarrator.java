@@ -47,33 +47,44 @@ public class DigestNarrator {
      */
     public enum Situation {
         NEVER_STARTED("has signed up but never solved a problem yet",
-                "Everyone's first problem feels like the hardest. Pick one today and the second gets easier."),
+                "Everyone's first problem feels like the hardest. Pick one today and the second gets easier.",
+                "Still time to make today the day you start. One easy problem counts."),
         SOLVED_TODAY("has already practised today",
-                "You've already put the work in today. Anything else is a bonus."),
+                "You've already put the work in today. Anything else is a bonus.",
+                "You've already done today's work. Rest is part of it."),
         STREAK_ALIVE("practised yesterday and has a streak going",
-                "The streak holds as long as you show up. One problem is enough to keep it."),
+                "The streak holds as long as you show up. One problem is enough to keep it.",
+                "The day isn't over. One problem before bed keeps the streak intact."),
         STREAK_AT_RISK("practised two days ago and their streak is about to break",
-                "Your streak is one day from breaking. Ten minutes today is all it takes to save it."),
+                "Your streak is one day from breaking. Ten minutes today is all it takes to save it.",
+                "Last chance to save the streak tonight. Ten minutes will do it."),
         RECENT_LAPSE("has not practised for a few days",
-                "A few quiet days is nothing. Open one problem and you're back."),
+                "A few quiet days is nothing. Open one problem and you're back.",
+                "A quiet day is fine. If you have ten minutes tonight, one problem restarts it."),
         DORMANT("has not practised in weeks",
-                "It's been a while, and that's fine. Start with something easy and rebuild from there.");
+                "It's been a while, and that's fine. Start with something easy and rebuild from there.",
+                "No pressure tonight. Whenever you come back, start easy and build from there.");
 
         private final String description;
-        private final String fallback;
+        private final String morningFallback;
+        private final String eveningFallback;
 
-        Situation(String description, String fallback) {
+        Situation(String description, String morningFallback, String eveningFallback) {
             this.description = description;
-            this.fallback = fallback;
+            this.morningFallback = morningFallback;
+            this.eveningFallback = eveningFallback;
         }
 
         public String description() {
             return description;
         }
 
-        /** Used whenever the model is unavailable, slow, or unusable. Never a placeholder. */
-        public String fallback() {
-            return fallback;
+        /**
+         * Used whenever the model is unavailable, slow, or unusable -- never a placeholder, and
+         * separate per run because "get started today" reads badly at six in the evening.
+         */
+        public String fallback(DigestRun run) {
+            return run == DigestRun.EVENING ? eveningFallback : morningFallback;
         }
     }
 
@@ -106,25 +117,25 @@ public class DigestNarrator {
      * @param firstName used only to address them; deliberately the only user-controlled text that
      *     reaches the prompt, and it is length-capped before it gets there.
      */
-    public String lineFor(Situation situation, String firstName) {
+    public String lineFor(Situation situation, String firstName, DigestRun run) {
         if (!isAvailable()) {
-            return situation.fallback();
+            return situation.fallback(run);
         }
         try {
             String reply = openRouter.streamReply(
                     List.of(
                             new OpenRouterClient.Turn("system", SYSTEM_PROMPT),
-                            new OpenRouterClient.Turn("user", userPrompt(situation, firstName))),
+                            new OpenRouterClient.Turn("user", userPrompt(situation, firstName, run))),
                     token -> {});
 
             String cleaned = clean(reply);
-            return cleaned.isEmpty() ? situation.fallback() : cleaned;
+            return cleaned.isEmpty() ? situation.fallback(run) : cleaned;
 
         } catch (RuntimeException e) {
             // Rate limited, cold, timed out, misconfigured model id -- all the same here. The mail
             // still goes out; only its opening sentence is less bespoke.
             log.warn("Could not generate a digest line ({}); using the written fallback", e.toString());
-            return situation.fallback();
+            return situation.fallback(run);
         }
     }
 
@@ -145,7 +156,7 @@ public class DigestNarrator {
 
             Reply with the line itself and nothing else.""";
 
-    private static String userPrompt(Situation situation, String firstName) {
+    private static String userPrompt(Situation situation, String firstName, DigestRun run) {
         String name = firstName == null || firstName.isBlank() ? "this person" : firstName.trim();
         // Capped hard: a display name is user-controlled text, and this is the only place any of
         // it reaches a prompt. The system prompt refuses instructions inside it; the cap means
@@ -153,7 +164,12 @@ public class DigestNarrator {
         if (name.length() > 40) {
             name = name.substring(0, 40);
         }
-        return "Write the line for %s, who %s.".formatted(name, situation.description());
+        String when = run == DigestRun.EVENING
+                // The evening line has to acknowledge that most of the day has gone, or it reads
+                // like a morning email that arrived late.
+                ? "It is early evening and the day is nearly over, but there is still time tonight."
+                : "It is first thing in the morning.";
+        return "%s Write the line for %s, who %s.".formatted(when, name, situation.description());
     }
 
     /**

@@ -35,17 +35,21 @@ class DailyDigestServiceTest {
     private DigestRepository digests;
     private BrevoMailClient mail;
     private DigestNarrator narrator;
+    private MailQuotaService quota;
 
     @BeforeEach
     void setUp() {
         digests = mock(DigestRepository.class);
         mail = mock(BrevoMailClient.class);
         narrator = mock(DigestNarrator.class);
+        quota = mock(MailQuotaService.class);
+        // Plenty of budget unless a test says otherwise.
+        when(quota.remainingToday(any())).thenReturn(10_000);
 
         when(mail.isConfigured()).thenReturn(true);
         when(mail.send(any())).thenReturn(true);
         when(narrator.isAvailable()).thenReturn(true);
-        when(narrator.lineFor(any(), anyString())).thenReturn("Keep going, you're closer than you think.");
+        when(narrator.lineFor(any(), anyString(), any())).thenReturn("Keep going, you're closer than you think.");
         when(digests.subscribers(any())).thenReturn(List.of());
     }
 
@@ -55,7 +59,7 @@ class DailyDigestServiceTest {
     void aDisabledDigestSendsNothing() {
         when(digests.subscribers(any())).thenReturn(List.of(row(1L, "a@b.com", 5, 3)));
 
-        DailyDigestService.RunReport report = service(false, 200).sendDailyDigestFor(TODAY);
+        DailyDigestService.RunReport report = service(false, 200).sendDailyDigestFor(DigestRun.MORNING, TODAY);
 
         assertThat(report.sent()).isZero();
         verify(mail, never()).send(any());
@@ -70,7 +74,7 @@ class DailyDigestServiceTest {
         when(mail.isConfigured()).thenReturn(false);
         when(digests.subscribers(any())).thenReturn(List.of(row(1L, "a@b.com", 5, 3)));
 
-        DailyDigestService.RunReport report = service(true, 200).sendDailyDigestFor(TODAY);
+        DailyDigestService.RunReport report = service(true, 200).sendDailyDigestFor(DigestRun.MORNING, TODAY);
 
         assertThat(report.sent()).isZero();
         verify(mail, never()).send(any());
@@ -89,18 +93,21 @@ class DailyDigestServiceTest {
                 .mapToObj(i -> row(i, "user" + i + "@example.com", 1, 1))
                 .toList();
         when(digests.subscribers(any())).thenReturn(many);
+        when(quota.remainingToday(TODAY)).thenReturn(200);
 
-        DailyDigestService.RunReport report = service(true, 200).sendDailyDigestFor(TODAY);
+        DailyDigestService.RunReport report = service(true, 200).sendDailyDigestFor(DigestRun.MORNING, TODAY);
 
         assertThat(report.sent()).isEqualTo(200);
         assertThat(report.skippedByCap()).isEqualTo(50);
+        // Recorded, so the evening run sees a spent budget rather than a fresh one.
+        verify(quota).record(TODAY, 200);
     }
 
     @Test
     void aRunUnderTheCapSkipsNobody() {
         when(digests.subscribers(any())).thenReturn(List.of(row(1L, "a@b.com", 5, 3)));
 
-        DailyDigestService.RunReport report = service(true, 200).sendDailyDigestFor(TODAY);
+        DailyDigestService.RunReport report = service(true, 200).sendDailyDigestFor(DigestRun.MORNING, TODAY);
 
         assertThat(report.sent()).isEqualTo(1);
         assertThat(report.skippedByCap()).isZero();
@@ -112,7 +119,7 @@ class DailyDigestServiceTest {
                 List.of(row(1L, "a@b.com", 5, 3), row(2L, "c@d.com", 5, 3)));
         when(mail.send(any())).thenReturn(false).thenReturn(true);
 
-        DailyDigestService.RunReport report = service(true, 200).sendDailyDigestFor(TODAY);
+        DailyDigestService.RunReport report = service(true, 200).sendDailyDigestFor(DigestRun.MORNING, TODAY);
 
         assertThat(report.sent()).isEqualTo(1);
         assertThat(report.failed()).isEqualTo(1);
@@ -124,7 +131,7 @@ class DailyDigestServiceTest {
     void everyMessageCarriesTheRealFiguresAndAnUnsubscribeLink() {
         when(digests.subscribers(any())).thenReturn(List.of(row(42L, "a@b.com", 7, 3)));
 
-        service(true, 200).sendDailyDigestFor(TODAY);
+        service(true, 200).sendDailyDigestFor(DigestRun.MORNING, TODAY);
 
         BrevoMailClient.Message message = captureMessage();
         assertThat(message.to()).isEqualTo("a@b.com");
@@ -137,10 +144,10 @@ class DailyDigestServiceTest {
     /** The model writes the sentence; if it says nothing useful the mail still goes out. */
     @Test
     void theNarratorsLineAppearsInTheBody() {
-        when(narrator.lineFor(any(), anyString())).thenReturn("One problem today is enough.");
+        when(narrator.lineFor(any(), anyString(), any())).thenReturn("One problem today is enough.");
         when(digests.subscribers(any())).thenReturn(List.of(row(1L, "a@b.com", 5, 3)));
 
-        service(true, 200).sendDailyDigestFor(TODAY);
+        service(true, 200).sendDailyDigestFor(DigestRun.MORNING, TODAY);
 
         assertThat(captureMessage().htmlBody()).contains("One problem today is enough.");
     }
@@ -151,11 +158,11 @@ class DailyDigestServiceTest {
      */
     @Test
     void userControlledTextIsEscapedBeforeItReachesTheHtml() {
-        when(narrator.lineFor(any(), anyString())).thenReturn("tricky & \"quoted\"");
+        when(narrator.lineFor(any(), anyString(), any())).thenReturn("tricky & \"quoted\"");
         DigestRow evil = row(1L, "a@b.com", 5, 3, "<script>alert(1)</script>", LocalDate.of(2026, 8, 9));
         when(digests.subscribers(any())).thenReturn(List.of(evil));
 
-        service(true, 200).sendDailyDigestFor(TODAY);
+        service(true, 200).sendDailyDigestFor(DigestRun.MORNING, TODAY);
 
         String html = captureMessage().htmlBody();
         assertThat(html).doesNotContain("<script>");
@@ -169,7 +176,7 @@ class DailyDigestServiceTest {
         when(digests.subscribers(any())).thenReturn(List.of(
                 row(1L, "risk@b.com", 4, 3, "Ana", TODAY.minusDays(2))));
 
-        service(true, 200).sendDailyDigestFor(TODAY);
+        service(true, 200).sendDailyDigestFor(DigestRun.MORNING, TODAY);
 
         assertThat(captureMessage().subject()).isEqualTo("Your 4-day streak ends today");
     }
@@ -178,7 +185,7 @@ class DailyDigestServiceTest {
     void somebodyWhoHasNeverPractisedGetsAStartingSubjectNotAStreakOne() {
         when(digests.subscribers(any())).thenReturn(List.of(neverPractised()));
 
-        service(true, 200).sendDailyDigestFor(TODAY);
+        service(true, 200).sendDailyDigestFor(DigestRun.MORNING, TODAY);
 
         assertThat(captureMessage().subject()).isEqualTo("Your first problem is waiting");
     }
@@ -188,9 +195,69 @@ class DailyDigestServiceTest {
     void theRevisionBlockIsAbsentWhenNothingIsDue() {
         when(digests.subscribers(any())).thenReturn(List.of(row(1L, "a@b.com", 5, 3)));
 
-        service(true, 200).sendDailyDigestFor(TODAY);
+        service(true, 200).sendDailyDigestFor(DigestRun.MORNING, TODAY);
 
         assertThat(captureMessage().htmlBody()).doesNotContain("Due for revision");
+    }
+
+    // -------------------------------------------------------------------- the evening reminder
+
+    /**
+     * The reason there is a second send rather than a repeat: somebody who has already practised
+     * must not be told about it again at 6pm. Two near-identical emails a day is how people learn
+     * to ignore both -- or mark them as spam, which costs the sending domain far more than a
+     * missed nudge.
+     */
+    @Test
+    void theEveningRunSkipsAnybodyWhoHasAlreadyPractisedToday() {
+        DigestRow doneToday = row(1L, "done@b.com", 5, 3, "Ana", TODAY);
+        DigestRow notYet = row(2L, "pending@b.com", 5, 4, "Bo", TODAY.minusDays(1));
+        when(digests.subscribers(any())).thenReturn(List.of(doneToday, notYet));
+
+        DailyDigestService.RunReport report =
+                service(true, 200).sendDailyDigestFor(DigestRun.EVENING, TODAY);
+
+        assertThat(report.sent()).isEqualTo(1);
+        assertThat(captureMessage().to()).isEqualTo("pending@b.com");
+    }
+
+    /** The morning run has no such filter: it goes to everybody who is subscribed. */
+    @Test
+    void theMorningRunGoesToEverybodyIncludingThoseWhoHaveAlreadyPractised() {
+        when(digests.subscribers(any())).thenReturn(List.of(
+                row(1L, "done@b.com", 5, 3, "Ana", TODAY),
+                row(2L, "pending@b.com", 5, 4, "Bo", TODAY.minusDays(1))));
+
+        assertThat(service(true, 200).sendDailyDigestFor(DigestRun.MORNING, TODAY).sent()).isEqualTo(2);
+    }
+
+    @Test
+    void theEveningSubjectSaysThereIsStillTimeRatherThanRepeatingTheMorningOne() {
+        when(digests.subscribers(any())).thenReturn(
+                List.of(row(1L, "a@b.com", 6, 3, "Ana", TODAY.minusDays(1))));
+
+        service(true, 200).sendDailyDigestFor(DigestRun.EVENING, TODAY);
+
+        assertThat(captureMessage().subject()).isEqualTo("Your 6-day streak ends at midnight");
+    }
+
+    /**
+     * The budget is for the whole day, across both runs. A morning run that spent it must leave
+     * the evening one with nothing -- otherwise two runs of the cap is twice the provider
+     * allowance, and overspending it stops sign-in codes being delivered.
+     */
+    @Test
+    void theEveningRunSendsNothingWhenTheMorningRunSpentTheDaysBudget() {
+        when(digests.subscribers(any())).thenReturn(
+                List.of(row(1L, "a@b.com", 5, 3, "Ana", TODAY.minusDays(1))));
+        when(quota.remainingToday(TODAY)).thenReturn(0);
+
+        DailyDigestService.RunReport report =
+                service(true, 200).sendDailyDigestFor(DigestRun.EVENING, TODAY);
+
+        assertThat(report.sent()).isZero();
+        assertThat(report.skippedByCap()).isEqualTo(1);
+        verify(mail, never()).send(any());
     }
 
     // ---------------------------------------------------------------------------- helpers
@@ -216,8 +283,10 @@ class DailyDigestServiceTest {
                 mail,
                 narrator,
                 new UnsubscribeTokens(jwt),
+                quota,
                 new FrontendUrl("https://app.example.com", List.of()),
-                new DigestMailProperties(enabled, "0 0 9 * * *", "UTC", cap, "https://api.example.com"));
+                new DigestMailProperties(
+                        enabled, "0 0 9 * * *", "0 15 18 * * *", "UTC", cap, "https://api.example.com"));
     }
 
     private static DigestRow row(long id, String email, int streak, long rank) {

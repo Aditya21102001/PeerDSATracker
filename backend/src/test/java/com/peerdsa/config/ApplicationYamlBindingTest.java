@@ -160,6 +160,7 @@ class ApplicationYamlBindingTest {
                 bind("app.mail", com.peerdsa.mail.DigestMailProperties.class);
 
         assertThat(digest.cron()).isEqualTo("0 0 9 * * *");
+        assertThat(digest.eveningCron()).isEqualTo("0 15 18 * * *");
         assertThat(digest.enabled()).isFalse(); // opt-in per deployment
         assertThat(digest.dailyCap()).isPositive().isLessThan(300);
         assertThat(digest.publicBaseUrl()).isNotBlank();
