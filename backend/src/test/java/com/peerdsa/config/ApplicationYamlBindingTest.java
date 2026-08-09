@@ -85,16 +85,33 @@ class ApplicationYamlBindingTest {
                 .isFalse();
     }
 
+    /**
+     * Auto-provisioning is on for this application by explicit choice -- it is a public tracker
+     * whose sign-up is already open, so refusing a first-time Google user would only look broken.
+     *
+     * <p>The assertion that matters is the second one. Whatever auto-provisioning is set to, the
+     * role it hands out must never be privileged: that is the difference between "anyone can sign
+     * up" and "anyone can become an administrator of someone else's system".
+     */
     @Test
-    void oauthPropertiesDefaultToRefusingUnknownIdentitiesAndAnUnprivilegedRole() {
+    void oauthProvisioningIsEnabledButOnlyEverWithAnUnprivilegedRole() {
         OAuthProperties oauth = bind("app.oauth", OAuthProperties.class);
 
-        assertThat(oauth.autoProvision()).isFalse();
+        assertThat(oauth.autoProvision()).isTrue();
         assertThat(oauth.defaultRole()).isEqualTo("USER");
         assertThat(OAuthProperties.PRIVILEGED_ROLES).doesNotContain(oauth.defaultRole());
 
         // Blank credentials by default, so Google sign-in is absent rather than broken.
         assertThat(oauth.google().configured()).isFalse();
+    }
+
+    /** And it can still be turned off per deployment without touching code. */
+    @Test
+    void autoProvisioningCanBeDisabledByEnvironment() {
+        StandardEnvironment closed = loadApplicationYaml();
+        closed.getPropertySources().addFirst(singleProperty("OAUTH_AUTO_PROVISION", "false"));
+
+        assertThat(bindOauth(closed).autoProvision()).isFalse();
     }
 
     /**

@@ -2,7 +2,7 @@ package com.peerdsa.auth;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
+import com.peerdsa.config.FrontendUrl;
 import org.springframework.stereotype.Component;
 
 /**
@@ -18,17 +18,17 @@ public class ResetLinkDeliverer {
 
     private static final Logger log = LoggerFactory.getLogger(ResetLinkDeliverer.class);
 
-    private final String frontendBaseUrl;
+    private final FrontendUrl frontendUrl;
 
-    public ResetLinkDeliverer(@Value("${app.frontend-base-url}") String frontendBaseUrl) {
-        this.frontendBaseUrl = frontendBaseUrl;
+    public ResetLinkDeliverer(FrontendUrl frontendUrl) {
+        this.frontendUrl = frontendUrl;
     }
 
     public void deliver(String email, String rawToken) {
         log.warn(
                 "PASSWORD RESET for {} -> {}/reset?token={}  (no mailer configured; see ResetLinkDeliverer)",
                 email,
-                frontendBaseUrl,
+                frontendUrl.get(),
                 rawToken);
     }
 }

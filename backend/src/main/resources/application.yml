@@ -76,8 +76,13 @@ server:
 
 app:
   # Where reset links point and where the OAuth2 callback sends the browser back to. Must be where
-  # the SPA is actually served: a wrong value here silently sends production users to localhost.
-  frontend-base-url: ${APP_FRONTEND_URL:${FRONTEND_BASE_URL:http://localhost:4300}}
+  # the SPA is actually served: a wrong value silently sends production users to localhost, with a
+  # perfectly successful sign-in behind them and nothing in the logs to say so.
+  #
+  # Deliberately blank when unset rather than defaulting to localhost here. FrontendUrl then
+  # derives it from app.cors.allowed-origins -- which must already name the SPA's real origin for
+  # the app to function -- and logs whichever source it used.
+  frontend-base-url: ${APP_FRONTEND_URL:${FRONTEND_BASE_URL:}}
   jwt:
     secret: ${JWT_SECRET}
     access-ttl: PT15M
@@ -110,9 +115,18 @@ app:
       from-name: ${OTP_EMAIL_FROM_NAME:PeerDSATracker}
       base-url: ${OTP_EMAIL_BASE_URL:https://api.brevo.com/v3/smtp/email}
   oauth:
-    # May a Google identity with no account here create one? Off by default. Turning this on
-    # means anyone who can reach the sign-in page can become a user of this system.
-    auto-provision: ${OAUTH_AUTO_PROVISION:false}
+    # May a Google identity with no account here create one?
+    #
+    # ON, deliberately: this is a public study tracker, self-registration is already open at
+    # /api/auth/signup, and refusing a first-time Google user reads as a broken button. It is a
+    # real decision though, not a default worth inheriting -- it means anyone who can reach the
+    # sign-in page can become a user. Set OAUTH_AUTO_PROVISION=false on any deployment where
+    # accounts are meant to be handed out rather than taken.
+    #
+    # What it does NOT do is decide privileges: new accounts get default-role below, existing
+    # accounts keep whatever role they already have, and startup fails outright if default-role
+    # names a privileged one.
+    auto-provision: ${OAUTH_AUTO_PROVISION:true}
     # What such an account gets. Startup FAILS if this names a privileged role -- see
     # OAuthProperties. Never make it ADMIN.
     default-role: ${OAUTH_DEFAULT_ROLE:USER}

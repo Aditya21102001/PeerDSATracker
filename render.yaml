@@ -84,10 +84,12 @@ services:
       - key: GOOGLE_CLIENT_SECRET
         sync: false
 
-      # A Google identity with no account here is REFUSED. Turning this on means anyone
-      # who reaches the sign-in page can create an account by clicking one button.
+      # A first-time Google user may create an account by clicking the button, exactly as
+      # they already can through the open /api/auth/signup. Set "false" on any deployment
+      # where accounts are meant to be handed out rather than taken. Either way this does
+      # not affect privileges -- see OAUTH_DEFAULT_ROLE.
       - key: OAUTH_AUTO_PROVISION
-        value: "false"
+        value: "true"
 
       # Startup fails if this names a privileged role. Keep it USER.
       - key: OAUTH_DEFAULT_ROLE

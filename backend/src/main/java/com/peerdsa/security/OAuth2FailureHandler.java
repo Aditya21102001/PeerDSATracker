@@ -1,5 +1,6 @@
 package com.peerdsa.security;
 
+import com.peerdsa.config.FrontendUrl;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
@@ -7,7 +8,6 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.authentication.AuthenticationFailureHandler;
 import org.springframework.stereotype.Component;
@@ -28,12 +28,10 @@ public class OAuth2FailureHandler implements AuthenticationFailureHandler {
 
     private static final Logger log = LoggerFactory.getLogger(OAuth2FailureHandler.class);
 
-    private final String frontendBaseUrl;
+    private final FrontendUrl frontendUrl;
 
-    public OAuth2FailureHandler(@Value("${app.frontend-base-url}") String frontendBaseUrl) {
-        this.frontendBaseUrl = frontendBaseUrl != null && frontendBaseUrl.endsWith("/")
-                ? frontendBaseUrl.substring(0, frontendBaseUrl.length() - 1)
-                : frontendBaseUrl;
+    public OAuth2FailureHandler(FrontendUrl frontendUrl) {
+        this.frontendUrl = frontendUrl;
     }
 
     @Override
@@ -46,6 +44,6 @@ public class OAuth2FailureHandler implements AuthenticationFailureHandler {
         String message = URLEncoder.encode(
                 "Google sign-in did not complete. Please try again, or sign in with your password.",
                 StandardCharsets.UTF_8);
-        response.sendRedirect(frontendBaseUrl + "/oauth/callback#error=" + message);
+        response.sendRedirect(frontendUrl.get() + "/oauth/callback#error=" + message);
     }
 }

@@ -3,6 +3,7 @@ package com.peerdsa.security;
 import com.peerdsa.auth.OAuthSignInRefusedException;
 import com.peerdsa.auth.OAuthSignInService;
 import com.peerdsa.auth.dto.AuthDtos.TokenResponse;
+import com.peerdsa.config.FrontendUrl;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
@@ -10,7 +11,6 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
@@ -36,12 +36,11 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
     private static final Logger log = LoggerFactory.getLogger(OAuth2SuccessHandler.class);
 
     private final OAuthSignInService oauthSignIn;
-    private final String frontendBaseUrl;
+    private final FrontendUrl frontendUrl;
 
-    public OAuth2SuccessHandler(
-            OAuthSignInService oauthSignIn, @Value("${app.frontend-base-url}") String frontendBaseUrl) {
+    public OAuth2SuccessHandler(OAuthSignInService oauthSignIn, FrontendUrl frontendUrl) {
         this.oauthSignIn = oauthSignIn;
-        this.frontendBaseUrl = trimTrailingSlash(frontendBaseUrl);
+        this.frontendUrl = frontendUrl;
     }
 
     @Override
@@ -75,14 +74,10 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
     }
 
     private String callbackUrl(String fragment) {
-        return frontendBaseUrl + "/oauth/callback#" + fragment;
+        return frontendUrl.get() + "/oauth/callback#" + fragment;
     }
 
     private static String encode(String value) {
         return URLEncoder.encode(value == null ? "" : value, StandardCharsets.UTF_8);
-    }
-
-    private static String trimTrailingSlash(String url) {
-        return url != null && url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
     }
 }
