@@ -405,6 +405,24 @@ textarea {
   &.btn-sm {
     padding: 0.3rem 0.65rem;
     font-size: var(--fs-xs);
+    /*
+     * WCAG 2.5.8 (AA) asks for a 24x24 CSS px target. The padding plus a 13px line box lands at
+     * roughly 25px -- compliant, but with no margin, so a later font-size tweak could silently
+     * drop it under the bar. Pinned explicitly rather than left to arithmetic.
+     */
+    min-height: 24px;
+  }
+}
+
+/*
+ * Thumb-sized targets on touch devices, keyed on the pointer rather than the viewport: a 1024px
+ * tablet has the same thumbs as a 375px phone, and a width breakpoint sails straight past it.
+ * 24px clears the AA minimum but is genuinely hard to hit with a thumb; 40px is the size people
+ * actually manage. The sheet does the same for its own row controls.
+ */
+@media (pointer: coarse) {
+  .btn.btn-sm {
+    min-height: 40px;
   }
 }
 
