@@ -77,18 +77,21 @@ public class AnalyticsController {
                         response.getStatusCode());
                 return unavailable(e);
             }
-            // A 4xx is us calling it wrong; a 5xx is it failing on its own. Sending an operator
-            // to check credentials after an upstream crash wastes the one clue they have.
-            String hint = response.getStatusCode().is4xxClientError()
-                    ? "Check ANALYTICS_BASE_URL and INTERNAL_TOKEN."
-                    : "Analytics failed internally; check its own logs.";
+            String hint = hintFor(response.getStatusCode().value());
             log.error(
                     "Analytics returned {} for an internal call. {} Body: {}",
                     response.getStatusCode(),
                     hint,
                     response.getResponseBodyAsString(),
                     e);
-            return new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Analytics service error", e);
+            // The status is repeated in the message on purpose. "Analytics service error" is true
+            // of a wrong token, a wrong URL, and an upstream crash alike, and the three have
+            // nothing in common to do about them -- so the one person who can fix it had to go
+            // read Render's logs to learn which it was. Naming the status and the variable turns
+            // a support round-trip into something visible in the browser's network tab.
+            return new ResponseStatusException(
+                    HttpStatus.BAD_GATEWAY, "Analytics service error (upstream " + response.getStatusCode().value()
+                            + "). " + hint, e);
         }
         if (e instanceof ResourceAccessException) {
             // Expected on the free tier: the service is spinning up. Not worth an ERROR.
@@ -97,6 +100,31 @@ public class AnalyticsController {
             log.error("Unexpected failure calling analytics", e);
         }
         return unavailable(e);
+    }
+
+    /**
+     * What to actually do about an upstream status.
+     *
+     * <p>The previous split -- 4xx means "check credentials", 5xx means "check its logs" -- was
+     * too coarse to be useful: a 401 and a 404 are both 4xx but have different single-line fixes,
+     * and 422 (which is what a drifted request contract produces) is neither. Each status below is
+     * a failure this pair of services can genuinely produce, matched to the one thing that fixes it.
+     */
+    static String hintFor(int status) {
+        return switch (status) {
+            // The two services carry different INTERNAL_TOKEN values. Easy to drift, because the
+            // live services were created by hand rather than from render.yaml's shared env group.
+            case 401, 403 -> "Analytics rejected our token: INTERNAL_TOKEN differs between the two services.";
+            // Right host, wrong path -- ANALYTICS_BASE_URL usually has a trailing path or is
+            // pointing at something that is not the analytics service.
+            case 404 -> "Analytics has no such route: check ANALYTICS_BASE_URL.";
+            // FastAPI's own validation error. The request contract drifted: the Java records in
+            // AnalyticsDtos no longer match the Pydantic models.
+            case 422 -> "Analytics rejected the request body: the DTO contract has drifted.";
+            default -> status >= 500
+                    ? "Analytics failed internally; check its own logs."
+                    : "Unexpected client error calling analytics.";
+        };
     }
 
     /** Statuses a proxy emits when the origin is unreachable. FastAPI never returns these. */

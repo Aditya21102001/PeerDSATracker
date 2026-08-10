@@ -53,6 +53,16 @@ public class AnalyticsClient {
                 .build();
     }
 
+    /**
+     * Cheapest possible authenticated call: proves the base URL points at the analytics service
+     * AND that both services carry the same {@code INTERNAL_TOKEN}. Used by the startup probe.
+     *
+     * @throws org.springframework.web.client.RestClientException if unreachable or refused
+     */
+    public void ping() {
+        client.get().uri("/internal/ping").retrieve().toBodilessEntity();
+    }
+
     public WeaknessResponse weakness(WeaknessRequest request) {
         return post("/analytics/weakness", request, WeaknessResponse.class);
     }

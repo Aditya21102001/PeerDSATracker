@@ -33,6 +33,16 @@ public class OpenRouterClient {
 
     private static final Logger log = LoggerFactory.getLogger(OpenRouterClient.class);
 
+    /**
+     * Total attempts, not retries: 3 means at most two repeats. Low on purpose -- the caller is
+     * usually a person watching a chat window, and the daily digest runs this once per subscriber,
+     * so every extra attempt is paid hundreds of times over.
+     */
+    private static final int MAX_ATTEMPTS = 3;
+
+    /** First backoff; doubles per attempt, plus jitter. */
+    private static final long RETRY_BASE_MILLIS = 500;
+
     private final OpenRouterProperties props;
     private final ObjectMapper mapper;
     private final HttpClient httpClient;
@@ -71,22 +81,84 @@ public class OpenRouterClient {
                 .POST(HttpRequest.BodyPublishers.ofString(requestBody(messages)))
                 .build();
 
-        try {
-            HttpResponse<java.io.InputStream> response =
-                    httpClient.send(request, HttpResponse.BodyHandlers.ofInputStream());
-            if (response.statusCode() >= 300) {
-                throw upstreamError(response);
+        for (int attempt = 1; ; attempt++) {
+            try {
+                HttpResponse<java.io.InputStream> response =
+                        httpClient.send(request, HttpResponse.BodyHandlers.ofInputStream());
+
+                if (response.statusCode() >= 300) {
+                    if (shouldRetry(response.statusCode(), attempt)) {
+                        // Drain rather than calling upstreamError: the body still has to be read to
+                        // release the connection, but this attempt is not a failure yet and logging
+                        // it at ERROR would put a false alarm in the log for every request that
+                        // then succeeded on its second try.
+                        drain(response.body());
+                        backOff(attempt, "HTTP " + response.statusCode());
+                        continue;
+                    }
+                    throw upstreamError(response);
+                }
+
+                // NOTHING past this line may be retried. consumeStream hands fragments to the
+                // caller as they arrive, so by the time it can fail the user has already seen
+                // part of an answer -- retrying would repeat that text rather than replace it.
+                return consumeStream(response, onToken);
+
+            } catch (ResponseStatusException e) {
+                throw e;
+            } catch (java.io.InterruptedIOException e) {
+                Thread.currentThread().interrupt();
+                log.warn("Chat stream interrupted or timed out", e);
+                // Deliberately NOT retried. The read timeout is already generous (a free model is
+                // slow), so a second attempt mostly doubles the wait before telling the user the
+                // same thing.
+                throw new ResponseStatusException(
+                        HttpStatus.GATEWAY_TIMEOUT, "The assistant took too long to respond.");
+            } catch (java.io.IOException e) {
+                if (attempt < MAX_ATTEMPTS) {
+                    backOff(attempt, e.toString());
+                    continue;
+                }
+                log.warn("Chat stream failed after {} attempts", MAX_ATTEMPTS, e);
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_GATEWAY, "The assistant is unavailable right now.");
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Request cancelled.");
             }
-            return consumeStream(response, onToken);
-        } catch (ResponseStatusException e) {
-            throw e;
-        } catch (java.io.InterruptedIOException e) {
-            Thread.currentThread().interrupt();
-            log.warn("Chat stream interrupted or timed out", e);
-            throw new ResponseStatusException(HttpStatus.GATEWAY_TIMEOUT, "The assistant took too long to respond.");
-        } catch (java.io.IOException e) {
-            log.warn("Chat stream failed", e);
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "The assistant is unavailable right now.");
+        }
+    }
+
+    /**
+     * Whether a failed attempt is worth repeating.
+     *
+     * <p>Only failures that could plausibly succeed next time: a rate limit, and the 5xx family.
+     * A 401 means the key is wrong, a 404 means the model id is wrong, a 400 means the request is
+     * wrong -- none of those fix themselves, and retrying them just makes the user wait three times
+     * as long to be told the same thing while tripling the load on an upstream that is already
+     * refusing.
+     */
+    private static boolean shouldRetry(int status, int attempt) {
+        if (attempt >= MAX_ATTEMPTS) {
+            return false;
+        }
+        return status == 429 || status >= 500;
+    }
+
+    /**
+     * Waits before the next attempt, doubling each time with a little jitter.
+     *
+     * <p>Jitter because every user whose request failed would otherwise retry in lockstep and
+     * arrive at the upstream together -- turning one rate limit into a self-inflicted thundering
+     * herd. Kept short: the caller is a person watching a chat window, and the digest narrator
+     * runs this once per subscriber, so a long backoff is paid many times over.
+     */
+    private void backOff(int attempt, String because) {
+        long millis = RETRY_BASE_MILLIS * (1L << (attempt - 1));
+        millis += java.util.concurrent.ThreadLocalRandom.current().nextLong(RETRY_BASE_MILLIS);
+        log.info("Retrying the chat completion in {}ms (attempt {} failed: {})", millis, attempt, because);
+        try {
+            Thread.sleep(millis);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Request cancelled.");

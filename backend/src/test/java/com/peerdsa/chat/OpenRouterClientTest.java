@@ -112,6 +112,81 @@ class OpenRouterClientTest {
         assertThat(turns.get(1).role()).isEqualTo("user");
     }
 
+    /**
+     * OpenRouter's free tier rate-limits constantly and its instances restart, so the first attempt
+     * failing is ordinary rather than exceptional. Giving up on it turned a blip into "the
+     * assistant is unavailable right now" -- an error the user can do nothing with and which is
+     * wrong by the time they read it.
+     */
+    @Test
+    void aRateLimitIsRetriedAndTheSecondAttemptSucceeds() throws Exception {
+        String sse = "data: {\"choices\":[{\"delta\":{\"content\":\"hi\"}}]}\n\ndata: [DONE]\n\n";
+        String base = startSequence(
+                new Canned(429, "application/json", "{\"error\":\"rate limited\"}"),
+                new Canned(200, "text/event-stream", sse));
+        OpenRouterClient client = new OpenRouterClient(props(base, "sk-test"), mapper);
+
+        List<String> tokens = new ArrayList<>();
+        String full = client.streamReply(List.of(new OpenRouterClient.Turn("user", "hi")), tokens::add);
+
+        assertThat(full).isEqualTo("hi");
+        // The failed attempt must not leak into the answer the user sees.
+        assertThat(tokens).containsExactly("hi");
+        assertThat(requests.get()).isEqualTo(2);
+    }
+
+    /** A 5xx is the upstream's own fault and is worth one more go. */
+    @Test
+    void anUpstreamServerErrorIsRetried() throws Exception {
+        String base = startSequence(
+                new Canned(500, "application/json", "{\"error\":\"boom\"}"),
+                new Canned(200, "text/event-stream", "data: {\"choices\":[{\"delta\":{\"content\":\"ok\"}}]}\n\ndata: [DONE]\n\n"));
+        OpenRouterClient client = new OpenRouterClient(props(base, "sk-test"), mapper);
+
+        assertThat(client.streamReply(List.of(new OpenRouterClient.Turn("user", "hi")), t -> {}))
+                .isEqualTo("ok");
+        assertThat(requests.get()).isEqualTo(2);
+    }
+
+    /**
+     * The point of the retry is that it is selective.
+     *
+     * <p>A bad key and a stale model id fail identically on every attempt, so retrying them only
+     * makes the user wait three times as long to be told the same thing -- while tripling the load
+     * on an upstream that is already refusing. If this ever reports more than one request, the
+     * retry has stopped distinguishing "try again" from "this is broken".
+     */
+    @Test
+    void aMisconfigurationIsNotRetried() throws Exception {
+        for (int status : new int[] {401, 403, 404, 400}) {
+            String base = startSequence(new Canned(status, "application/json", "{\"error\":\"nope\"}"));
+            OpenRouterClient client = new OpenRouterClient(props(base, "sk-test"), mapper);
+
+            assertThatThrownBy(() ->
+                            client.streamReply(List.of(new OpenRouterClient.Turn("user", "hi")), t -> {}))
+                    .isInstanceOf(ResponseStatusException.class);
+
+            assertThat(requests.get())
+                    .describedAs("HTTP %d cannot succeed on a second attempt; it must not be retried", status)
+                    .isEqualTo(1);
+            stopServer();
+        }
+    }
+
+    /** Retries are bounded: a permanently rate-limited upstream must still return an error. */
+    @Test
+    void retriesAreBoundedAndTheLastFailureIsReported() throws Exception {
+        String base = startSequence(new Canned(429, "application/json", "{\"error\":\"rate limited\"}"));
+        OpenRouterClient client = new OpenRouterClient(props(base, "sk-test"), mapper);
+
+        assertThatThrownBy(() -> client.streamReply(List.of(new OpenRouterClient.Turn("user", "hi")), t -> {}))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(e -> assertThat(((ResponseStatusException) e).getStatusCode())
+                        .isEqualTo(HttpStatus.SERVICE_UNAVAILABLE));
+
+        assertThat(requests.get()).isEqualTo(3);
+    }
+
     private OpenRouterProperties props(String baseUrl, String apiKey) {
         return new OpenRouterProperties(
                 apiKey,
@@ -127,11 +202,36 @@ class OpenRouterClientTest {
 
     /** Serves one canned response at /chat/completions and returns the base URL. */
     private String start(int status, String contentType, String body) throws Exception {
+        return startSequence(new Canned(status, contentType, body));
+    }
+
+    /** One scripted response. */
+    private record Canned(int status, String contentType, String body) {}
+
+    /**
+     * How many times the client actually called upstream. This is the assertion that makes the
+     * retry tests meaningful: a test that only checks the final answer passes just as happily when
+     * the client silently hammers a dead endpoint, or when it never retries at all.
+     */
+    private final java.util.concurrent.atomic.AtomicInteger requests =
+            new java.util.concurrent.atomic.AtomicInteger();
+
+    /**
+     * Serves the given responses in order, repeating the last one for any further requests.
+     *
+     * <p>Repeating rather than 404ing the overflow matters: it means a client that retries too many
+     * times keeps getting the same failure instead of a confusingly different one, so
+     * {@code requests} stays the thing under test.
+     */
+    private String startSequence(Canned... script) throws Exception {
+        requests.set(0);
         server = HttpServer.create(new InetSocketAddress("localhost", 0), 0);
         server.createContext("/chat/completions", exchange -> {
-            byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
-            exchange.getResponseHeaders().add("Content-Type", contentType);
-            exchange.sendResponseHeaders(status, 0); // 0 => chunked, like a real stream
+            int n = requests.getAndIncrement();
+            Canned canned = script[Math.min(n, script.length - 1)];
+            byte[] bytes = canned.body().getBytes(StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().add("Content-Type", canned.contentType());
+            exchange.sendResponseHeaders(canned.status(), 0); // 0 => chunked, like a real stream
             try (var os = exchange.getResponseBody()) {
                 os.write(bytes);
                 os.flush();

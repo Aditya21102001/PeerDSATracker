@@ -109,4 +109,53 @@ class AnalyticsControllerTest {
                             .isEqualTo(HttpStatus.SERVICE_UNAVAILABLE));
         }
     }
+
+    /**
+     * The status and the fix travel with the error, not only into a log file.
+     *
+     * <p>Every one of these used to surface as the same four words -- "Analytics service error" --
+     * which is simultaneously true of a wrong token, a wrong URL, a drifted request contract and an
+     * upstream crash, and actionable for none of them. The only place the difference was recorded
+     * was a server log, which the person who set the environment variables had no reason to open.
+     * Each case below asserts the response names the one thing that would fix it.
+     */
+    @Test
+    void the502SaysWhichFailureItWasAndWhatToChange() {
+        record Case(HttpStatus upstream, String mustMention) {}
+
+        for (Case c : new Case[] {
+            new Case(HttpStatus.UNAUTHORIZED, "INTERNAL_TOKEN"),
+            new Case(HttpStatus.FORBIDDEN, "INTERNAL_TOKEN"),
+            new Case(HttpStatus.NOT_FOUND, "ANALYTICS_BASE_URL"),
+            new Case(HttpStatus.UNPROCESSABLE_CONTENT, "drifted"),
+            new Case(HttpStatus.INTERNAL_SERVER_ERROR, "its own logs"),
+        }) {
+            doThrow(c.upstream().is4xxClientError()
+                            ? HttpClientErrorException.create(
+                                    c.upstream(), c.upstream().getReasonPhrase(), null, null, null)
+                            : HttpServerErrorException.create(
+                                    c.upstream(), c.upstream().getReasonPhrase(), null, null, null))
+                    .when(analytics)
+                    .weakness(anyLong());
+
+            assertThatThrownBy(() -> controller.weakness(user))
+                    .describedAs("upstream %s must explain itself", c.upstream())
+                    // The status, so the cause is identifiable from the browser's network tab...
+                    .hasMessageContaining(String.valueOf(c.upstream().value()))
+                    // ...and the single thing to change.
+                    .hasMessageContaining(c.mustMention());
+        }
+    }
+
+    /** A cold start must never be described as a misconfiguration -- it fixes itself. */
+    @Test
+    void aColdStartIsNotBlamedOnConfiguration() {
+        doThrow(HttpServerErrorException.create(HttpStatus.BAD_GATEWAY, "Bad Gateway", null, null, null))
+                .when(analytics)
+                .weakness(anyLong());
+
+        assertThatThrownBy(() -> controller.weakness(user))
+                .hasMessageNotContaining("INTERNAL_TOKEN")
+                .hasMessageNotContaining("ANALYTICS_BASE_URL");
+    }
 }

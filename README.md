@@ -265,6 +265,24 @@ they are patched last (a restart, not a rebuild).
 `fromService` only yields `host`/`port`, never a scheme — and the public URL is what wakes a
 spun-down instance.
 
+#### When the insight panel says analytics is unavailable
+
+The dashboard only ever says "Analytics is unavailable right now" — deliberately, because an end
+user can do nothing with the detail. The detail is in the response body, visible in the browser's
+network tab on `/api/analytics/weakness`, and it names the one variable to change:
+
+| Response says | Meaning | Fix |
+| --- | --- | --- |
+| `503 Analytics service unavailable` | Nothing answered, or Render's edge answered while the instance woke. **Normal**, and the client retries it. | none |
+| `502 … (upstream 401) … INTERNAL_TOKEN differs between the two services` | The backend and the analytics service carry different tokens. The live services were created by hand, so they do not share render.yaml's `peerdsa-shared` group. | Set the **same** `INTERNAL_TOKEN` on both, then redeploy both |
+| `502 … (upstream 404) … check ANALYTICS_BASE_URL` | Something answered and it was not the analytics service | Point `ANALYTICS_BASE_URL` at the public analytics URL, no trailing path |
+| `502 … (upstream 422) … the DTO contract has drifted` | `AnalyticsDtos` and the Pydantic models disagree | Redeploy both from the same commit |
+| `502 … (upstream 500) … check its own logs` | Analytics crashed | Read the analytics service's log |
+
+The same verdict is written to the backend log once at every startup (`AnalyticsStartupProbe`), so a
+deploy with a mismatched token announces itself immediately rather than waiting for a user to
+notice a missing panel.
+
 ### Free-tier consequences (accepted, not bugs)
 
 - Services **spin down after 15 minutes idle**; the next request waits ~1–3 min for a JVM cold start
