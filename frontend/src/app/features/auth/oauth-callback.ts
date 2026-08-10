@@ -59,9 +59,12 @@ export class OauthCallback {
     this.clearFragment();
 
     this.auth.adoptRefreshToken(token).subscribe({
-      // A newly provisioned account has a generated username nobody has seen. Send them to pick
-      // one before it appears on the public leaderboard.
-      next: (me) => void this.router.navigate([me.usernameChosen ? '/dashboard' : '/choose-username']),
+      // Straight to the dashboard. Signing in is not the moment to interrupt somebody with a
+      // form -- a provisioned username is shown on the Account page, where it can be changed
+      // whenever they care to. An earlier version routed to a "pick a username" step here, and
+      // it also had a latent bug: `usernameChosen` being absent for any reason is falsy, so
+      // every user got the prompt rather than only newly provisioned ones.
+      next: () => void this.router.navigate(['/dashboard']),
       error: () =>
         this.error.set('That sign-in link has already been used or expired. Please try again.'),
     });

@@ -26,7 +26,28 @@ type Proof = 'password' | 'code';
         <dl class="account-details">
           <div>
             <dt>Username</dt>
-            <dd><strong>{{ user.username }}</strong></dd>
+            <dd>
+              @if (editingUsername()) {
+                <span class="edit-username">
+                  <label class="sr-only" for="new-username">New username</label>
+                  <input id="new-username" type="text" [value]="usernameDraft()"
+                         (input)="usernameDraft.set($any($event.target).value)"
+                         autocapitalize="none" spellcheck="false" maxlength="30" />
+                  <button type="button" class="btn btn-sm" (click)="saveUsername()"
+                          [disabled]="savingUsername()">Save</button>
+                  <button type="button" class="btn btn-sm btn-quiet" (click)="cancelUsername()">Cancel</button>
+                </span>
+                @if (usernameError()) {
+                  <span class="field-error" role="alert">{{ usernameError() }}</span>
+                }
+              } @else {
+                <strong>{{ user.username }}</strong>
+                <!-- Optional, and here rather than in the sign-in flow: signing in is not the
+                     moment to interrupt somebody with a form. A Google-provisioned name is a
+                     generated one, so this is where it can be made theirs. -->
+                <button type="button" class="link change" (click)="editUsername(user.username)">Change</button>
+              }
+            </dd>
           </div>
           <div>
             <dt>Email</dt>
@@ -167,6 +188,52 @@ export class Security {
 
   /** The signed-in account. Loaded by AuthStore on session restore, so it is there on load. */
   protected readonly me = this.auth.currentUser;
+
+  protected readonly editingUsername = signal(false);
+  protected readonly usernameDraft = signal('');
+  protected readonly savingUsername = signal(false);
+  protected readonly usernameError = signal<string | null>(null);
+
+  protected editUsername(current: string): void {
+    this.usernameDraft.set(current);
+    this.usernameError.set(null);
+    this.editingUsername.set(true);
+  }
+
+  protected cancelUsername(): void {
+    this.editingUsername.set(false);
+    this.usernameError.set(null);
+  }
+
+  protected saveUsername(): void {
+    const wanted = this.usernameDraft().trim();
+    if (!/^[a-zA-Z0-9._-]{3,30}$/.test(wanted)) {
+      this.usernameError.set('3–30 characters: letters, digits, dot, hyphen and underscore only.');
+      return;
+    }
+    this.savingUsername.set(true);
+    this.usernameError.set(null);
+
+    this.auth.chooseUsername(wanted).subscribe({
+      next: () => {
+        this.savingUsername.set(false);
+        this.editingUsername.set(false);
+      },
+      error: (err) => {
+        this.savingUsername.set(false);
+        // The server's own message where there is one. A blanket "could not save" hides whether
+        // the name was taken, the input was rejected, or the endpoint is not there at all --
+        // which is exactly the information needed to do something about it.
+        this.usernameError.set(
+          err?.status === 409
+            ? 'That username is taken. Try another.'
+            : err?.status === 404
+              ? 'This server does not support changing your username yet.'
+              : (err?.error?.message ?? 'Could not save that username.'),
+        );
+      },
+    });
+  }
 
   /**
    * What this account can actually sign in with, plus the method last used on this device.

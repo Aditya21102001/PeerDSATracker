@@ -238,3 +238,23 @@ button[type='submit'] {
     overflow-wrap: anywhere;
   }
 }
+
+
+/* Inline username editing on the Account page. */
+.edit-username {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  justify-content: flex-end;
+
+  input {
+    width: auto;
+    flex: 1 1 8rem;
+    min-width: 0;
+  }
+}
+
+.change {
+  margin-left: var(--sp-2);
+  font-size: var(--fs-xs);
+}

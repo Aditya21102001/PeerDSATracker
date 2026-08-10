@@ -68,13 +68,6 @@ export const routes: Routes = [
     loadComponent: () => import('./features/auth/oauth-callback').then((m) => m.OauthCallback),
   },
   {
-    // Shown once, for an account provisioned a username through Google. Authenticated: it edits
-    // the signed-in account.
-    path: 'choose-username',
-    canActivate: [authGuard],
-    loadComponent: () => import('./features/auth/choose-username').then((m) => m.ChooseUsername),
-  },
-  {
     // Change or set a password. Authenticated: the backend resolves the account from the session.
     path: 'security',
     canActivate: [authGuard],

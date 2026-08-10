@@ -6,7 +6,6 @@ import { provideRouter } from '@angular/router';
 import axe from 'axe-core';
 import { describe, expect, it } from 'vitest';
 
-import { ChooseUsername } from './features/auth/choose-username';
 import { CodeSignin } from './features/auth/code-signin';
 import { Forgot } from './features/auth/forgot';
 import { Reset } from './features/auth/reset';
@@ -65,7 +64,6 @@ describe('accessibility (axe-core)', () => {
     ['signin', Signin],
     ['signup', Signup],
     ['code sign-in', CodeSignin],
-    ['choose username', ChooseUsername],
     ['forgot password', Forgot],
     ['reset password', Reset],
     ['security', Security],
