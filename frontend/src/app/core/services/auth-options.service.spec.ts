@@ -35,6 +35,26 @@ describe('AuthOptionsService', () => {
     localStorage.clear();
   });
 
+  /**
+   * The gap the cache alone did not close: on the very first load after a deploy the cache is
+   * empty, so a cold backend still hid the button — for exactly the person who had proved, by
+   * signing in with Google on this device, that the button works here.
+   */
+  it('trusts a completed Google sign-in on this device, even with no cached probe', () => {
+    localStorage.setItem('peerdsa.lastSignIn', 'google');
+    const service = build();
+
+    expect(service.googleEnabled()).toBe(true);
+  });
+
+  /** Signing in with a password says nothing about whether Google is offered. */
+  it('does not infer Google from some other sign-in method', () => {
+    localStorage.setItem('peerdsa.lastSignIn', 'password');
+    const service = build();
+
+    expect(service.googleEnabled()).toBe(false);
+  });
+
   it('starts hidden on a browser that has never been here', () => {
     const service = build();
 

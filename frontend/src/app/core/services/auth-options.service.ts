@@ -3,6 +3,7 @@ import { Service, inject, signal } from '@angular/core';
 import { retry, throwError, timer } from 'rxjs';
 
 import { AuthOptions } from '../models/api.models';
+import { LastSignInService } from './last-sign-in.service';
 
 const KEY = 'peerdsa.googleEnabled';
 
@@ -47,13 +48,21 @@ const TRANSIENT = new Set([0, 502, 503, 504]);
 @Service()
 export class AuthOptionsService {
   private readonly http = inject(HttpClient);
+  private readonly lastSignIn = inject(LastSignInService);
 
   /**
    * Seeded from this device's last known answer so the button can render on the first frame,
    * before any network call resolves. Defaults to false on a browser that has never been here:
    * advertising a button that might 401 to a first-time visitor would read as a broken site.
+   *
+   * <p>Having actually signed in with Google on this device counts as the same evidence, and is
+   * in fact stronger than a cached probe: the probe only reports what the server claims, whereas a
+   * completed Google sign-in is proof the flow worked end to end on this deployment. It also
+   * removes a self-contradiction that shipped for a while -- the page said "Last time on this
+   * device you signed in with Google" directly above a missing Google button, because the two
+   * facts were read from localStorage by different code and only one of them was trusted.
    */
-  private readonly google = signal(read());
+  private readonly google = signal(read() || this.lastSignIn.lastMethod() === 'google');
 
   readonly googleEnabled = this.google.asReadonly();
 
