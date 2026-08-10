@@ -10,8 +10,18 @@
       "destination": "https://peerdsatracker.onrender.com/api/:path*"
     },
     {
-      "source": "/(.*)",
+      "source": "/:path((?!.*\\.[a-zA-Z0-9]{2,5}$).*)",
       "destination": "/index.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/:file(.*\\.(?:js|css|woff2|woff|ttf))",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
+    },
+    {
+      "source": "/:path((?!.*\\.[a-zA-Z0-9]{2,5}$).*)",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }]
     }
   ]
 }
