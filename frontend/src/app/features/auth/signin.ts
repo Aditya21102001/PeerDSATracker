@@ -1,10 +1,9 @@
-import { HttpClient } from '@angular/common/http';
 import { Component, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AbstractControl, FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { environment } from '../../../environments/environment';
-import { AuthOptions } from '../../core/models/api.models';
+import { AuthOptionsService } from '../../core/services/auth-options.service';
 import { AuthStore } from '../../core/services/auth.store';
 import { LastSignInService } from '../../core/services/last-sign-in.service';
 
@@ -108,9 +107,9 @@ import { LastSignInService } from '../../core/services/last-sign-in.service';
 export class Signin {
   private readonly fb = inject(FormBuilder);
   private readonly auth = inject(AuthStore);
-  private readonly http = inject(HttpClient);
   private readonly router = inject(Router);
   private readonly lastSignIn = inject(LastSignInService);
+  private readonly options = inject(AuthOptionsService);
 
   /**
    * Read from this browser, never from the server. An endpoint that answered "that address uses
@@ -126,9 +125,10 @@ export class Signin {
 
   /**
    * Asked of the backend rather than hard-coded, so the button cannot appear on a deployment with
-   * no Google credentials — where it would 401 and read as a broken site.
+   * no Google credentials — where it would 401 and read as a broken site. Served from this
+   * device's last known answer first, so a backend that is still waking cannot hide the button.
    */
-  protected readonly googleEnabled = signal(false);
+  protected readonly googleEnabled = this.options.googleEnabled;
 
   /** Absolute in production. See environment.prod.ts for why it must not go through the proxy. */
   protected readonly googleUrl = `${environment.apiOrigin}/oauth2/authorization/google`;
@@ -148,11 +148,8 @@ export class Signin {
       }
     });
 
-    this.http.get<AuthOptions>('/api/auth/options').subscribe({
-      next: (options) => this.googleEnabled.set(options.googleEnabled),
-      // A failed probe simply means no button. Never block sign-in on it.
-      error: () => this.googleEnabled.set(false),
-    });
+    // Fire-and-forget: the cached answer is already rendering, and this only corrects it.
+    this.options.refresh();
   }
 
   protected showError(name: 'identifier' | 'password'): boolean {

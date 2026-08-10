@@ -630,10 +630,17 @@ main[tabindex='-1']:focus {
 /* =============================================================================
    Responsive base. Every page is <main><header>…</header>…</main>, so these
    global rules reach all of them without touching each component.
+
+   The exception is `.auth` — the sign-in/sign-up card. Its <main> is the card
+   itself and its <header> is a centred title, not a page header with nav to wrap
+   and no theme toggle to dodge. Both rules below assume the latter, and applied
+   to the card they visibly broke it: the padding pushed the centred title off
+   centre, and `align-items: flex-start` collapsed it hard against the left edge
+   on phones. `:not(.auth)` fixes the assumption rather than each symptom.
    ========================================================================== */
 
 /* The theme toggle is fixed at the top-right; keep page headers out from under it. */
-main > header {
+main:not(.auth) > header {
   padding-right: 2.75rem;
 }
 
@@ -660,7 +667,7 @@ main > header nav {
     padding-bottom: calc(var(--sp-7) + 56px + env(safe-area-inset-bottom, 0px)) !important;
   }
 
-  main > header {
+  main:not(.auth) > header {
     align-items: flex-start;
     flex-direction: column;
     gap: var(--sp-2);
