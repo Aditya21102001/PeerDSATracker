@@ -165,6 +165,14 @@ public class OpenRouterClient {
             // A bad or missing OPENROUTER_API_KEY. Operator problem, not the user's.
             return new ResponseStatusException(HttpStatus.BAD_GATEWAY, "The assistant is misconfigured.");
         }
+        if (status == 404) {
+            // Almost always a stale model id. OpenRouter's free list rotates, so an id that worked
+            // last month 404s today -- and the generic "unavailable" message sent operators looking
+            // at the network when the answer was one environment variable.
+            return new ResponseStatusException(
+                    HttpStatus.BAD_GATEWAY,
+                    "The assistant's model is not available. Check OPENROUTER_MODEL -- the free list rotates.");
+        }
         return new ResponseStatusException(HttpStatus.BAD_GATEWAY, "The assistant is unavailable right now.");
     }
 

@@ -84,6 +84,22 @@ class OpenRouterClientTest {
                         .isEqualTo(HttpStatus.BAD_GATEWAY));
     }
 
+    /**
+     * A 404 is almost always a stale model id -- OpenRouter's free list rotates, so an id that
+     * worked last month fails today. The generic "unavailable" message sent operators looking at
+     * the network when the answer was one environment variable.
+     */
+    @Test
+    void anUnknownModelSaysSoRatherThanBlamingTheNetwork() throws Exception {
+        String base = start(404, "application/json", "{\"error\":\"No endpoints found for that model\"}");
+        OpenRouterClient client = new OpenRouterClient(props(base, "sk-test"), mapper);
+
+        assertThatThrownBy(() -> client.streamReply(List.of(new OpenRouterClient.Turn("user", "hi")), t -> {}))
+                .isInstanceOf(ResponseStatusException.class)
+                // Names the variable to change, rather than sending the operator to the network.
+                .hasMessageContaining("OPENROUTER_MODEL");
+    }
+
     @Test
     void withSystemPromptPrependsTheConfiguredPrompt() {
         OpenRouterClient client = new OpenRouterClient(props("http://localhost:1", "sk-test"), mapper);
