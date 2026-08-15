@@ -35,8 +35,8 @@ class MessagingServiceTest {
     private static final long PEER = 2L;
     private static final long STRANGER = 3L;
 
-    private DmRepositories.Conversations conversations;
-    private DmRepositories.Messages messages;
+    private DmConversationRepository conversations;
+    private DmMessageRepository messages;
     private FollowRepository follows;
     private UserRepository users;
     private MessageStream stream;
@@ -44,8 +44,8 @@ class MessagingServiceTest {
 
     @BeforeEach
     void setUp() {
-        conversations = mock(DmRepositories.Conversations.class);
-        messages = mock(DmRepositories.Messages.class);
+        conversations = mock(DmConversationRepository.class);
+        messages = mock(DmMessageRepository.class);
         follows = mock(FollowRepository.class);
         users = mock(UserRepository.class);
         stream = mock(MessageStream.class);

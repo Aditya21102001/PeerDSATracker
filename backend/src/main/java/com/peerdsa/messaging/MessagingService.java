@@ -50,15 +50,15 @@ public class MessagingService {
     /** One screenful. A thread scrolls back by asking for more. */
     private static final int PAGE_SIZE = 50;
 
-    private final DmRepositories.Conversations conversations;
-    private final DmRepositories.Messages messages;
+    private final DmConversationRepository conversations;
+    private final DmMessageRepository messages;
     private final FollowRepository follows;
     private final UserRepository users;
     private final MessageStream stream;
 
     public MessagingService(
-            DmRepositories.Conversations conversations,
-            DmRepositories.Messages messages,
+            DmConversationRepository conversations,
+            DmMessageRepository messages,
             FollowRepository follows,
             UserRepository users,
             MessageStream stream) {
