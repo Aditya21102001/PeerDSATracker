@@ -71,6 +71,13 @@ function exact(iso: string | null | undefined): string {
   selector: 'app-footer',
   template: `
     <footer class="site-footer">
+      <p class="line owner">
+        <span class="product">PeerDSATracker</span>
+        <span class="sep" aria-hidden="true">·</span>
+        <!-- The year is read at runtime, so this never needs an annual edit to stop being wrong. -->
+        <small>© {{ year }} Aditya Yadav</small>
+      </p>
+
       <p class="line">
         <span class="part">
           <span class="key">web</span>
@@ -144,6 +151,21 @@ function exact(iso: string | null | undefined): string {
       }
     }
 
+    .owner {
+      color: var(--text-muted);
+      font-size: var(--fs-xs);
+    }
+
+    .owner .product {
+      font-family: var(--font-display);
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .owner small {
+      font-size: inherit;
+    }
+
     .line {
       display: flex;
       flex-wrap: wrap;
@@ -152,6 +174,10 @@ function exact(iso: string | null | undefined): string {
       gap: var(--sp-2);
       max-width: 60rem;
       margin: 0 auto;
+
+      & + .line {
+        margin-top: var(--sp-2);
+      }
     }
 
     .part {
@@ -207,6 +233,12 @@ function exact(iso: string | null | undefined): string {
 })
 export class AppFooter {
   protected readonly backend = inject(BackendStatus);
+
+  /**
+   * Read at construction rather than hardcoded. A literal year in a footer is wrong from the first
+   * of January until somebody notices, and nobody notices a footer.
+   */
+  protected readonly year = new Date().getFullYear();
 
   protected readonly repoCommitUrl = REPO_COMMIT_URL;
   protected readonly web = buildInfo;
