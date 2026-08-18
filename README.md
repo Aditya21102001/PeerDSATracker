@@ -320,9 +320,18 @@ Three decisions worth keeping:
 - **Only GET/HEAD/OPTIONS are resent.** A resent `POST /api/auth/otp/request` mails a second sign-in
   code and burns a slot against the five-per-hour cap. Unsafe methods still raise the notice, so the
   failure has an explanation next to it, and the user retries deliberately.
-- **A 503 carrying JSON is not a cold start.** Spring issues its own 503s — a failed sign-in email,
-  and `/api/analytics/*` when the FastAPI service is cold (which `InsightsService.waitForWake`
-  already retries). Only a bodiless or HTML 503 is a proxy's.
+- **A gateway status carrying JSON is not a cold start.** Spring issues 502, 503 and 504 itself, so
+  the body is the discriminator, not the status: Spring renders every error as JSON, a proxy serves
+  HTML or nothing. This was shipped wrong — the check covered 503 only — and `/api/analytics/*`
+  answers **502** to mean *"analytics answered with an error; retrying cannot fix a
+  misconfiguration"*. Every dashboard then claimed the server was waking up and retried for two and
+  a half minutes over a failure that could never clear.
+- **Retry layers multiply, so paths whose caller already retries are excluded from the
+  interceptor.** `InsightsService.waitForWake` wraps `HttpClient`, so it sits *outside* the
+  interceptor: its 3 attempts each became 7, i.e. 21 requests for one panel, each asking a starved
+  0.1-CPU instance to call a service that was not answering. `CALLER_RETRIES` in the interceptor
+  excludes those paths from resending — but deliberately **not** from raising the notice, because a
+  bodiless gateway error there still means the backend is unreachable.
 - **The retry budget outlasts the boot on purpose.** A shorter one is worse than none: the retries
   run out, the backend comes up, the notice clears — and the panels that failed during the wait are
   still empty with nothing to explain them.
@@ -332,6 +341,31 @@ call failed, without distinguishing a dead refresh token from an unreachable bac
 refresh is the *first* request a reload makes, so it is the one that pays for the cold start. Coming
 back to a cold app signed you out of a valid session. It now clears tokens only on an answer from the
 backend.
+
+### Every 500 is logged, and looks like every other error
+
+`GlobalExceptionHandler` has a catch-all `@ExceptionHandler(Exception.class)`. Without it an
+unhandled exception skips the advice entirely and falls through to Spring Boot's
+`BasicErrorController`, which is worse than it looks:
+
+- the response stops being the `ApiError` envelope and becomes `{timestamp, status, error, path}` —
+  and `server.error.include-message` defaults to `never`, so it carries no reason at all;
+- **nothing in the application logs it**, so the one artefact that would identify the bug is
+  discarded.
+
+That combination is why a repeated 500 on `POST /api/messages/conversations` was opaque. The handler
+logs the stack trace with the method and path, and returns a generic message — exception text can
+name a table or a constraint, which belongs in the log, not in a response.
+
+Two faults on that endpoint were fixed with it:
+
+| Fault | Fix |
+|---|---|
+| `countUnread` guarded a null `since` with `(:since is null or …)`. "Never opened this thread" is the normal state of a just-created conversation, so a parameter with no type of its own sat on the path taken every time somebody opened a new thread. | Callers pass `Instant.EPOCH`, which means the same thing with a type the driver never guesses at. |
+| Find-or-create raced `uq_dm_pair`: both participants open at once, both find nothing, the loser's insert violates the constraint. Catching `DataIntegrityViolationException` cannot repair it — a failed flush leaves the transaction unusable. | `insertIfAbsent` — `INSERT … ON CONFLICT DO NOTHING`, then re-read. The decision moves to where the constraint already lives. |
+
+`OpenRequest.peerId` is also `@NotNull` with `@Valid` on the controller now, so a missing field is a
+400 rather than whatever the first line to touch it happened to do.
 
 ### `MANAGEMENT_HEALTH_DB_ENABLED=false`
 

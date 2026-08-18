@@ -24,6 +24,25 @@ const MAX_RETRIES = 6;
 const BACKOFF_MS = [2_000, 5_000, 12_000, 25_000, 45_000, 60_000];
 
 /**
+ * Paths whose caller already owns a retry. Reported on, never resent from here.
+ *
+ * Retry layers MULTIPLY when one sits outside the other, and this interceptor is the innermost one:
+ * `InsightsService.waitForWake` wraps `HttpClient`, so its 3 attempts each become 7 of ours -- 21
+ * requests for one panel, every one of them asking a starved 0.1-CPU instance to call a service that
+ * is not answering. That is not a hypothetical; it is what took the site down.
+ *
+ * Excluded from RETRY only, deliberately not from reporting. A bodiless gateway error on this path
+ * still means the backend itself could not be reached, and the notice should say so -- the exclusion
+ * is about who is responsible for trying again, not about what is true.
+ */
+const CALLER_RETRIES: readonly string[] = ['/api/analytics/'];
+
+/** Would resending this duplicate an attempt some outer layer is already making? */
+function callerOwnsRetry(url: string): boolean {
+  return CALLER_RETRIES.some((path) => url.includes(path));
+}
+
+/**
  * Turns a cold backend from a page of broken panels into a wait with an explanation.
  *
  * The backend spins down after 15 minutes idle (Render free plan), and the first request after that
@@ -65,6 +84,11 @@ export const coldStartInterceptor: HttpInterceptorFn = (req, next) => {
       count: MAX_RETRIES,
       delay: (error, attempt) => {
         if (!isBackendUnavailable(error) || !isIdempotent(req.method)) {
+          return throwError(() => error);
+        }
+        if (callerOwnsRetry(req.url)) {
+          // Still raise the notice below -- just do not add attempts to someone else's attempts.
+          backend.reportUnavailable();
           return throwError(() => error);
         }
         // Raise the notice on the first failure, not after the retries are exhausted: the user is

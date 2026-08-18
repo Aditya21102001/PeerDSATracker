@@ -1,6 +1,7 @@
 package com.peerdsa.messaging;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.time.Instant;
 
@@ -34,8 +35,16 @@ public final class MessagingDtos {
     public record MessageView(
             Long id, Long conversationId, Long senderId, boolean mine, String body, Instant createdAt) {}
 
-    /** Opening a thread. The peer is named by id; the server decides whether that is allowed. */
-    public record OpenRequest(Long peerId) {}
+    /**
+     * Opening a thread. The peer is named by id; the server decides whether that is allowed.
+     *
+     * <p>{@code @NotNull} because without it a body of {@code {}} carried a null id into the service,
+     * where its fate depended on which line happened to touch it first -- a repository call that
+     * quietly matches nothing, or an unboxing NPE that surfaces as a 500. A missing field is a client
+     * mistake and owes the client a 400 saying so. Matches {@link SendRequest}, which was already
+     * validated; the controller needs {@code @Valid} for either to be enforced.
+     */
+    public record OpenRequest(@NotNull Long peerId) {}
 
     /**
      * Sending. The length cap is here rather than a database CHECK so an over-long message is a 400

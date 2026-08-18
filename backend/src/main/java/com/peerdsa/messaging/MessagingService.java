@@ -104,7 +104,7 @@ public class MessagingService {
                     peer.getDisplayName(),
                     peer.getAvatarUrl(),
                     c.getLastMessageAt(),
-                    messages.countUnread(c.getId(), userId, c.lastReadBy(userId)),
+                    messages.countUnread(c.getId(), userId, readMarkFor(c, userId)),
                     canMessage(userId, peer.getId())));
         }
         return views;
@@ -124,8 +124,7 @@ public class MessagingService {
                     HttpStatus.FORBIDDEN, "You can only message peers who follow you back.");
         }
 
-        DmConversation conversation = findPair(userId, peerId)
-                .orElseGet(() -> conversations.save(DmConversation.between(userId, peerId)));
+        DmConversation conversation = findPair(userId, peerId).orElseGet(() -> openPair(userId, peerId));
 
         User peer = users.findById(peerId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "No such peer"));
@@ -137,7 +136,7 @@ public class MessagingService {
                 peer.getDisplayName(),
                 peer.getAvatarUrl(),
                 conversation.getLastMessageAt(),
-                messages.countUnread(conversation.getId(), userId, conversation.lastReadBy(userId)),
+                messages.countUnread(conversation.getId(), userId, readMarkFor(conversation, userId)),
                 true);
     }
 
@@ -206,7 +205,7 @@ public class MessagingService {
     @Transactional(readOnly = true)
     public long unreadTotal(Long userId) {
         return conversations.findForUser(userId).stream()
-                .mapToLong(c -> messages.countUnread(c.getId(), userId, c.lastReadBy(userId)))
+                .mapToLong(c -> messages.countUnread(c.getId(), userId, readMarkFor(c, userId)))
                 .sum();
     }
 
@@ -222,7 +221,53 @@ public class MessagingService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "No such conversation"));
     }
 
+    /**
+     * Creates the conversation for a pair that does not have one yet, tolerating a simultaneous
+     * attempt by the other participant.
+     *
+     * <p>{@link DmConversation#between} is still what decides the canonical ordering, so the
+     * {@code chk_dm_pair_ordered} CHECK and the argument validation stay in one place rather than
+     * being restated in SQL. The insert itself goes through
+     * {@link DmConversationRepository#insertIfAbsent}, which cannot fail on the unique constraint --
+     * see there for why catching the violation instead does not work.
+     *
+     * <p>The row is guaranteed to exist by the time the re-read runs, whether this call created it
+     * or the other participant did, so an empty result would mean the constraint or the canonical
+     * ordering had changed underneath this method -- worth failing loudly rather than papering over.
+     */
+    private DmConversation openPair(Long userId, Long peerId) {
+        DmConversation canonical = DmConversation.between(userId, peerId);
+        conversations.insertIfAbsent(canonical.getUserLoId(), canonical.getUserHiId());
+
+        return findPair(userId, peerId)
+                .orElseThrow(() -> new IllegalStateException(
+                        "dm_conversations row absent immediately after an upsert for the pair ("
+                                + canonical.getUserLoId() + ", " + canonical.getUserHiId() + ")"));
+    }
+
+    /**
+     * When this user last read the thread, as something the query can always bind.
+     *
+     * <p>{@link DmConversation#lastReadBy} answers null for "never opened it", which is the normal
+     * state of a conversation the moment it is created. EPOCH says the same thing to a count of
+     * messages "since" a point in time, without putting a null into the query -- see
+     * {@link DmMessageRepository#countUnread}.
+     */
+    private static Instant readMarkFor(DmConversation conversation, Long userId) {
+        Instant lastRead = conversation.lastReadBy(userId);
+        return lastRead != null ? lastRead : Instant.EPOCH;
+    }
+
+    /**
+     * {@code Math.min} takes primitives, so a null id here would unbox and throw NPE rather than
+     * simply not match -- and an NPE out of a controller is a 500 for what is really a bad request.
+     * Callers reach this past {@link #canMessage}, which rejects a null peer, so this is defence in
+     * depth rather than a live path; the explicit empty keeps it that way if a caller is ever added.
+     */
     private Optional<DmConversation> findPair(Long a, Long b) {
+        if (a == null || b == null) {
+            return Optional.empty();
+        }
         return conversations.findByUserLoIdAndUserHiId(Math.min(a, b), Math.max(a, b));
     }
 

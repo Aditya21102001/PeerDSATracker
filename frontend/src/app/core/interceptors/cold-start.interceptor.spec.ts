@@ -96,9 +96,9 @@ describe('coldStartInterceptor', () => {
   });
 
   /**
-   * A 503 carrying JSON came from Spring, not from a proxy. `/api/analytics/*` answers exactly that
-   * when the FastAPI service is cold, and InsightsService already retries it -- retrying here too
-   * would stretch one failed panel across minutes.
+   * A gateway status carrying JSON came from Spring, not from a proxy. `/api/analytics/*` answers
+   * 503 when the FastAPI service is cold -- which InsightsService already retries -- so retrying
+   * here too would stretch one failed panel across minutes.
    */
   it('leaves an application 503 to the service that owns it', () => {
     const failed = vi.fn();
@@ -117,6 +117,68 @@ describe('coldStartInterceptor', () => {
 
     expect(failed).toHaveBeenCalledOnce();
     expect(backend.current()).toBe('ready');
+  });
+
+  /**
+   * The production regression, reproduced exactly.
+   *
+   * `GET /api/analytics/weakness` answered 502 with `content-type: application/json`, from Spring:
+   * `AnalyticsController` uses that status to mean "analytics answered with an error; retrying
+   * cannot fix a misconfiguration, do not spin on it". Because the JSON check covered only 503,
+   * this interceptor retried it seven times over two and a half minutes -- and because
+   * `InsightsService.waitForWake` retries from outside, the layers multiplied to ~21 requests per
+   * panel, each one making the backend call a service that was never going to answer.
+   */
+  it('does not retry the 502 that means "retrying cannot fix this"', async () => {
+    const failed = vi.fn();
+    client.get('/api/analytics/weakness').subscribe({ error: failed });
+
+    http.expectOne('/api/analytics/weakness').flush(
+      { detail: 'Analytics service error (upstream 401). Analytics rejected our token.' },
+      { status: 502, statusText: 'Bad Gateway', headers: { 'content-type': 'application/json' } },
+    );
+
+    // Fails once, immediately, and stays failed.
+    expect(failed).toHaveBeenCalledOnce();
+    await vi.advanceTimersByTimeAsync(150_000);
+    http.expectNone('/api/analytics/weakness');
+
+    // And it must not claim the server is asleep: the server answered.
+    expect(backend.current()).toBe('ready');
+  });
+
+  /**
+   * The amplification that took the site down, as a test.
+   *
+   * A genuine bodiless gateway error on an analytics path means the backend really is unreachable,
+   * so the notice belongs up -- but `InsightsService.waitForWake` is already retrying this call from
+   * outside `HttpClient`, and layers multiply rather than add. Seven attempts here became twenty-one
+   * against a 0.1-CPU instance.
+   */
+  it('reports but does not resend a path whose caller already retries', async () => {
+    const failed = vi.fn();
+    client.get('/api/analytics/revise-next').subscribe({ error: failed });
+
+    http.expectOne('/api/analytics/revise-next').flush('<html>Bad Gateway</html>', gateway);
+
+    // Told the user, once. Did not queue six more requests behind it.
+    expect(failed).toHaveBeenCalledOnce();
+    expect(backend.current()).toBe('warming');
+
+    await vi.advanceTimersByTimeAsync(150_000);
+    http.expectNone('/api/analytics/revise-next');
+  });
+
+  /** The same failure on an ordinary path IS this interceptor's to retry. */
+  it('still resends an ordinary path on the same failure', async () => {
+    const seen = vi.fn();
+    client.get('/api/sheet').subscribe({ next: seen });
+
+    http.expectOne('/api/sheet').flush('<html>Bad Gateway</html>', gateway);
+    await vi.advanceTimersByTimeAsync(2_000);
+
+    http.expectOne('/api/sheet').flush({ ok: true });
+    expect(seen).toHaveBeenCalledOnce();
   });
 
   it('gives up describing it as a cold start once a cold start could not explain it', async () => {

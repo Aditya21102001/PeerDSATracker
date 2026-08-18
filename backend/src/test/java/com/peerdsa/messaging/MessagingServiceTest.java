@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -199,20 +200,51 @@ class MessagingServiceTest {
 
         service.openWith(ME, PEER);
 
-        verify(conversations, never()).save(any());
+        // insertIfAbsent, not save: creation moved to an upsert so a simultaneous open cannot break
+        // the unique constraint. Asserting on save() here would still pass and test nothing.
+        verify(conversations, never()).insertIfAbsent(any(), any());
     }
 
     /** The pair is stored canonically, so who opens it cannot change which row is found. */
     @Test
     void theSamePairResolvesToTheSameRowFromEitherSide() {
         mutual(ME, PEER);
-        when(conversations.findByUserLoIdAndUserHiId(ME, PEER)).thenReturn(Optional.empty());
         when(users.findById(ME)).thenReturn(Optional.of(user(ME, "aditya")));
+        // Absent, then present: what an upsert looks like from the caller's side.
+        when(conversations.findByUserLoIdAndUserHiId(ME, PEER))
+                .thenReturn(Optional.empty())
+                .thenReturn(Optional.of(conversation(ME, PEER)));
 
         service.openWith(PEER, ME);
 
-        // Looked up low-id-first regardless of who asked.
-        verify(conversations).findByUserLoIdAndUserHiId(ME, PEER);
+        // Looked up AND inserted low-id-first, regardless of who asked. The insert argument order
+        // is what chk_dm_pair_ordered enforces in the database.
+        verify(conversations, atLeastOnce()).findByUserLoIdAndUserHiId(ME, PEER);
+        verify(conversations).insertIfAbsent(ME, PEER);
+    }
+
+    /**
+     * Both participants tapping the same peer at the same moment.
+     *
+     * <p>The loser of that race finds nothing, inserts nothing (the row is already there), and must
+     * still come back with the winner's row. Before the upsert this was a unique-constraint
+     * violation, which reached the client as a 500 -- and it could not be repaired by catching the
+     * violation, because a failed flush leaves the surrounding transaction unusable.
+     */
+    @Test
+    void aSimultaneousOpenByBothSidesResolvesToTheOneRow() {
+        mutual(ME, PEER);
+        when(users.findById(PEER)).thenReturn(Optional.of(user(PEER, "priya")));
+        DmConversation theirs = conversation(ME, PEER);
+        when(conversations.findByUserLoIdAndUserHiId(ME, PEER))
+                .thenReturn(Optional.empty())
+                // The other participant's insert landed in between.
+                .thenReturn(Optional.of(theirs));
+
+        var view = service.openWith(ME, PEER);
+
+        assertThat(view.id()).isEqualTo(theirs.getId());
+        verify(conversations).insertIfAbsent(ME, PEER);
     }
 
     // ---------------------------------------------------------------------------- rate limiting

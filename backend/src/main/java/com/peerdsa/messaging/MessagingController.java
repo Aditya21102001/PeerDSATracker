@@ -51,7 +51,8 @@ public class MessagingController {
 
     /** Finds or creates the thread with a peer. 403 unless the two follow each other. */
     @PostMapping("/conversations")
-    public ConversationView open(@AuthenticationPrincipal User user, @RequestBody OpenRequest request) {
+    public ConversationView open(
+            @AuthenticationPrincipal User user, @Valid @RequestBody OpenRequest request) {
         return messaging.openWith(user.getId(), request.peerId());
     }
 
