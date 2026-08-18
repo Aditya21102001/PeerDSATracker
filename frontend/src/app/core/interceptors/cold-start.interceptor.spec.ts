@@ -132,11 +132,9 @@ describe('coldStartInterceptor', () => {
     // behaviour under test, not an artefact of it.
     for (let elapsed = 0; elapsed < 270_000; elapsed += 5_000) {
       await vi.advanceTimersByTimeAsync(5_000);
-      const pending = http.match(() => true);
-      console.log(`t=${elapsed + 5_000} state=${backend.current()} pending=${pending.map((r) => r.request.url + (r.cancelled ? '(x)' : '')).join(',')}`);
-      for (const req of pending) {
-        if (!req.cancelled) {
-          req.flush('<html>Bad Gateway</html>', gateway);
+      for (const pending of http.match(() => true)) {
+        if (!pending.cancelled) {
+          pending.flush('<html>Bad Gateway</html>', gateway);
         }
       }
     }

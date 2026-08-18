@@ -1,4 +1,4 @@
-import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
+import { HttpErrorResponse, HttpEventType, HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { catchError, retry, tap, throwError, timer } from 'rxjs';
 import { isBackendUnavailable, isIdempotent } from '../http/backend-unavailable';
@@ -44,7 +44,17 @@ export const coldStartInterceptor: HttpInterceptorFn = (req, next) => {
     // Any answer at all means the backend is up -- including a 4xx, which is the application
     // talking. Only a failure to reach it counts against it.
     tap({
-      next: () => backend.reportReachable(),
+      next: (event) => {
+        // The type check is load-bearing. Inside an interceptor, next() emits an
+        // HttpEventType.Sent event the instant the request is dispatched -- HttpClient only
+        // filters those out further up the chain. Treating Sent as "the backend answered" cleared
+        // the notice every time a retry went out, so on a real cold start the bar flickered on and
+        // off for the whole wait, and BackendStatus's give-up clock was reset each time and never
+        // reached its window.
+        if (event.type === HttpEventType.Response) {
+          backend.reportReachable();
+        }
+      },
       error: (error: HttpErrorResponse) => {
         if (!isBackendUnavailable(error)) {
           backend.reportReachable();
