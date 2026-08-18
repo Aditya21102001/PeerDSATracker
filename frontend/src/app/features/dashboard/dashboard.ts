@@ -207,8 +207,8 @@ export class Dashboard {
   protected readonly recommendations = signal<Recommendation[]>([]);
   protected readonly dailyDigest = signal<MailSummaryItem>({
     title: 'DSA Tracker · morning',
-    senderName: 'Kasukabe Task Force',
-    senderEmail: 'pranjalgaur.20.12@gmail.com',
+    senderName: 'Aditya Yadav',
+    senderEmail: 'adityakumaryadav21102001@gmail.com',
     timestamp: '07:44',
     subject: 'Ding ding! Aditya Yadav, round one.',
     summary:

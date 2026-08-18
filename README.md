@@ -367,6 +367,27 @@ Two faults on that endpoint were fixed with it:
 `OpenRequest.peerId` is also `@NotNull` with `@Valid` on the controller now, so a missing field is a
 400 rather than whatever the first line to touch it happened to do.
 
+### `OPENROUTER_MODEL` goes stale on its own
+
+The study assistant runs on OpenRouter's free tier, and **that list rotates**. An id that worked last
+month is retired without notice, OpenRouter answers 404, and `OpenRouterClient` reports *"The
+assistant's model is not available. Check OPENROUTER_MODEL"*. Nothing is broken except one value.
+
+There is no startup validation on purpose — checking would mean a network call on every boot, on an
+instance that already takes a minute to start. The cost is that the failure appears at first use
+rather than at deploy.
+
+The live list is public and needs no key:
+
+```
+curl -s https://openrouter.ai/api/v1/models | python -c "import json,sys;[print(m['id']) for m in json.load(sys.stdin)['data'] if m['id'].endswith(':free')]"
+```
+
+Pick one, set `OPENROUTER_MODEL` on the backend service, redeploy. The default in `application.yml`
+is only a starting point for a fresh deployment — it is not authoritative and will itself rotate out.
+`meta-llama/llama-3.3-70b-instruct:free` was the default until it was retired along with every other
+`meta-llama` free id.
+
 ### `MANAGEMENT_HEALTH_DB_ENABLED=false`
 
 Set on the Render backend. Render allows a health check **5 seconds**; a DB-backed health indicator

@@ -202,7 +202,16 @@ app:
     base-url: ${OPENROUTER_BASE_URL:https://openrouter.ai/api/v1}
     # Must be a real free model id (ends in ":free"). The free list rotates, hence an
     # env var. NOTE: "openrouter/free" is NOT a valid id and will 404.
-    model: "${OPENROUTER_MODEL:meta-llama/llama-3.3-70b-instruct:free}"
+    #
+    # This default WILL go stale -- that is the nature of the free list, not a bug to fix here.
+    # When the assistant starts answering "the model is not available", OpenRouter has retired
+    # the id and the whole repair is this one environment variable. The live list is public and
+    # needs no key: GET https://openrouter.ai/api/v1/models and keep the ids ending in ":free".
+    # The README has a ready-made one-liner under "OPENROUTER_MODEL goes stale on its own".
+    #
+    # Previously meta-llama/llama-3.3-70b-instruct:free, retired along with every other
+    # meta-llama free id, so every deployment on this default 404'd on its first message.
+    model: "${OPENROUTER_MODEL:z-ai/glm-5.2:free}"
     system-prompt: "${OPENROUTER_SYSTEM_PROMPT:You are Grind Buddy, a concise coding-interview tutor inside a DSA progress tracker. Help with data structures, algorithms, complexity analysis, and debugging. Prefer hints and step-by-step reasoning over dumping full solutions unless explicitly asked. Use short paragraphs and fenced code blocks. If a question is unrelated to programming or studying, gently steer back.}"
     # Most-recent messages replayed as context. Caps the token bill on a long thread.
     max-history: ${OPENROUTER_MAX_HISTORY:20}
