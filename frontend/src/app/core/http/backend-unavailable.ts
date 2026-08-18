@@ -18,16 +18,27 @@ const GATEWAY_STATUSES: readonly number[] = [502, 503, 504];
  * Status 0 is Angular's stand-in for "no HTTP response at all": DNS failure, connection refused,
  * TLS failure, CORS rejection, an aborted request. A spun-down instance produces it too.
  *
- * 503 is the awkward one, because this application issues its own. `/api/auth/otp/request` answers
- * 503 when mail delivery fails, deliberately, instead of falling back to returning the code. And
- * `/api/analytics/*` answers 503 when the backend cannot reach the FastAPI service -- which is a
- * cold start, but of a *different* service, and `InsightsService.waitForWake` already owns that
- * retry. Treating it as unavailability here would stack this interceptor's four attempts on top of
- * those two and spread one panel's failure over several minutes.
+ * The gateway statuses need a second test, because this application issues all three itself:
  *
- * Both of those come from Spring, so they carry a JSON body (`ResponseStatusException` renders as
- * `application/problem+json`). A proxy's 503 carries an HTML error page or nothing at all. So a 503
- * counts as unavailability only when the body is not JSON.
+ * <ul>
+ *   <li>`/api/auth/otp/request` answers 503 when mail delivery fails, deliberately, instead of
+ *       falling back to returning the code.
+ *   <li>`/api/analytics/*` answers 503 when the backend cannot reach the FastAPI service. That is a
+ *       cold start, but of a *different* service, and `InsightsService.waitForWake` already owns
+ *       that retry -- stacking this one on top would spread one panel's failure over minutes.
+ *   <li>`/api/analytics/*` answers **502** when analytics answered *with an error*: a mismatched
+ *       `INTERNAL_TOKEN`, a wrong `ANALYTICS_BASE_URL`, a crash. `AnalyticsController` picks that
+ *       status precisely to mean "retrying cannot fix this, do not spin on it".
+ * </ul>
+ *
+ * So the status alone is not enough, and the discriminator is the body. Spring renders every error
+ * as JSON (`ResponseStatusException` becomes `application/problem+json`); a proxy standing in for an
+ * origin it cannot reach serves an HTML error page or nothing at all. A gateway status carrying JSON
+ * therefore came *from the backend*, which means the backend is up, whatever it is complaining about.
+ *
+ * Checking only 503 was a real bug: a misconfigured analytics service made every dashboard show
+ * "waking the server up" and retry for two and a half minutes, over a 502 that said in so many words
+ * that it would never succeed.
  */
 export function isBackendUnavailable(error: unknown): boolean {
   if (!(error instanceof HttpErrorResponse)) {
@@ -39,10 +50,7 @@ export function isBackendUnavailable(error: unknown): boolean {
   if (!GATEWAY_STATUSES.includes(error.status)) {
     return false;
   }
-  if (error.status === 503) {
-    return !(error.headers.get('content-type') ?? '').includes('json');
-  }
-  return true;
+  return !(error.headers.get('content-type') ?? '').includes('json');
 }
 
 /**

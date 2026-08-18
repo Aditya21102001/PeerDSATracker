@@ -34,19 +34,32 @@ describe('isBackendUnavailable', () => {
     expect(isBackendUnavailable(response(504, 'text/html'))).toBe(true);
   });
 
-  it('treats a 503 with no body as unavailability', () => {
-    expect(isBackendUnavailable(response(503))).toBe(true);
+  it('treats a gateway status with no body as unavailability', () => {
+    // Render's 502 while an instance boots, and Vercel's 504 when its edge gives up, arrive with an
+    // HTML page or nothing at all -- never with the application's JSON.
+    for (const status of [502, 503, 504]) {
+      expect(isBackendUnavailable(response(status)), `${status} bodiless`).toBe(true);
+    }
   });
 
   /**
-   * The load-bearing case. Spring renders ResponseStatusException as problem+json, and two
-   * endpoints use a 503 to mean something specific: a failed sign-in email, and an analytics
-   * service that InsightsService already retries on its own. Retrying either from here would
-   * resend a one-time code, or stack retries on top of retries.
+   * The load-bearing case, and the one that shipped wrong.
+   *
+   * Spring renders every error as JSON, and this application issues all three gateway statuses
+   * itself. The 502 is the sharpest example: `AnalyticsController` returns it to mean "analytics
+   * answered with an error, retrying cannot fix a misconfiguration". Observed in production against
+   * `/api/analytics/weakness` -- a 502 with `content-type: application/json` and Spring Security's
+   * header set -- while the check below only covered 503, so every dashboard claimed the server was
+   * waking up and retried for two and a half minutes over a failure that was never going to clear.
    */
-  it('does not treat an application 503 as unavailability', () => {
-    expect(isBackendUnavailable(response(503, 'application/problem+json'))).toBe(false);
-    expect(isBackendUnavailable(response(503, 'application/json'))).toBe(false);
+  it('does not treat any application gateway status as unavailability', () => {
+    for (const status of [502, 503, 504]) {
+      expect(isBackendUnavailable(response(status, 'application/json')), `${status} json`).toBe(false);
+      expect(
+        isBackendUnavailable(response(status, 'application/problem+json')),
+        `${status} problem+json`,
+      ).toBe(false);
+    }
   });
 
   it('does not treat an answer from the application as unavailability', () => {
