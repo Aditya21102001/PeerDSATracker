@@ -108,6 +108,12 @@ public class SecurityConfig {
                         .requestMatchers(PUBLIC_AUTH_ENDPOINTS).permitAll()
                         .requestMatchers(OAUTH_ENDPOINTS).permitAll()
                         .requestMatchers("/actuator/health", "/actuator/info").permitAll()
+                        // Which build is deployed and how long it has been awake. Read by the
+                        // footer and by the cold-start probe -- the probe runs before anyone has
+                        // signed in and while the instance is still booting, so requiring a token
+                        // would mean the one endpoint that reports "the backend is up" could only
+                        // be reached once the backend was up enough to validate one.
+                        .requestMatchers(HttpMethod.GET, "/api/meta").permitAll()
                         // Notably NOT public: /api/auth/change-password. It resolves the account
                         // from the session, so it must have one.
                         .anyRequest().authenticated())

@@ -84,6 +84,26 @@ export interface ChangePasswordResponse {
 }
 
 /** A sheet problem with the caller's own status/star, from /api/sheet/problems[/{id}]. */
+/**
+ * `GET /api/meta` -- which build is deployed, and how long it has been awake.
+ *
+ * Feeds the footer's version stamp and the cold-start probe. `builtAt` is the stable identity of a
+ * release; `startedAt` is not, because Render's free plan starts the instance again after every
+ * idle spin-down, so it moves with nothing deployed.
+ */
+export interface Meta {
+  /** Maven project version, or `dev` when the build ran without build info. */
+  version: string;
+  /** Git sha of the deployed build. Empty off Render, which is where it comes from. */
+  commit: string;
+  /** ISO instant the jar was packaged. Null when build info was not generated. */
+  builtAt: string | null;
+  /** ISO instant this backend process came up. */
+  startedAt: string;
+  /** A handful of seconds means the caller just paid for a cold start. */
+  uptimeSeconds: number;
+}
+
 export interface Problem {
   id: number;
   title: string;

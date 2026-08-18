@@ -62,6 +62,13 @@ server:
   forward-headers-strategy: ${FORWARD_HEADERS_STRATEGY:framework}
 
 app:
+  # ------------------------------------------------------------ build identity
+  # Reported by /api/meta and shown in the SPA footer, so a screenshot names the build it came
+  # from. Render exposes RENDER_GIT_COMMIT to its services; nothing sets it locally, and blank is
+  # fine -- the version and build time still come from META-INF/build-info.properties.
+  build:
+    commit: ${RENDER_GIT_COMMIT:${GIT_COMMIT:}}
+
   # Where reset links point and where the OAuth2 callback sends the browser back to. Must be where
   # the SPA is actually served: a wrong value silently sends production users to localhost, with a
   # perfectly successful sign-in behind them and nothing in the logs to say so.

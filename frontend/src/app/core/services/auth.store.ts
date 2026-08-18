@@ -1,10 +1,20 @@
 import { HttpBackend, HttpClient } from '@angular/common/http';
 import { Service, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { Observable, catchError, finalize, map, of, shareReplay, switchMap, tap, throwError } from 'rxjs';
+import { Observable, catchError, finalize, map, of, retry, shareReplay, switchMap, tap, throwError, timer } from 'rxjs';
+import { isBackendUnavailable } from '../http/backend-unavailable';
 import { ChangePasswordResponse, Me, OtpRequestResponse, TokenResponse } from '../models/api.models';
+import { BackendStatus } from './backend-status';
 import { LastSignInService } from './last-sign-in.service';
 import { TokenService } from './token.service';
+
+/**
+ * Attempts beyond the first for a refresh that could not reach the backend. Spans about 40 seconds,
+ * which is a cold Render instance booting a JVM on 0.1 CPU. Past that the notice is up and the user
+ * decides, rather than the app holding a session-restore open indefinitely.
+ */
+const REFRESH_COLD_START_RETRIES = 3;
+const REFRESH_BACKOFF_MS = [3_000, 10_000, 25_000];
 
 /**
  * The session: who is signed in, and how requests get a valid access token.
@@ -20,6 +30,7 @@ export class AuthStore {
   private readonly tokens = inject(TokenService);
   private readonly lastSignIn = inject(LastSignInService);
   private readonly router = inject(Router);
+  private readonly backend = inject(BackendStatus);
 
   /**
    * Refresh must bypass the interceptor chain, otherwise a 401 on /auth/refresh
@@ -150,7 +161,14 @@ export class AuthStore {
       catchError((error) => {
         // Only a dead refresh token ends the session. A failed /me is a bad moment for the API,
         // not proof the session is over -- clearing tokens here would sign people out on a blip.
-        if (!this.tokens.accessToken()) {
+        //
+        // A backend that could not be reached at all is the same story, and it is not hypothetical:
+        // the instance spins down after 15 minutes idle, so the refresh above is exactly the
+        // request that pays for the cold start, and it fails. Clearing tokens on that signed people
+        // out of a perfectly valid session every time they came back to a cold app -- which looked
+        // like a session-expiry bug and was really a deploy-topology one. The token survives; the
+        // notice explains the wait; the next attempt uses it.
+        if (!this.tokens.accessToken() && !isBackendUnavailable(error)) {
           this.tokens.clear();
           this.user.set(null);
         }
@@ -178,6 +196,25 @@ export class AuthStore {
     this.inFlightRefresh = this.rawHttp
       .post<TokenResponse>('/api/auth/refresh', { refreshToken })
       .pipe(
+        // Bypassing the interceptors also bypasses coldStartInterceptor, so the cold-start retry
+        // has to be repeated here. It has to exist here: on a reload against a spun-down instance
+        // this is the FIRST request the app makes, so it is the one that fails, and everything
+        // downstream inherits the outcome.
+        //
+        // A POST is retried here where the interceptor would refuse to, and that is safe for this
+        // one endpoint specifically: the attempt that failed never reached the backend, so the
+        // refresh token it presented was never rotated. Single-flight is preserved because the
+        // retry lives inside the shared observable rather than around it.
+        retry({
+          count: REFRESH_COLD_START_RETRIES,
+          delay: (error, attempt) => {
+            if (!isBackendUnavailable(error)) {
+              return throwError(() => error);
+            }
+            this.backend.reportUnavailable();
+            return timer(REFRESH_BACKOFF_MS[Math.min(attempt - 1, REFRESH_BACKOFF_MS.length - 1)]);
+          },
+        }),
         tap((t) => this.tokens.set(t)),
         map((t) => t.accessToken),
         shareReplay({ bufferSize: 1, refCount: false }),

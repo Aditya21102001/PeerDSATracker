@@ -111,9 +111,12 @@ jobs:
         working-directory: frontend
         run: npm ci
 
+      # `npm run build`, not `npx ng build`: the prebuild hook is what generates
+      # src/build-info.ts, and without it the footer's import does not resolve.
+      # `build` already defaults to the production configuration (angular.json).
       - name: Build
         working-directory: frontend
-        run: npx ng build --configuration production
+        run: npm run build
 
   analytics:
     name: analytics (Python 3.13)

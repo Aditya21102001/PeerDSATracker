@@ -12,7 +12,19 @@
 <!-- One toggle for the whole app, so every page — including sign-in — can switch theme. -->
 <app-theme-toggle class="theme-switch" />
 
+<!--
+  Says "the backend is asleep, not broken" while a cold start runs. Outside the router outlet so a
+  spin-down that happens mid-session is reported on whichever page the user is already on.
+-->
+<app-cold-start-notice />
+
 <router-outlet />
+
+<!--
+  Which build is running, on both halves of the deployment. After the outlet so it reads last, and
+  outside it so every route gets one without repeating the markup.
+-->
+<app-footer />
 
 <!-- Product tour. Renders nothing unless the tour is active; sits above every route. -->
 <app-tour-overlay />

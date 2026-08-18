@@ -32,8 +32,130 @@
       }
     })();
   </script>
+
+  <style>
+    /*
+      Boot splash. Lives inline, not in styles.scss, so it paints before any stylesheet has loaded
+      -- which is the whole point: this is what fills the window while nothing else can.
+      Angular clears the contents of <app-root> when it bootstraps, so it needs no teardown code.
+
+      Why it exists: bootstrap blocks on the session restore in app.config.ts, and that request is
+      the one that pays for a cold start on Render's free plan. The in-app notice component does not
+      exist yet at that moment, so without this the user watches an empty window for up to a minute
+      and reloads -- which starts the same wait again.
+
+      Both messages are revealed by animation delay alone, so a warm load (a few hundred
+      milliseconds) shows nothing at all and never flashes.
+    */
+    .boot {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.75rem;
+      padding: 1.5rem;
+      text-align: center;
+      font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+      background: #f6f7fb;
+      color: #59606f;
+    }
+
+    .boot-ring {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: 2px solid #dee2ec;
+      border-top-color: #5b5bd6;
+      border-right-color: #5b5bd6;
+      opacity: 0;
+      animation:
+        boot-spin 700ms linear infinite,
+        boot-in 200ms ease 2s forwards;
+    }
+
+    .boot-cold {
+      max-width: 26rem;
+      margin: 0;
+      font-size: 0.9375rem;
+      line-height: 1.5;
+      opacity: 0;
+      /* Only a cold start takes this long, so only a cold start gets the explanation. */
+      animation: boot-in 240ms ease 9s forwards;
+    }
+
+    .boot-cold strong {
+      display: block;
+      margin-bottom: 0.25rem;
+      color: #14161c;
+    }
+
+    @keyframes boot-spin {
+      to {
+        transform: rotate(1turn);
+      }
+    }
+
+    @keyframes boot-in {
+      to {
+        opacity: 1;
+      }
+    }
+
+    /* A frozen arc reads as broken, so show a calm complete ring instead. The delayed reveal is
+       kept: it is what stops a warm load from flashing, and a fade is not a motion hazard. */
+    @media (prefers-reduced-motion: reduce) {
+      .boot-ring {
+        border-color: #5b5bd6;
+        animation: boot-in 1ms linear 2s forwards;
+      }
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme='light']) .boot {
+        background: #0c0e14;
+        color: #98a1b2;
+      }
+
+      :root:not([data-theme='light']) .boot-ring {
+        border-color: #262b38;
+        border-top-color: #5b5bd6;
+        border-right-color: #5b5bd6;
+      }
+
+      :root:not([data-theme='light']) .boot-cold strong {
+        color: #e7e9f0;
+      }
+    }
+
+    :root[data-theme='dark'] .boot {
+      background: #0c0e14;
+      color: #98a1b2;
+    }
+
+    :root[data-theme='dark'] .boot-ring {
+      border-color: #262b38;
+      border-top-color: #5b5bd6;
+      border-right-color: #5b5bd6;
+    }
+
+    :root[data-theme='dark'] .boot-cold strong {
+      color: #e7e9f0;
+    }
+  </style>
 </head>
 <body>
-  <app-root></app-root>
+  <app-root>
+    <!-- Replaced by the application the moment it bootstraps. See the .boot styles above. -->
+    <div class="boot" role="status" aria-live="polite">
+      <span class="boot-ring" aria-hidden="true"></span>
+      <p class="boot-cold">
+        <strong>Waking the server up</strong>
+        The backend sleeps after 15 minutes idle to stay on a free plan. Starting it takes up to a
+        minute. Please do not reload -- that starts the wait over.
+      </p>
+    </div>
+  </app-root>
 </body>
 </html>

@@ -29,6 +29,11 @@ yarn-error.log
 !.vscode/mcp.json
 .history/*
 
+# Generated at build time by scripts/build-info.mjs -- a commit sha and a timestamp. Checking it
+# in would put a changing file in every working tree that ran a build, and ship a stale one
+# whenever somebody forgot to.
+/src/build-info.ts
+
 # Miscellaneous
 /.angular/cache
 .sass-cache/

@@ -124,6 +124,21 @@
       <plugin>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-maven-plugin</artifactId>
+        <executions>
+          <!--
+            Writes target/classes/META-INF/build-info.properties, which is the only thing that
+            makes a BuildProperties bean exist. Without it /api/meta reports version "dev" and no
+            build time, and the footer has nothing to stamp.
+
+            Binds to generate-resources, so `mvn test` and `mvn spring-boot:run` get it too and
+            the value is not a production-only surprise.
+          -->
+          <execution>
+            <goals>
+              <goal>build-info</goal>
+            </goals>
+          </execution>
+        </executions>
       </plugin>
     </plugins>
   </build>
