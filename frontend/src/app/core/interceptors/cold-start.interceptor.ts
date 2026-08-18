@@ -5,15 +5,23 @@ import { isBackendUnavailable, isIdempotent } from '../http/backend-unavailable'
 import { BackendStatus } from '../services/backend-status';
 
 /**
- * How many extra attempts a safe request gets. Four attempts at the delays below spans roughly 45
- * seconds, which covers a warm-ish restart. Beyond that the notice is already up and the poll cycle
- * in {@link BackendStatus} owns recovery -- holding a request open for two minutes would just make
- * the page look hung.
+ * How many extra attempts a safe request gets. The delays below span about two and a half minutes,
+ * which is deliberately matched to a real cold start (the README measures one to three) rather than
+ * to what feels like a reasonable number of retries.
+ *
+ * A shorter budget is worse than no budget: the retries run out, the backend comes up, the notice
+ * clears -- and the panels that failed during the wait are still empty, with nothing on screen to
+ * say why. Outlasting the boot is what makes the promise in the notice ("anything that failed will
+ * be retried") true.
  */
-const MAX_RETRIES = 4;
+const MAX_RETRIES = 6;
 
-/** Backoff, in milliseconds, indexed by attempt. A cold JVM will not be ready in 200ms. */
-const BACKOFF_MS = [2_000, 5_000, 12_000, 25_000];
+/**
+ * Backoff, in milliseconds, indexed by attempt. A cold JVM will not be ready in 200ms, and the
+ * later steps stretch out because by then the wait is measured in minutes, not milliseconds.
+ * Sleeping between attempts holds no connection, so a page full of retrying panels costs nothing.
+ */
+const BACKOFF_MS = [2_000, 5_000, 12_000, 25_000, 45_000, 60_000];
 
 /**
  * Turns a cold backend from a page of broken panels into a wait with an explanation.

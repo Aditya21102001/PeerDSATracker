@@ -18,11 +18,16 @@ const GATEWAY_STATUSES: readonly number[] = [502, 503, 504];
  * Status 0 is Angular's stand-in for "no HTTP response at all": DNS failure, connection refused,
  * TLS failure, CORS rejection, an aborted request. A spun-down instance produces it too.
  *
- * 503 is the awkward one, because this application issues its own: `/api/auth/otp/request` answers
- * 503 when mail delivery fails, deliberately, instead of falling back to returning the code. Those
- * come from Spring with a JSON body; a proxy's 503 comes with an HTML error page or nothing at all.
- * So a 503 only counts as unavailability when the body is not JSON -- otherwise a failed OTP send
- * would read as a cold start and, worse, be retried.
+ * 503 is the awkward one, because this application issues its own. `/api/auth/otp/request` answers
+ * 503 when mail delivery fails, deliberately, instead of falling back to returning the code. And
+ * `/api/analytics/*` answers 503 when the backend cannot reach the FastAPI service -- which is a
+ * cold start, but of a *different* service, and `InsightsService.waitForWake` already owns that
+ * retry. Treating it as unavailability here would stack this interceptor's four attempts on top of
+ * those two and spread one panel's failure over several minutes.
+ *
+ * Both of those come from Spring, so they carry a JSON body (`ResponseStatusException` renders as
+ * `application/problem+json`). A proxy's 503 carries an HTML error page or nothing at all. So a 503
+ * counts as unavailability only when the body is not JSON.
  */
 export function isBackendUnavailable(error: unknown): boolean {
   if (!(error instanceof HttpErrorResponse)) {

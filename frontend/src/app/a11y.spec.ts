@@ -21,6 +21,7 @@ import { ProfilePage } from './features/profile/profile-page';
 import { RevisionPage } from './features/revision/revision-page';
 import { SheetPage } from './features/sheet/sheet-page';
 import { WelcomePage } from './features/welcome/welcome-page';
+import { AppFooter } from './shared/app-footer';
 import { MasteryChart } from './shared/mastery-chart/mastery-chart';
 import { MobileNav } from './shared/mobile-nav/mobile-nav';
 import { ThemeToggle } from './shared/theme-toggle';
@@ -77,6 +78,7 @@ describe('accessibility (axe-core)', () => {
     ['theme toggle', ThemeToggle],
     ['mobile nav', MobileNav],
     ['mastery chart', MasteryChart],
+    ['footer', AppFooter],
   ];
 
   /**

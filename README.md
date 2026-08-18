@@ -298,6 +298,41 @@ notice a missing panel.
 - 750 free instance-hours per workspace per month. Keeping one service warm with an external pinger
   costs ~730h; keeping *both* warm exceeds the cap and suspends them mid-month.
 
+### Cold starts are surfaced, not hidden
+
+A cold start is not merely slow from the browser's side, it **fails**: the SPA reaches the backend
+through Vercel's `/api/*` rewrite, and that edge proxy gives up long before a cold JVM is listening.
+So the first requests after an idle period return a gateway error, and the app used to present as
+several panels broken for no stated reason — with a reload, the obvious thing to try, restarting the
+same wait.
+
+Four pieces handle it, all keyed on the same classifier (`core/http/backend-unavailable.ts`):
+
+| Piece | Job |
+|---|---|
+| `GET /api/meta` | Public, in-memory, no DB. Reports version, build time and uptime. |
+| `BackendStatus` | Probes `/api/meta` at startup, polls while the backend is absent, gives up after 4 min. |
+| `coldStartInterceptor` | Resends **idempotent** requests over ~2.5 min of backoff; raises the notice on the first failure. |
+| `ColdStartNotice` + the `.boot` splash in `index.html` | Says "waking up, do not reload". The splash covers the pre-bootstrap window, where no component exists yet. |
+
+Three decisions worth keeping:
+
+- **Only GET/HEAD/OPTIONS are resent.** A resent `POST /api/auth/otp/request` mails a second sign-in
+  code and burns a slot against the five-per-hour cap. Unsafe methods still raise the notice, so the
+  failure has an explanation next to it, and the user retries deliberately.
+- **A 503 carrying JSON is not a cold start.** Spring issues its own 503s — a failed sign-in email,
+  and `/api/analytics/*` when the FastAPI service is cold (which `InsightsService.waitForWake`
+  already retries). Only a bodiless or HTML 503 is a proxy's.
+- **The retry budget outlasts the boot on purpose.** A shorter one is worse than none: the retries
+  run out, the backend comes up, the notice clears — and the panels that failed during the wait are
+  still empty with nothing to explain them.
+
+`AuthStore.restoreSession` is part of this. It previously cleared the tokens whenever the refresh
+call failed, without distinguishing a dead refresh token from an unreachable backend — and the
+refresh is the *first* request a reload makes, so it is the one that pays for the cold start. Coming
+back to a cold app signed you out of a valid session. It now clears tokens only on an answer from the
+backend.
+
 ### `MANAGEMENT_HEALTH_DB_ENABLED=false`
 
 Set on the Render backend. Render allows a health check **5 seconds**; a DB-backed health indicator
@@ -307,6 +342,13 @@ Measured honestly: `DataSourceHealthContributorAutoConfiguration` *does* match o
 `/actuator/health` still answers in **~17 ms** while real DB requests take 1–2 s — so it is not
 touching the database, and the stall could not be reproduced locally. The flag stays as cheap
 insurance, not as a fix for an observed bug.
+
+This is also why the frontend's readiness probe is `GET /api/meta` and **not** `/actuator/health`:
+that path belongs to Render's 5-second health check and has to stay a fast, dumb liveness ping.
+`/api/meta` lives under `/api/**`, so the existing CORS registration covers it and it reaches the
+backend through the same Vercel rewrite as every other call. It deliberately touches no database —
+Flyway runs at startup, so an instance answering HTTP has already woken Neon, and a probe here would
+block on the 30s Hikari timeout.
 
 ### The old reset-link flow stays disabled
 

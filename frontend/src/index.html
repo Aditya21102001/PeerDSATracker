@@ -46,6 +46,11 @@
 
       Both messages are revealed by animation delay alone, so a warm load (a few hundred
       milliseconds) shows nothing at all and never flashes.
+
+      The colours are literal copies of the tokens in styles.scss, which is the one place in this
+      project where that is not a bug: the token stylesheet has not loaded yet, so var() would
+      resolve to nothing. Keep them in step with --bg, --surface-2, --accent, --text and
+      --text-muted if those ever change.
     */
     .boot {
       position: fixed;
@@ -152,8 +157,8 @@
       <span class="boot-ring" aria-hidden="true"></span>
       <p class="boot-cold">
         <strong>Waking the server up</strong>
-        The backend sleeps after 15 minutes idle to stay on a free plan. Starting it takes up to a
-        minute. Please do not reload -- that starts the wait over.
+        The backend sleeps after 15 minutes idle to stay on a free plan. Starting it usually takes a
+        minute or two. Please do not reload -- that starts the wait over.
       </p>
     </div>
   </app-root>

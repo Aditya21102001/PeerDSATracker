@@ -26,12 +26,13 @@ const POLL_INTERVAL_MS = 6_000;
 /**
  * When to stop calling it a cold start.
  *
- * A free Render instance plus a JVM on 0.1 CPU with the optimizing JIT switched off is tens of
- * seconds, and Neon's compute has to wake underneath it. Two and a half minutes is generous for
- * that and still short enough that a genuinely broken deploy stops being described as "waking up",
- * which would be a lie that wastes the user's time.
+ * The README measures a cold start on this deployment at one to three minutes: a free Render
+ * instance, plus a JVM on 0.1 CPU with the optimizing JIT switched off, plus Neon's compute waking
+ * underneath it. Four minutes clears the top of that range, so a slow-but-working boot is never
+ * relabelled as a failure -- while a genuinely broken deploy still stops being described as "waking
+ * up", which would be a lie that wastes the user's time.
  */
-const GIVE_UP_AFTER_MS = 150_000;
+const GIVE_UP_AFTER_MS = 240_000;
 
 /**
  * Whether the backend is answering, and what is deployed on it.

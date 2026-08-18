@@ -133,9 +133,9 @@ export class ColdStartNotice {
       case 'warming':
         // Naming the cause and the cost is what stops the reload. Roughly a minute is honest for a
         // free-plan container plus a cold JVM; promising less would only be believed once.
-        return 'It sleeps after 15 minutes idle to stay free. This takes up to a minute — nothing is lost, and anything that failed will be retried.';
+        return 'It sleeps after 15 minutes idle to stay free. Waking it usually takes a minute or two — nothing is lost, and anything that failed will be retried automatically.';
       case 'unreachable':
-        return 'It has not answered for a couple of minutes, so this is probably not just a cold start.';
+        return 'It has not answered for several minutes, which is longer than a cold start takes. Something is probably actually wrong.';
       case 'offline':
         return 'Your device reports no network connection. Nothing will load until it returns.';
       default:
