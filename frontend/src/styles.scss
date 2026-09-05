@@ -673,30 +673,7 @@ main > header nav {
     gap: var(--sp-2);
   }
 
-  /*
-   * The per-page header nav is replaced by MobileNav here, not merely restyled.
-   *
-   * Wrapped onto a 375px screen at the 40px tap height accessibility requires, those eight links
-   * plus "Sign out" were four rows and about 160px of vertical space consumed before any content
-   * — and they read as an unstyled list of links rather than an application. They also sat at the
-   * very top, the hardest part of a phone screen to reach one-handed.
-   *
-   * Kept in the DOM rather than removed from the template, so the desktop markup stays simple and
-   * the tour can still find whichever nav is actually visible.
-   */
-  /*
-   * !important is load-bearing here, not laziness. Angular compiles a component's `header nav`
-   * into `header[_ngcontent-x] nav[_ngcontent-x]` -- specificity (0,2,2), because it stamps the
-   * attribute onto every compound. No global selector can beat that on specificity alone:
-   * `body.has-mobile-nav main > header nav` is only (0,1,4), and the class column decides.
-   * Without this the rule computes to display:flex and the old wrapped nav simply stays.
-   */
-  body.has-mobile-nav main > header nav {
-    display: none !important;
-  }
-
-  /* Signed out (/guide, the welcome page) there is no bar, so those header links stay — and they
-     keep a real tap target. Measured before this rule: 24px tall. A finger is ~44px. */
+  /* Keep the full section navigation available on every route, including phones. */
   main > header nav a,
   main > header nav button {
     display: inline-flex;
