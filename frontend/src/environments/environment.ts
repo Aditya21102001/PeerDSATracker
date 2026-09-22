@@ -12,6 +12,10 @@ export const environment = {
    */
   resetEnabled: true,
 
+  // Development has no guaranteed Google credentials, so the button starts hidden until the
+  // backend advertises the provider.
+  googleEnabled: false,
+
   /**
    * Origin to start a Google sign-in against. Empty means "same origin", which in development is
    * `ng serve` on :4300 proxying /oauth2 and /login/oauth2 through to the backend.

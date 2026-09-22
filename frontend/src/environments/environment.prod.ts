@@ -8,6 +8,10 @@ export const environment = {
   // RESET_ENABLED=true on the backend.
   resetEnabled: false,
 
+  // Google is enabled on the production Render deployment. This lets the button render during a
+  // cold start; /api/auth/options remains the runtime authority and can turn it off if required.
+  googleEnabled: true,
+
   /**
    * Google sign-in starts directly against the backend, NOT through Vercel's /api rewrite.
    *

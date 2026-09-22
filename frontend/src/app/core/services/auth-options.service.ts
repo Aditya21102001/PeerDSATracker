@@ -2,6 +2,7 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Service, inject, signal } from '@angular/core';
 import { retry, throwError, timer } from 'rxjs';
 
+import { environment } from '../../../environments/environment';
 import { AuthOptions } from '../models/api.models';
 import { LastSignInService } from './last-sign-in.service';
 
@@ -62,7 +63,9 @@ export class AuthOptionsService {
    * device you signed in with Google" directly above a missing Google button, because the two
    * facts were read from localStorage by different code and only one of them was trusted.
    */
-  private readonly google = signal(read() || this.lastSignIn.lastMethod() === 'google');
+  private readonly google = signal(
+    read() || this.lastSignIn.lastMethod() === 'google' || environment.googleEnabled,
+  );
 
   readonly googleEnabled = this.google.asReadonly();
 
