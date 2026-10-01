@@ -348,6 +348,50 @@ export interface RunResult {
   error: string | null;
 }
 
+/** Verdict for a problem code submission. */
+export type SubmissionVerdict =
+  | 'ACCEPTED'
+  | 'WRONG_ANSWER'
+  | 'COMPILE_ERROR'
+  | 'RUNTIME_ERROR'
+  | 'TIME_LIMIT_EXCEEDED';
+
+/** Sample test case from /api/code/problems/{id}/testcases. */
+export interface TestCaseView {
+  id: number;
+  problemId: number;
+  input: string;
+  expectedOutput: string;
+  sample: boolean;
+  position: number;
+}
+
+/** Historical submission entry from /api/code/problems/{id}/submissions. */
+export interface SubmissionView {
+  id: number;
+  problemId: number;
+  language: string;
+  source: string;
+  verdict: SubmissionVerdict;
+  passedTestCases: number;
+  totalTestCases: number;
+  stdout: string | null;
+  stderr: string | null;
+  compileOutput: string | null;
+  createdAt: string;
+}
+
+/** Response from POST /api/code/problems/{id}/submit. */
+export interface SubmitResultView {
+  submission: SubmissionView;
+  accepted: boolean;
+  newlySolved: boolean;
+  xpEarned: number;
+  totalSolved: number;
+  currentStreak: number;
+  message: string;
+}
+
 /** A chat thread in the assistant widget, from /api/chat/conversations. */
 export interface ChatConversation {
   id: number;

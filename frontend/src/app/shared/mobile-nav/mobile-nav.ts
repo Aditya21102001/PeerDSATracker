@@ -151,6 +151,7 @@ export class MobileNav {
     { path: '/messages', label: 'Messages', icon: '💬' },
     { path: '/leaderboard', label: 'Leaderboard', icon: '🏆' },
     { path: '/notes', label: 'Notes', icon: '✎' },
+    { path: '/blog', label: 'Articles', icon: '▤' },
     { path: '/profile', label: 'Platforms', icon: '🔗' },
     { path: '/security', label: 'Password', icon: '🔒' },
     { path: '/guide', label: 'Guide', icon: '?' },

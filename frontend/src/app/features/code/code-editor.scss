@@ -1,5 +1,4 @@
-/* In-app code editor, LeetCode-style split. All colour/space/shape from the design tokens. */
-
+/* In-app code editor */
 .code {
   max-width: 90rem;
   margin: 0 auto;
@@ -21,16 +20,10 @@ header {
     color: var(--text-muted);
     font-size: var(--fs-sm);
     font-weight: 500;
-
-    &:hover {
-      color: var(--text);
-    }
+    &:hover { color: var(--text); }
   }
 }
 
-/* Problem on the left, a drag handle, editor + console on the right. Fills the viewport like
-   LeetCode. The left column is driven by --left-col (set inline from the drag), NOT an inline
-   grid-template-columns -- so the mobile media query below can still collapse the split. */
 .workspace {
   display: grid;
   grid-template-columns: var(--left-col, 22rem) 0.4rem minmax(0, 1fr);
@@ -43,26 +36,18 @@ header {
   border-radius: 3px;
   background: var(--border);
   cursor: col-resize;
-  touch-action: none; /* let pointer drags through instead of scrolling */
+  touch-action: none;
   transition: background var(--t-fast) var(--ease);
 
-  &:hover,
-  &:focus-visible {
+  &:hover, &:focus-visible {
     background: var(--accent);
     outline: none;
   }
 }
 
-/* Stack on a narrow screen; let the page grow rather than trapping panes in a short column. */
 @media (max-width: 60rem) {
-  .workspace {
-    grid-template-columns: 1fr;
-    min-height: 0;
-  }
-
-  .divider {
-    display: none;
-  }
+  .workspace { grid-template-columns: 1fr; min-height: 0; }
+  .divider { display: none; }
 }
 
 .problem-pane {
@@ -100,10 +85,7 @@ header {
     a {
       font-size: var(--fs-sm);
       color: var(--accent);
-
-      &:hover {
-        text-decoration: underline;
-      }
+      &:hover { text-decoration: underline; }
     }
   }
 
@@ -123,14 +105,13 @@ header {
   text-transform: uppercase;
   letter-spacing: 0.04em;
 
-  &[data-level='EASY'] {
+  &[data-level='EASY'] { color: var(--success); }
+  &[data-level='MEDIUM'] { color: var(--xp); }
+  &[data-level='HARD'] { color: var(--danger); }
+  &.solved-pill {
+    background: rgba(34, 197, 94, 0.12);
     color: var(--success);
-  }
-  &[data-level='MEDIUM'] {
-    color: var(--xp);
-  }
-  &[data-level='HARD'] {
-    color: var(--danger);
+    border-color: var(--success);
   }
 }
 
@@ -147,9 +128,14 @@ header {
   gap: var(--sp-3);
   flex-wrap: wrap;
 
-  select {
-    width: auto;
-    min-width: 9rem;
+  select { width: auto; min-width: 9rem; }
+
+  .btn-submit {
+    background: var(--accent);
+    color: var(--on-accent);
+    border-color: var(--accent);
+    font-weight: 600;
+    &:hover:not(:disabled) { filter: brightness(1.1); }
   }
 
   .status {
@@ -158,10 +144,9 @@ header {
   }
 }
 
-/* CodeMirror fills this box; the box owns the height so the editor scrolls internally. */
 .editor-host {
   flex: 1;
-  min-height: 24rem;
+  min-height: 22rem;
   border: 1px solid var(--border);
   border-radius: var(--r-md);
   overflow: hidden;
@@ -169,15 +154,114 @@ header {
 }
 
 .console {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--sp-3);
-  min-height: 11rem;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  min-height: 14rem;
+  overflow: hidden;
 }
 
-@media (max-width: 48rem) {
-  .console {
-    grid-template-columns: 1fr;
+.console-tabs {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: var(--sp-2) var(--sp-3);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-raised, var(--surface));
+
+  .tab-btn {
+    padding: var(--sp-1) var(--sp-3);
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: var(--fs-xs);
+    font-weight: 600;
+    cursor: pointer;
+    border-radius: var(--r-sm);
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-2);
+
+    &:hover { color: var(--text); background: var(--surface); }
+    &.active {
+      color: var(--accent);
+      background: var(--surface);
+      box-shadow: 0 0 0 1px var(--border);
+    }
+
+    .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--success);
+      &.bad { background: var(--danger); }
+    }
+
+    .count-badge {
+      padding: 0.05rem 0.35rem;
+      border-radius: 999px;
+      font-size: 0.65rem;
+      background: var(--border);
+      color: var(--text-muted);
+    }
+  }
+}
+
+.console-body {
+  padding: var(--sp-3);
+  overflow-y: auto;
+  flex: 1;
+  min-height: 10rem;
+}
+
+.testcase-pane {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+
+  .case-chips {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    flex-wrap: wrap;
+
+    .chip-btn {
+      padding: 0.2rem 0.6rem;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-muted);
+      border-radius: var(--r-sm);
+      font-size: var(--fs-xs);
+      font-weight: 500;
+      cursor: pointer;
+
+      &:hover { color: var(--text); border-color: var(--border-strong); }
+      &.active {
+        background: var(--surface-raised, var(--surface));
+        border-color: var(--accent);
+        color: var(--accent);
+        font-weight: 600;
+      }
+    }
+  }
+
+  .expected-box {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-1);
+
+    .code-preview {
+      margin: 0;
+      padding: var(--sp-2) var(--sp-3);
+      background: var(--surface-raised, var(--surface));
+      border: 1px solid var(--border);
+      border-radius: var(--r-sm);
+      font-family: var(--font-mono);
+      font-size: var(--fs-xs);
+      white-space: pre-wrap;
+    }
   }
 }
 
@@ -198,62 +282,132 @@ header {
 
 #stdin {
   flex: 1;
-  min-height: 6rem;
+  min-height: 5rem;
   font-family: var(--font-mono);
   font-size: var(--fs-sm);
   line-height: 1.5;
   white-space: pre;
   overflow: auto;
   resize: vertical;
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--surface-raised, var(--surface));
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  color: var(--text);
 }
 
 .output {
-  padding: var(--sp-3);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--r-md);
-  overflow: auto;
-
   .block {
     margin-top: var(--sp-2);
-
-    &-label {
-      font-size: var(--fs-xs);
-      font-weight: 700;
-      color: var(--text-faint);
-    }
-
+    &-label { font-size: var(--fs-xs); font-weight: 700; color: var(--text-faint); }
     pre {
       margin-top: var(--sp-1);
       font-family: var(--font-mono);
       font-size: var(--fs-xs);
       line-height: 1.5;
       white-space: pre-wrap;
-      overflow-wrap: anywhere;
     }
-
-    &.err pre {
-      color: var(--danger);
-    }
+    &.err pre { color: var(--danger); }
   }
 
-  .run-error {
-    color: var(--danger);
-    font-size: var(--fs-sm);
-  }
-
+  .run-error { color: var(--danger); font-size: var(--fs-sm); }
   .exit {
-    margin-top: var(--sp-3);
+    margin-top: var(--sp-2);
     font-size: var(--fs-xs);
     color: var(--success);
+    &.bad { color: var(--danger); }
+  }
+  .muted { color: var(--text-faint); font-size: var(--fs-sm); }
+}
 
-    &.bad {
-      color: var(--danger);
-    }
+.submissions-pane {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.submission-banner {
+  padding: var(--sp-3);
+  border-radius: var(--r-md);
+  border: 1px solid var(--border);
+  background: var(--surface-raised, var(--surface));
+
+  &.success {
+    border-color: var(--success);
+    background: rgba(34, 197, 94, 0.06);
   }
 
-  .muted {
-    color: var(--text-faint);
-    font-size: var(--fs-sm);
+  &.fail {
+    border-color: var(--danger);
+    background: rgba(239, 68, 68, 0.06);
+  }
+
+  .banner-header {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+    flex-wrap: wrap;
+  }
+
+  .pass-count { font-size: var(--fs-xs); color: var(--text-muted); }
+  .xp-badge {
+    padding: 0.1rem 0.4rem;
+    border-radius: 999px;
+    background: var(--xp);
+    color: #fff;
+    font-size: var(--fs-xs);
+    font-weight: 700;
+  }
+
+  .banner-msg { font-size: var(--fs-sm); color: var(--text); margin: var(--sp-1) 0; }
+  .block.err pre {
+    margin-top: var(--sp-1);
+    padding: var(--sp-2);
+    border-radius: var(--r-sm);
+    background: var(--surface);
+    color: var(--danger);
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    white-space: pre-wrap;
+  }
+}
+
+.verdict-tag {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  &[data-verdict='ACCEPTED'] { color: var(--success); }
+  &[data-verdict='WRONG_ANSWER'], &[data-verdict='RUNTIME_ERROR'] { color: var(--danger); }
+  &[data-verdict='COMPILE_ERROR'], &[data-verdict='TIME_LIMIT_EXCEEDED'] { color: var(--xp); }
+}
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  .muted { font-size: var(--fs-xs); color: var(--text-faint); }
+}
+
+.submissions-table {
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  overflow: hidden;
+
+  .submission-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-2);
+    padding: var(--sp-2);
+    border-bottom: 1px solid var(--border);
+    font-size: var(--fs-xs);
+    &:last-child { border-bottom: none; }
+    &:hover { background: var(--surface-raised, var(--surface)); }
+
+    .sub-lang { color: var(--text-muted); font-family: var(--font-mono); font-size: 0.75rem; }
+    .sub-cases { color: var(--text-muted); }
+    .sub-time { color: var(--text-faint); }
   }
 }

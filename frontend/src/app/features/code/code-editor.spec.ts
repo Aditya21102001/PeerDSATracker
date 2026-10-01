@@ -3,7 +3,13 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { of } from 'rxjs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { LanguageOption, Problem, RunResult } from '../../core/models/api.models';
+import {
+  LanguageOption,
+  Problem,
+  RunResult,
+  SubmitResultView,
+  TestCaseView,
+} from '../../core/models/api.models';
 import { CodeService } from '../../core/services/code.service';
 import { CodeMirror } from '../../shared/code-mirror/code-mirror';
 import { CodeEditor } from './code-editor';
@@ -20,7 +26,7 @@ const LANGUAGES: LanguageOption[] = [
   { id: 'java', label: 'Java', editorMode: 'java', template: 'class Main {}' },
 ];
 
-const PROBLEM = { id: 5, title: 'Reverse a number', difficulty: 'EASY', stepNo: 3 } as Problem;
+const PROBLEM = { id: 5, title: 'Reverse a number', difficulty: 'EASY', stepNo: 3, status: null } as Problem;
 
 describe('CodeEditor', () => {
   let fixture: ComponentFixture<CodeEditor>;
@@ -29,8 +35,11 @@ describe('CodeEditor', () => {
     problem: ReturnType<typeof vi.fn>;
     languages: ReturnType<typeof vi.fn>;
     drafts: ReturnType<typeof vi.fn>;
+    testCases: ReturnType<typeof vi.fn>;
+    submissions: ReturnType<typeof vi.fn>;
     run: ReturnType<typeof vi.fn>;
     save: ReturnType<typeof vi.fn>;
+    submit: ReturnType<typeof vi.fn>;
   };
 
   beforeEach(async () => {
@@ -38,8 +47,11 @@ describe('CodeEditor', () => {
       problem: vi.fn().mockReturnValue(of(PROBLEM)),
       languages: vi.fn().mockReturnValue(of(LANGUAGES)),
       drafts: vi.fn().mockReturnValue(of([])),
+      testCases: vi.fn().mockReturnValue(of([])),
+      submissions: vi.fn().mockReturnValue(of([])),
       run: vi.fn(),
       save: vi.fn(),
+      submit: vi.fn(),
     };
 
     TestBed.configureTestingModule({
@@ -89,6 +101,39 @@ describe('CodeEditor', () => {
     expect(code.run).toHaveBeenCalledWith('python', 'print(1)', '');
     expect(editor.result()).toEqual(result);
     expect(editor.running()).toBe(false);
+  });
+
+  it('submit() marks problem as SOLVED upon ACCEPTED verdict', () => {
+    const submitResult: SubmitResultView = {
+      submission: {
+        id: 1,
+        problemId: 5,
+        language: 'python',
+        source: 'print(1)',
+        verdict: 'ACCEPTED',
+        passedTestCases: 2,
+        totalTestCases: 2,
+        stdout: '1',
+        stderr: '',
+        compileOutput: null,
+        createdAt: '2026-09-29T10:00:00Z',
+      },
+      accepted: true,
+      newlySolved: true,
+      xpEarned: 10,
+      totalSolved: 3,
+      currentStreak: 1,
+      message: 'Accepted! +10 XP · Problem marked as SOLVED!',
+    };
+
+    code.submit.mockReturnValue(of(submitResult));
+
+    editor.submit();
+
+    expect(code.submit).toHaveBeenCalledWith(5, 'python', 'print(1)', '');
+    expect(editor.problem()?.status).toBe('SOLVED');
+    expect(editor.submissions().length).toBe(1);
+    expect(editor.submissions()[0].verdict).toBe('ACCEPTED');
   });
 
   it('the divider clamps the pane width and never inverts it', () => {

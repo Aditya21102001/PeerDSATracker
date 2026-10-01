@@ -102,6 +102,11 @@ export const routes: Routes = [
     loadComponent: () => import('./features/notes/notes-page').then((m) => m.NotesPage),
   },
   {
+    path: 'blog',
+    canActivate: [authGuard],
+    loadComponent: () => import('./features/blog/blog-page').then((m) => m.BlogPage),
+  },
+  {
     // withComponentInputBinding() binds :problemId straight to the component input.
     path: 'notes/:problemId',
     canActivate: [authGuard],
