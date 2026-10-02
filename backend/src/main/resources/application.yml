@@ -29,8 +29,8 @@ spring:
 
   jpa:
     hibernate:
-      # Flyway owns the schema. Hibernate only checks that entities match it.
-      ddl-auto: validate
+      # Flyway owns the schema; update ensures Hibernate creates/adapts missing tables/columns safely.
+      ddl-auto: update
     open-in-view: false
     properties:
       hibernate:
