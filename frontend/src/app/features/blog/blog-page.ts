@@ -2,11 +2,20 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { RouterLink } from '@angular/router';
+import DOMPurify from 'dompurify';
 import { marked } from 'marked';
 import { forkJoin } from 'rxjs';
 import { BlogPost, BlogPostRequest, BlogPostStatus } from '../../core/models/blog.models';
 import { BlogService } from '../../core/services/blog.service';
 import { Spinner } from '../../shared/spinner';
+
+// Ensure external links in markdown open safely in a new tab without leaving the app
+DOMPurify.addHook('afterSanitizeAttributes', (node) => {
+  if (node.tagName === 'A' && node.getAttribute('href')?.startsWith('http')) {
+    node.setAttribute('target', '_blank');
+    node.setAttribute('rel', 'noopener noreferrer');
+  }
+});
 
 interface EditorDraft {
   title: string;
@@ -163,7 +172,7 @@ interface SubjectGroup {
         <!-- Article Reader View -->
         <article class="reader">
           <div class="reader-topline">
-            <button type="button" class="btn btn-quiet" (click)="selected.set(null)">← Back to all subjects</button>
+            <button type="button" class="btn btn-quiet" (click)="selectArticle(null)">← Back to all subjects</button>
             <div class="reader-meta-pills">
               <span class="read-time">{{ readTime(article.content) }}</span>
               @if (article.mine) {
@@ -202,7 +211,7 @@ interface SubjectGroup {
           <!-- Subject Navigation: Next / Prev in this subject -->
           <nav class="reader-subject-nav" aria-label="Subject sequence navigation">
             @if (prevInSubject(); as prev) {
-              <button type="button" class="subject-nav-card prev" (click)="selected.set(prev)">
+              <button type="button" class="subject-nav-card prev" (click)="selectArticle(prev)">
                 <span class="nav-direction">← Previous in {{ article.subject }}</span>
                 <span class="nav-title">{{ prev.title }}</span>
               </button>
@@ -210,7 +219,7 @@ interface SubjectGroup {
               <div class="subject-nav-spacer"></div>
             }
             @if (nextInSubject(); as next) {
-              <button type="button" class="subject-nav-card next" (click)="selected.set(next)">
+              <button type="button" class="subject-nav-card next" (click)="selectArticle(next)">
                 <span class="nav-direction">Next in {{ article.subject }} →</span>
                 <span class="nav-title">{{ next.title }}</span>
               </button>
@@ -223,7 +232,7 @@ interface SubjectGroup {
               <h3>More in {{ article.subject }}</h3>
               <div class="more-grid">
                 @for (item of moreInSubject(); track item.id) {
-                  <div class="more-card" (click)="selected.set(item)">
+                  <div class="more-card" (click)="selectArticle(item)">
                     <span class="more-title">{{ item.title }}</span>
                     <span class="more-meta">{{ readTime(item.content) }}</span>
                   </div>
@@ -262,7 +271,7 @@ interface SubjectGroup {
               @if (!isCollapsed(group.subject)) {
                 <div class="article-grid">
                   @for (article of group.articles; track article.id) {
-                    <article class="article-card" (click)="selected.set(article)">
+                    <article class="article-card" (click)="selectArticle(article)">
                       <div class="card-meta">
                         <span class="subject-badge">{{ article.subject }}</span>
                         <span class="read-time">{{ readTime(article.content) }}</span>
@@ -274,7 +283,7 @@ interface SubjectGroup {
                       </div>
                       <footer>
                         <span class="author-meta">{{ article.authorName }}</span>
-                        <button type="button" class="btn btn-quiet btn-sm" (click)="$event.stopPropagation(); selected.set(article)">Read →</button>
+                        <button type="button" class="btn btn-quiet btn-sm" (click)="$event.stopPropagation(); selectArticle(article)">Read →</button>
                       </footer>
                     </article>
                   }
@@ -341,8 +350,11 @@ export class BlogPage {
     return this.posts().filter((post) => {
       const matchesSubject = !this.subject || post.subject === this.subject;
       const matchesDomain = domainFilter === 'All' || this.getSubjectDomain(post.subject) === domainFilter;
-      const haystack = `${post.title} ${post.subject} ${post.excerpt} ${post.tags.join(' ')}`.toLocaleLowerCase();
-      return matchesSubject && matchesDomain && (!needle || haystack.includes(needle));
+      if (!matchesSubject || !matchesDomain) return false;
+      if (!needle) return true;
+      const inMeta = `${post.title} ${post.subject} ${post.excerpt} ${post.tags.join(' ')}`.toLocaleLowerCase().includes(needle);
+      const inContent = needle.length >= 3 && post.content.toLocaleLowerCase().includes(needle);
+      return inMeta || inContent;
     });
   });
 
@@ -373,8 +385,11 @@ export class BlogPage {
     const post = this.selected();
     if (!post) return '';
     try {
-      const html = marked.parse(post.content, { async: false, gfm: true, breaks: true }) as string;
-      return this.sanitizer.bypassSecurityTrustHtml(html);
+      const raw = marked.parse(post.content, { async: false, gfm: true, breaks: true }) as string;
+      const clean = DOMPurify.sanitize(raw, {
+        ADD_ATTR: ['target', 'rel'],
+      });
+      return this.sanitizer.bypassSecurityTrustHtml(clean);
     } catch {
       return post.content;
     }
@@ -383,8 +398,11 @@ export class BlogPage {
   protected readonly renderedDraft = computed<SafeHtml>(() => {
     if (!this.draft.content) return '';
     try {
-      const html = marked.parse(this.draft.content, { async: false, gfm: true, breaks: true }) as string;
-      return this.sanitizer.bypassSecurityTrustHtml(html);
+      const raw = marked.parse(this.draft.content, { async: false, gfm: true, breaks: true }) as string;
+      const clean = DOMPurify.sanitize(raw, {
+        ADD_ATTR: ['target', 'rel'],
+      });
+      return this.sanitizer.bypassSecurityTrustHtml(clean);
     } catch {
       return this.draft.content;
     }
@@ -425,7 +443,14 @@ export class BlogPage {
   protected selectDomain(domain: string): void {
     this.selectedDomain.set(domain);
     this.subject = '';
-    this.selected.set(null);
+    this.selectArticle(null);
+  }
+
+  protected selectArticle(post: BlogPost | null): void {
+    this.selected.set(post);
+    if (post && typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   }
 
   protected toggleCollapse(subj: string): void {
@@ -597,8 +622,15 @@ export class BlogPage {
     }
   }
 
-  protected date(value: string): string {
-    return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(new Date(value));
+  protected date(value?: string | null): string {
+    if (!value) return '';
+    try {
+      const d = new Date(value);
+      if (isNaN(d.getTime())) return '';
+      return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(d);
+    } catch {
+      return '';
+    }
   }
 
   private load(): void {
@@ -607,9 +639,11 @@ export class BlogPage {
         const byId = new Map(published.map((post) => [post.id, post]));
         mine.forEach((post) => byId.set(post.id, post));
         this.posts.set(
-          [...byId.values()].sort((a, b) =>
-            (b.publishedAt || b.updatedAt).localeCompare(a.publishedAt || a.updatedAt),
-          ),
+          [...byId.values()].sort((a, b) => {
+            const timeA = a.publishedAt || a.updatedAt || '';
+            const timeB = b.publishedAt || b.updatedAt || '';
+            return timeB.localeCompare(timeA);
+          }),
         );
         this.loading.set(false);
       },

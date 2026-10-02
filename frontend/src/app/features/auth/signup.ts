@@ -1,7 +1,7 @@
 import { Component, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AbstractControl, FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthStore } from '../../core/services/auth.store';
 
 @Component({
@@ -54,7 +54,7 @@ import { AuthStore } from '../../core/services/auth.store';
         </button>
       </form>
 
-      <p class="foot">Already enlisted? <a routerLink="/signin">Sign in</a></p>
+      <p class="foot">Already enlisted? <a routerLink="/signin" [queryParams]="route.snapshot.queryParams">Sign in</a></p>
     </main>
   `,
   styleUrl: './auth.scss',
@@ -69,6 +69,7 @@ export class Signup {
   private readonly fb = inject(FormBuilder);
   private readonly auth = inject(AuthStore);
   private readonly router = inject(Router);
+  protected readonly route = inject(ActivatedRoute);
 
   protected readonly busy = signal(false);
   protected readonly error = signal<string | null>(null);
@@ -131,7 +132,9 @@ export class Signup {
     this.auth.signup(email, username, password).subscribe({
       next: () => {
         this.busy.set(false);
-        void this.router.navigate(['/dashboard']);
+        const redirect = this.route.snapshot.queryParamMap.get('redirect');
+        const target = redirect && redirect.startsWith('/') && !redirect.startsWith('//') ? redirect : '/dashboard';
+        void this.router.navigateByUrl(target);
       },
       error: (err) => {
         this.busy.set(false);

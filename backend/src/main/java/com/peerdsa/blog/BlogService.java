@@ -105,11 +105,14 @@ public class BlogService {
                     : (author.getDisplayName() == null || author.getDisplayName().isBlank()
                             ? author.getUsername()
                             : author.getDisplayName());
-            List<String> tags = post.getTags().isBlank() ? List.of() : Arrays.asList(post.getTags().split(","));
+            String rawTags = post.getTags();
+            List<String> tags = rawTags == null || rawTags.isBlank() ? List.of() : Arrays.asList(rawTags.split(","));
+            String excerpt = post.getExcerpt() == null ? "" : post.getExcerpt();
+            boolean isMine = viewerId != null && post.getUserId().equals(viewerId);
             return new BlogPostView(
-                    post.getId(), post.getUserId(), post.getTitle(), post.getSubject(), post.getExcerpt(),
+                    post.getId(), post.getUserId(), post.getTitle(), post.getSubject(), excerpt,
                     post.getContent(), tags, post.getStatus(), authorName, post.getCreatedAt(),
-                    post.getUpdatedAt(), post.getPublishedAt(), post.getUserId().equals(viewerId));
+                    post.getUpdatedAt(), post.getPublishedAt(), isMine);
         }).toList();
     }
 

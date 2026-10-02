@@ -393,6 +393,8 @@ export class CodeEditor {
           if (testCases.length > 0) {
             this.stdin = testCases[0].input;
             this.activeTestCaseIndex.set(0);
+          } else {
+            this.activeTestCaseIndex.set(-1);
           }
           this.submissions.set(submissions);
         },

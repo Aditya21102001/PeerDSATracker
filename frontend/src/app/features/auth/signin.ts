@@ -1,7 +1,7 @@
 import { Component, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AbstractControl, FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { environment } from '../../../environments/environment';
 import { AuthOptionsService } from '../../core/services/auth-options.service';
 import { AuthStore } from '../../core/services/auth.store';
@@ -87,7 +87,7 @@ import { LastSignInService } from '../../core/services/last-sign-in.service';
         <a class="btn btn-ghost provider" [href]="googleUrl">Continue with Google</a>
       }
 
-      <p class="foot">New here? <a routerLink="/signup">Join the Force!</a></p>
+      <p class="foot">New here? <a routerLink="/signup" [queryParams]="route.snapshot.queryParams">Join the Force!</a></p>
     </main>
   `,
   styleUrl: './auth.scss',
@@ -108,6 +108,7 @@ export class Signin {
   private readonly fb = inject(FormBuilder);
   private readonly auth = inject(AuthStore);
   private readonly router = inject(Router);
+  protected readonly route = inject(ActivatedRoute);
   private readonly lastSignIn = inject(LastSignInService);
   private readonly options = inject(AuthOptionsService);
 
@@ -171,7 +172,9 @@ export class Signin {
     this.auth.login(identifier, password).subscribe({
       next: () => {
         this.busy.set(false);
-        void this.router.navigate(['/dashboard']);
+        const redirect = this.route.snapshot.queryParamMap.get('redirect');
+        const target = redirect && redirect.startsWith('/') && !redirect.startsWith('//') ? redirect : '/dashboard';
+        void this.router.navigateByUrl(target);
       },
       error: (err) => {
         this.busy.set(false);

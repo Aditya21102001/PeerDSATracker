@@ -24,6 +24,7 @@ import { Spinner } from '../../shared/spinner';
         <nav>
           <a routerLink="/dashboard">Dashboard</a>
           <a routerLink="/sheet">Sheet</a>
+          <a routerLink="/blog">Articles</a>
           <a routerLink="/notes">Notes</a>
         </nav>
       </header>

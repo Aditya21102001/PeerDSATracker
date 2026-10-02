@@ -23,6 +23,7 @@ type Scope = 'global' | 'peers';
         <nav>
           <a routerLink="/dashboard">Dashboard</a>
           <a routerLink="/sheet">Sheet</a>
+          <a routerLink="/blog">Articles</a>
           <a routerLink="/peers">Peers</a>
         </nav>
       </header>
@@ -56,7 +57,7 @@ type Scope = 'global' | 'peers';
         @if (scope() === 'global') {
           <p class="count">{{ totalUsers() }} members</p>
         } @else {
-          <p class="count">You and {{ rows().length - 1 }} peer(s) you follow</p>
+          <p class="count">{{ rows().length > 1 ? 'You and ' + (rows().length - 1) + ' peer(s) you follow' : rows().length === 1 ? 'Only you on this board so far' : 'No peers on the board yet' }}</p>
         }
 
         <!-- The table scrolls inside this box rather than widening the page. -->

@@ -37,7 +37,7 @@ public class BlogController {
 
     @GetMapping
     public List<BlogService.BlogPostView> published(@AuthenticationPrincipal User user) {
-        return blogs.published(user.getId());
+        return blogs.published(user != null ? user.getId() : null);
     }
 
     @GetMapping("/mine")
