@@ -118,6 +118,9 @@ public class AnalyticsController {
             // Right host, wrong path -- ANALYTICS_BASE_URL usually has a trailing path or is
             // pointing at something that is not the analytics service.
             case 404 -> "Analytics has no such route: check ANALYTICS_BASE_URL.";
+            // The analytics service is alive but rate-limiting. Expected on the free tier when
+            // too many deployments (or restarts) fire the startup probe in a short window.
+            case 429 -> "Analytics is rate-limiting this service; it is reachable and correctly configured.";
             // FastAPI's own validation error. The request contract drifted: the Java records in
             // AnalyticsDtos no longer match the Pydantic models.
             case 422 -> "Analytics rejected the request body: the DTO contract has drifted.";

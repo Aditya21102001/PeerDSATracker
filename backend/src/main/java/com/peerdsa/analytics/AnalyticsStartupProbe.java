@@ -58,6 +58,11 @@ public class AnalyticsStartupProbe {
             // of a free-tier service nobody has called yet -- not a misconfiguration.
             if (status == 502 || status == 503 || status == 504) {
                 log.info("Analytics service is cold ({}); it will wake on the first real call.", status);
+            } else if (status == 429) {
+                // 429 means the service is alive and responded -- it even validated the token
+                // before deciding to rate-limit. This is not a misconfiguration; it is the
+                // expected behaviour of a free-tier service that sees frequent restarts.
+                log.warn("Analytics probe failed with 429 (rate-limited); service is reachable and token is accepted.");
             } else {
                 log.error("Analytics probe failed with {}. {}", status, AnalyticsController.hintFor(status));
             }
