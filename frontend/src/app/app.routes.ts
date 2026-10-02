@@ -141,5 +141,10 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./features/study-guides/study-guide-detail').then((m) => m.StudyGuideDetail),
   },
+  {
+    path: 'hire',
+    canActivate: [authGuard],
+    loadComponent: () => import('./features/hire/hire-page').then((m) => m.HirePage),
+  },
   { path: '**', redirectTo: 'dashboard' },
 ];

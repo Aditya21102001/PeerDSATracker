@@ -1,0 +1,672 @@
+<main id="main-content" tabindex="-1" class="hire-page">
+  <!-- Top Navigation Header -->
+  <header class="hire-header">
+    <div class="hire-header-text">
+      <div class="hire-badge-row">
+        <span class="hire-badge">⚡ REALTIME CAREER MATCHMAKER</span>
+        <span class="hire-sub-badge">Naukri-Grade 1-Click Engine</span>
+      </div>
+      <h1>Hire & Career Portal</h1>
+      <p class="hire-lead">
+        Verified tech openings dynamically matched against your DSA skills, experience, and certifications.
+      </p>
+    </div>
+    <nav class="hire-nav" aria-label="Portal Navigation">
+      <a routerLink="/dashboard">← Dashboard</a>
+      <a routerLink="/study-guides">Study Guides</a>
+      <a routerLink="/sheet">Problem Sheet</a>
+    </nav>
+  </header>
+
+  <!-- Notification Toast -->
+  @if (notification(); as notif) {
+    <div class="toast-banner" [class]="'toast-' + notif.type" role="alert">
+      <span class="toast-icon">
+        @if (notif.type === 'success') { ✓ }
+        @else if (notif.type === 'error') { ⚠ }
+        @else { ℹ }
+      </span>
+      <span>{{ notif.message }}</span>
+    </div>
+  }
+
+  <!-- Tab Selector -->
+  <div class="tab-bar" role="tablist">
+    <button
+      type="button"
+      role="tab"
+      class="tab-btn"
+      [class.active]="activeTab() === 'jobs'"
+      (click)="setTab('jobs')"
+      id="tab-jobs"
+    >
+      <span class="tab-icon">⚡</span> Explore Openings
+      <span class="tab-counter">{{ jobs().length }}</span>
+    </button>
+
+    <button
+      type="button"
+      role="tab"
+      class="tab-btn"
+      [class.active]="activeTab() === 'profile'"
+      (click)="setTab('profile')"
+      id="tab-profile"
+    >
+      <span class="tab-icon">👤</span> My Profile & Resume
+      @if (profile(); as p) {
+        <span class="tab-completeness" [class.complete]="p.completenessPercent >= 80">
+          {{ p.completenessPercent }}%
+        </span>
+      }
+    </button>
+
+    <button
+      type="button"
+      role="tab"
+      class="tab-btn"
+      [class.active]="activeTab() === 'applications'"
+      (click)="setTab('applications')"
+      id="tab-applications"
+    >
+      <span class="tab-icon">📋</span> Applied Pipeline
+      <span class="tab-counter">{{ applications().length }}</span>
+    </button>
+  </div>
+
+  <!-- TAB 1: EXPLORE JOBS & 1-CLICK APPLY -->
+  @if (activeTab() === 'jobs') {
+    <!-- 1-Click Auto Apply Hero Banner -->
+    <section class="auto-apply-hero">
+      <div class="hero-left">
+        <div class="hero-title-row">
+          <span class="pulse-dot"></span>
+          <h2>Instant Match & Bulk Apply</h2>
+        </div>
+        <p class="hero-desc">
+          Apply to all top-tier roles matching your skillset in a single click with your active candidate profile snapshot.
+        </p>
+
+        @if (profile(); as p) {
+          <div class="hero-profile-summary">
+            <span class="hero-tag"><strong>Headline:</strong> {{ p.headline || 'Software Engineer' }}</span>
+            <span class="hero-tag"><strong>YOE:</strong> {{ p.yearsOfExperience }} yrs</span>
+            <span class="hero-tag"><strong>Notice:</strong> {{ p.noticePeriodDays }} days</span>
+          </div>
+        }
+      </div>
+
+      <div class="hero-action-box">
+        <div class="match-stat">
+          <span class="match-count">{{ eligibleMatchingJobs().length }}</span>
+          <span class="match-label">Jobs matching &ge; 70%</span>
+        </div>
+
+        <button
+          type="button"
+          class="btn-hero-apply"
+          (click)="applyToAllMatching()"
+          [disabled]="applyingAll() || eligibleMatchingJobs().length === 0"
+          id="btn-apply-all-matching"
+        >
+          @if (applyingAll()) {
+            <span class="spinner-inline"></span> Applying to all roles…
+          } @else if (eligibleMatchingJobs().length > 0) {
+            ⚡ 1-Click Apply to All ({{ eligibleMatchingJobs().length }} Roles)
+          } @else {
+            ✓ All Matching Roles Applied
+          }
+        </button>
+      </div>
+    </section>
+
+    <!-- Search & Filter Controls -->
+    <section class="filters-panel">
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input
+          type="text"
+          placeholder="Search company, title, or skills (e.g. Amazon, Java, Spring Boot, Microservices)…"
+          [ngModel]="searchQuery()"
+          (ngModelChange)="searchQuery.set($event)"
+          id="input-job-search"
+        />
+        @if (searchQuery()) {
+          <button type="button" class="btn-clear" (click)="searchQuery.set('')">✕</button>
+        }
+      </div>
+
+      <div class="filter-row">
+        <!-- Location Pills -->
+        <div class="pill-group" aria-label="Location Filter">
+          <span class="filter-label">Location:</span>
+          @for (loc of locationOptions; track loc) {
+            <button
+              type="button"
+              class="pill-btn"
+              [class.active]="selectedLocation() === loc"
+              (click)="selectedLocation.set(loc)"
+            >
+              {{ loc }}
+            </button>
+          }
+        </div>
+
+        <!-- Workplace Type Filter -->
+        <div class="select-filter">
+          <label for="workplace-select" class="sr-only">Workplace Type</label>
+          <select
+            id="workplace-select"
+            [ngModel]="selectedWorkplace()"
+            (ngModelChange)="selectedWorkplace.set($event)"
+          >
+            <option value="ALL">All Workplace Types</option>
+            <option value="REMOTE">Remote</option>
+            <option value="HYBRID">Hybrid</option>
+            <option value="ON_SITE">On-Site</option>
+          </select>
+        </div>
+
+        <!-- Match Score Threshold Filter -->
+        <div class="select-filter">
+          <label for="match-select" class="sr-only">Min Match Score</label>
+          <select
+            id="match-select"
+            [ngModel]="minScoreFilter()"
+            (ngModelChange)="minScoreFilter.set(+$event)"
+          >
+            <option [value]="0">All Match Scores</option>
+            <option [value]="60">&ge; 60% Match</option>
+            <option [value]="75">&ge; 75% Strong Match</option>
+            <option [value]="85">&ge; 85% Top Fit</option>
+          </select>
+        </div>
+      </div>
+    </section>
+
+    <!-- Jobs Grid -->
+    @if (loading()) {
+      <div class="loading-state">
+        <div class="spinner"></div>
+        <p>Scanning realtime openings & calculating candidate match scores…</p>
+      </div>
+    } @else if (filteredJobs().length === 0) {
+      <div class="empty-state">
+        <span class="empty-icon">🔎</span>
+        <h3>No openings match your current filters</h3>
+        <p>Try clearing filters or search queries to see more available tech roles.</p>
+        <button type="button" class="btn btn-secondary" (click)="searchQuery.set(''); selectedLocation.set('ALL'); minScoreFilter.set(0)">
+          Reset Filters
+        </button>
+      </div>
+    } @else {
+      <div class="jobs-grid">
+        @for (job of filteredJobs(); track job.id) {
+          <article class="job-card" [class.is-applied]="job.isApplied">
+            <!-- Header Row -->
+            <div class="job-card-header">
+              <div class="company-brand">
+                @if (job.companyLogoUrl) {
+                  <img [src]="job.companyLogoUrl" [alt]="job.company" class="company-logo" (error)="job.companyLogoUrl = ''" />
+                } @else {
+                  <div class="company-avatar">{{ job.company.substring(0, 2).toUpperCase() }}</div>
+                }
+                <div class="company-meta">
+                  <span class="company-name">{{ job.company }}</span>
+                  <h3 class="job-title">{{ job.title }}</h3>
+                </div>
+              </div>
+
+              <!-- Match Score Badge -->
+              <div class="match-badge" [class]="getMatchScoreClass(job.matchScore)">
+                <span class="match-score-num">{{ job.matchScore }}%</span>
+                <span class="match-score-label">
+                  @if (job.matchScore >= 90) { TOP FIT }
+                  @else if (job.matchScore >= 75) { STRONG MATCH }
+                  @else if (job.matchScore >= 60) { GOOD FIT }
+                  @else { MATCH }
+                </span>
+              </div>
+            </div>
+
+            <!-- Job Info Pills -->
+            <div class="job-tags-row">
+              <span class="meta-pill">📍 {{ job.location }}</span>
+              <span class="meta-pill">💼 {{ job.experienceMin }}-{{ job.experienceMax }} yrs</span>
+              <span class="meta-pill salary-pill">💰 {{ job.salaryRange }}</span>
+              <span class="meta-pill workplace-pill" [class.remote]="job.workplaceType === 'REMOTE'">
+                {{ job.workplaceType }}
+              </span>
+            </div>
+
+            <!-- Skills Matching Section -->
+            <div class="skills-section">
+              @if (job.matchingSkills.length > 0) {
+                <div class="skills-block">
+                  <span class="skills-label">Matching Skills:</span>
+                  <div class="skills-chips">
+                    @for (s of job.matchingSkills; track s) {
+                      <span class="chip chip-match">✓ {{ s }}</span>
+                    }
+                  </div>
+                </div>
+              }
+
+              @if (job.missingSkills.length > 0) {
+                <div class="skills-block">
+                  <span class="skills-label missing">To Learn / Boost:</span>
+                  <div class="skills-chips">
+                    @for (s of job.missingSkills; track s) {
+                      <span class="chip chip-missing">{{ s }}</span>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+
+            <!-- Description Excerpt -->
+            <p class="job-description-excerpt">{{ job.description }}</p>
+
+            <!-- Card Footer / Actions -->
+            <div class="job-card-footer">
+              <button
+                type="button"
+                class="btn-text-details"
+                (click)="openJobModal(job)"
+              >
+                View Job Description ↗
+              </button>
+
+              <div class="footer-actions">
+                @if (job.isApplied) {
+                  <span class="applied-badge">
+                    ✓ Applied ({{ job.applicationStatus || 'APPLIED' }})
+                  </span>
+                } @else {
+                  <button
+                    type="button"
+                    class="btn-apply-one"
+                    (click)="applyToJob(job)"
+                    [disabled]="applyingJobId() === job.id"
+                  >
+                    @if (applyingJobId() === job.id) {
+                      <span class="spinner-inline"></span> Applying…
+                    } @else {
+                      ⚡ 1-Click Apply
+                    }
+                  </button>
+                }
+              </div>
+            </div>
+          </article>
+        }
+      </div>
+    }
+  }
+
+  <!-- TAB 2: CANDIDATE PROFILE & RESUME -->
+  @if (activeTab() === 'profile') {
+    <section class="profile-section">
+      <!-- Profile Strength Card -->
+      @if (profile(); as p) {
+        <div class="profile-strength-card">
+          <div class="strength-left">
+            <h3>Naukri-Grade Profile Strength</h3>
+            <p>A complete profile unlocks 2.5x more 1-click matches with hiring managers and recruiter searches.</p>
+          </div>
+          <div class="strength-meter">
+            <div class="meter-bar-container">
+              <div class="meter-bar-fill" [style.width]="p.completenessPercent + '%'"></div>
+            </div>
+            <span class="strength-val">{{ p.completenessPercent }}% Complete</span>
+          </div>
+        </div>
+      }
+
+      <form class="profile-form" (ngSubmit)="saveProfile()">
+        <!-- Professional Headline -->
+        <div class="form-group">
+          <label for="headline">Professional Headline *</label>
+          <input
+            type="text"
+            id="headline"
+            name="headline"
+            [(ngModel)]="profileForm.headline"
+            placeholder="e.g. Senior Java Full Stack Developer | 3.5 YOE | Spring Boot, Angular, Microservices, DSA"
+            required
+          />
+          <span class="form-hint">Summarize your specialization, core tech stack, and experience.</span>
+        </div>
+
+        <!-- Experience & Current Role -->
+        <div class="form-grid-3">
+          <div class="form-group">
+            <label for="yoe">Years of Experience *</label>
+            <input
+              type="number"
+              step="0.5"
+              id="yoe"
+              name="yearsOfExperience"
+              [(ngModel)]="profileForm.yearsOfExperience"
+              min="0"
+              max="40"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="currentCompany">Current / Last Company</label>
+            <input
+              type="text"
+              id="currentCompany"
+              name="currentCompany"
+              [(ngModel)]="profileForm.currentCompany"
+              placeholder="e.g. TCS, Infosys, Startup, etc."
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="currentRole">Current Role / Designation</label>
+            <input
+              type="text"
+              id="currentRole"
+              name="currentRole"
+              [(ngModel)]="profileForm.currentRole"
+              placeholder="e.g. Systems Engineer, SDE-1"
+            />
+          </div>
+        </div>
+
+        <!-- CTC & Notice Period -->
+        <div class="form-grid-3">
+          <div class="form-group">
+            <label for="currentCtc">Current CTC</label>
+            <input
+              type="text"
+              id="currentCtc"
+              name="currentCtc"
+              [(ngModel)]="profileForm.currentCtc"
+              placeholder="e.g. ₹9.5 LPA"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="expectedCtc">Expected CTC</label>
+            <input
+              type="text"
+              id="expectedCtc"
+              name="expectedCtc"
+              [(ngModel)]="profileForm.expectedCtc"
+              placeholder="e.g. ₹18 LPA"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="noticePeriod">Notice Period (Days)</label>
+            <input
+              type="number"
+              id="noticePeriod"
+              name="noticePeriodDays"
+              [(ngModel)]="profileForm.noticePeriodDays"
+              placeholder="30"
+              min="0"
+              max="180"
+            />
+          </div>
+        </div>
+
+        <!-- Preferred Locations -->
+        <div class="form-group">
+          <label for="preferredLocations">Preferred Work Locations</label>
+          <input
+            type="text"
+            id="preferredLocations"
+            name="preferredLocations"
+            [(ngModel)]="profileForm.preferredLocations"
+            placeholder="e.g. Bengaluru, Remote, Pune, Hyderabad"
+          />
+        </div>
+
+        <!-- Skills Tag Manager -->
+        <div class="form-group">
+          <label>Technical Skills *</label>
+          <div class="skills-input-wrapper">
+            <div class="active-skills-list">
+              @for (skill of parsedSkills; track $index; let idx = $index) {
+                <span class="skill-pill">
+                  {{ skill }}
+                  <button type="button" class="btn-remove-skill" (click)="removeSkill(idx)" title="Remove skill">✕</button>
+                </span>
+              }
+            </div>
+            <input
+              type="text"
+              placeholder="Type skill & press Enter (e.g. Java, Docker, Kafka)…"
+              [(ngModel)]="newSkillInput"
+              name="newSkillInput"
+              (keydown)="onSkillKeydown($event)"
+              id="skill-text-input"
+            />
+          </div>
+
+          <!-- Quick Suggestion Chips -->
+          <div class="popular-skills-tray">
+            <span class="tray-label">Quick Add:</span>
+            @for (s of popularSkills; track s) {
+              <button
+                type="button"
+                class="btn-quick-skill"
+                (click)="addSkill(s)"
+              >
+                + {{ s }}
+              </button>
+            }
+          </div>
+        </div>
+
+        <!-- Certifications & Education -->
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label for="certifications">Certifications</label>
+            <input
+              type="text"
+              id="certifications"
+              name="certifications"
+              [(ngModel)]="profileForm.certifications"
+              placeholder="e.g. AWS Solutions Architect, Oracle Java SE 11"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="education">Highest Education</label>
+            <input
+              type="text"
+              id="education"
+              name="education"
+              [(ngModel)]="profileForm.education"
+              placeholder="e.g. B.Tech in Computer Science"
+            />
+          </div>
+        </div>
+
+        <!-- Resume URL & Summary -->
+        <div class="form-group">
+          <label for="resumeUrl">Resume Link (Google Drive / LinkedIn / PDF)</label>
+          <input
+            type="url"
+            id="resumeUrl"
+            name="resumeUrl"
+            [(ngModel)]="profileForm.resumeUrl"
+            placeholder="https://drive.google.com/your-resume-link"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="resumeSummary">Professional Summary / Resume Text</label>
+          <textarea
+            id="resumeSummary"
+            name="resumeSummary"
+            rows="4"
+            [(ngModel)]="profileForm.resumeSummary"
+            placeholder="Key highlights of your engineering achievements, architecture experience, and project outcomes…"
+          ></textarea>
+        </div>
+
+        <div class="form-submit-row">
+          <button
+            type="submit"
+            class="btn-save-profile"
+            [disabled]="savingProfile()"
+            id="btn-save-candidate-profile"
+          >
+            @if (savingProfile()) {
+              <span class="spinner-inline"></span> Saving Profile…
+            } @else {
+              💾 Save Candidate Profile
+            }
+          </button>
+        </div>
+      </form>
+    </section>
+  }
+
+  <!-- TAB 3: APPLIED JOBS PIPELINE -->
+  @if (activeTab() === 'applications') {
+    <section class="applications-section">
+      <!-- Pipeline Stats Cards -->
+      <div class="pipeline-stats-row">
+        <div class="stat-card">
+          <span class="stat-number">{{ applicationStats().total }}</span>
+          <span class="stat-title">Total Applications</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-number stat-review">{{ applicationStats().underReview }}</span>
+          <span class="stat-title">Under Review</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-number stat-short">{{ applicationStats().shortlisted }}</span>
+          <span class="stat-title">Shortlisted</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-number stat-interview">{{ applicationStats().interview }}</span>
+          <span class="stat-title">Interview Scheduled</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-number stat-offer">{{ applicationStats().offered }}</span>
+          <span class="stat-title">Offers Received</span>
+        </div>
+      </div>
+
+      <!-- Applications Table / Cards -->
+      @if (applications().length === 0) {
+        <div class="empty-state">
+          <span class="empty-icon">📝</span>
+          <h3>No applications yet</h3>
+          <p>Head to Explore Openings and use <strong>⚡ 1-Click Apply to All</strong> to start tracking applications here.</p>
+          <button type="button" class="btn btn-secondary" (click)="setTab('jobs')">
+            Browse Matching Openings
+          </button>
+        </div>
+      } @else {
+        <div class="applications-list">
+          @for (app of applications(); track app.id) {
+            <article class="app-card">
+              <div class="app-card-main">
+                <div class="app-brand">
+                  @if (app.companyLogoUrl) {
+                    <img [src]="app.companyLogoUrl" [alt]="app.company" class="company-logo" (error)="app.companyLogoUrl = ''" />
+                  } @else {
+                    <div class="company-avatar">{{ app.company.substring(0, 2).toUpperCase() }}</div>
+                  }
+                  <div class="app-meta">
+                    <span class="company-name">{{ app.company }}</span>
+                    <h3 class="job-title">{{ app.jobTitle }}</h3>
+                    <div class="app-sub-meta">
+                      <span>📍 {{ app.location }}</span>
+                      <span>💰 {{ app.salaryRange }}</span>
+                      <span>Applied on {{ app.appliedAt | date: 'mediumDate' }}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="app-right-meta">
+                  <div class="app-match-badge" [class]="getMatchScoreClass(app.matchScore)">
+                    {{ app.matchScore }}% Match
+                  </div>
+                  <span class="status-badge" [class]="getStatusBadgeClass(app.status)">
+                    ● {{ app.status }}
+                  </span>
+                </div>
+              </div>
+            </article>
+          }
+        </div>
+      }
+    </section>
+  }
+
+  <!-- JOB DETAILS MODAL -->
+  @if (selectedJobModal(); as modalJob) {
+    <div class="modal-backdrop" (click)="closeJobModal()" role="dialog" aria-modal="true">
+      <div class="modal-card" (click)="$event.stopPropagation()">
+        <header class="modal-header">
+          <div class="modal-brand">
+            @if (modalJob.companyLogoUrl) {
+              <img [src]="modalJob.companyLogoUrl" [alt]="modalJob.company" class="company-logo" />
+            }
+            <div>
+              <h2>{{ modalJob.title }}</h2>
+              <span class="modal-company">{{ modalJob.company }} · {{ modalJob.location }}</span>
+            </div>
+          </div>
+          <button type="button" class="btn-close-modal" (click)="closeJobModal()">✕</button>
+        </header>
+
+        <div class="modal-body">
+          <div class="modal-metrics">
+            <span class="modal-pill">💼 Experience: {{ modalJob.experienceMin }}-{{ modalJob.experienceMax }} yrs</span>
+            <span class="modal-pill">💰 Salary: {{ modalJob.salaryRange }}</span>
+            <span class="modal-pill">🏢 Workplace: {{ modalJob.workplaceType }}</span>
+            <span class="modal-pill">🎯 Candidate Match: <strong>{{ modalJob.matchScore }}%</strong></span>
+          </div>
+
+          <div class="modal-section">
+            <h4>Required Skills</h4>
+            <div class="skills-chips">
+              @for (s of modalJob.matchingSkills; track s) {
+                <span class="chip chip-match">✓ {{ s }}</span>
+              }
+              @for (s of modalJob.missingSkills; track s) {
+                <span class="chip chip-missing">{{ s }}</span>
+              }
+            </div>
+          </div>
+
+          <div class="modal-section">
+            <h4>Role & Responsibilities</h4>
+            <p class="modal-description">{{ modalJob.description }}</p>
+          </div>
+        </div>
+
+        <footer class="modal-footer">
+          @if (modalJob.externalApplyUrl) {
+            <a [href]="modalJob.externalApplyUrl" target="_blank" rel="noopener" class="btn btn-ghost">
+              Official Company Career Page ↗
+            </a>
+          }
+
+          @if (modalJob.isApplied) {
+            <span class="applied-badge">✓ Already Applied ({{ modalJob.applicationStatus }})</span>
+          } @else {
+            <button
+              type="button"
+              class="btn-apply-one"
+              (click)="applyToJob(modalJob); closeJobModal()"
+            >
+              ⚡ 1-Click Apply Now
+            </button>
+          }
+        </footer>
+      </div>
+    </div>
+  }
+</main>

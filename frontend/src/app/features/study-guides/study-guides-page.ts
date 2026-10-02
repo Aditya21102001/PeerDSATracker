@@ -24,6 +24,7 @@ import { StudyGuidesService } from '../../core/services/study-guides.service';
         <nav class="sg-nav">
           <a routerLink="/dashboard">Dashboard</a>
           <a routerLink="/sheet">Sheet</a>
+          <a routerLink="/hire">Hire</a>
         </nav>
       </header>
 

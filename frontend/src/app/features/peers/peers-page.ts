@@ -26,6 +26,7 @@ type Tab = 'search' | 'following' | 'followers';
         <nav>
           <a routerLink="/dashboard">Dashboard</a>
           <a routerLink="/sheet">Sheet</a>
+          <a routerLink="/hire">Hire</a>
           <a routerLink="/leaderboard">Leaderboard</a>
         </nav>
       </header>

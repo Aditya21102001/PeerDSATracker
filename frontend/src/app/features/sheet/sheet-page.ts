@@ -37,6 +37,7 @@ const STATUSES: readonly ProblemStatus[] = ['SOLVED', 'ATTEMPTED', 'REVISIT'];
         </div>
         <nav>
           <a routerLink="/dashboard">Dashboard</a>
+          <a routerLink="/hire">Hire</a>
           <a routerLink="/blog">Articles</a>
           <a routerLink="/revision">Revision</a>
           <a routerLink="/leaderboard">Leaderboard</a>

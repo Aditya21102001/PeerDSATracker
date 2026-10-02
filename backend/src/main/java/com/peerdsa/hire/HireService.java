@@ -1,0 +1,341 @@
+package com.peerdsa.hire;
+
+import com.peerdsa.hire.HireDtos.ApplyAllResult;
+import com.peerdsa.hire.HireDtos.CandidateProfileDto;
+import com.peerdsa.hire.HireDtos.JobApplicationDto;
+import com.peerdsa.hire.HireDtos.JobOpeningDto;
+import com.peerdsa.hire.HireDtos.SaveCandidateProfileRequest;
+import com.peerdsa.user.User;
+import com.peerdsa.user.UserRepository;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
+
+@Service
+public class HireService {
+
+    private final CandidateProfileRepository profiles;
+    private final JobOpeningRepository jobs;
+    private final JobApplicationRepository applications;
+    private final UserRepository users;
+
+    public HireService(
+            CandidateProfileRepository profiles,
+            JobOpeningRepository jobs,
+            JobApplicationRepository applications,
+            UserRepository users) {
+        this.profiles = profiles;
+        this.jobs = jobs;
+        this.applications = applications;
+        this.users = users;
+    }
+
+    @Transactional(readOnly = true)
+    public CandidateProfileDto getProfile(Long userId) {
+        CandidateProfile p = profiles.findByUserId(userId).orElse(null);
+        if (p == null) {
+            User u = users.findById(userId).orElseThrow(
+                    () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+            return new CandidateProfileDto(
+                    "Software Engineer | DSA & Problem Solving Practitioner",
+                    2.0,
+                    "",
+                    "Software Engineer",
+                    "",
+                    "",
+                    30,
+                    "Bengaluru, Remote, Pune, Hyderabad",
+                    "",
+                    "",
+                    "Java, Spring Boot, DSA, SQL, Angular, REST APIs, Git",
+                    "",
+                    "",
+                    Instant.now(),
+                    40);
+        }
+        return toDto(p);
+    }
+
+    @Transactional
+    public CandidateProfileDto saveProfile(Long userId, SaveCandidateProfileRequest req) {
+        User user = users.findById(userId).orElseThrow(
+                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+
+        CandidateProfile p = profiles.findByUserId(userId).orElseGet(() -> new CandidateProfile(user));
+
+        if (req.headline() != null) p.setHeadline(req.headline().trim());
+        if (req.yearsOfExperience() != null) p.setYearsOfExperience(req.yearsOfExperience());
+        if (req.currentCompany() != null) p.setCurrentCompany(req.currentCompany().trim());
+        if (req.currentRole() != null) p.setCurrentRole(req.currentRole().trim());
+        if (req.currentCtc() != null) p.setCurrentCtc(req.currentCtc().trim());
+        if (req.expectedCtc() != null) p.setExpectedCtc(req.expectedCtc().trim());
+        if (req.noticePeriodDays() != null) p.setNoticePeriodDays(req.noticePeriodDays());
+        if (req.preferredLocations() != null) p.setPreferredLocations(req.preferredLocations().trim());
+        if (req.resumeUrl() != null) p.setResumeUrl(req.resumeUrl().trim());
+        if (req.resumeSummary() != null) p.setResumeSummary(req.resumeSummary().trim());
+        if (req.skills() != null) p.setSkills(req.skills().trim());
+        if (req.certifications() != null) p.setCertifications(req.certifications().trim());
+        if (req.education() != null) p.setEducation(req.education().trim());
+
+        p.setUpdatedAt(Instant.now());
+        p = profiles.save(p);
+        return toDto(p);
+    }
+
+    @Transactional(readOnly = true)
+    public List<JobOpeningDto> listJobs(Long userId) {
+        User user = users.findById(userId).orElseThrow(
+                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+
+        CandidateProfile profile = profiles.findByUserId(userId).orElse(null);
+        List<JobOpening> allJobs = jobs.findByIsActiveTrueOrderByPostedAtDesc();
+        List<JobApplication> userApps = applications.findAllByUserId(userId);
+
+        Map<Long, JobApplication> appByJobId = new HashMap<>();
+        for (JobApplication app : userApps) {
+            appByJobId.put(app.getJob().getId(), app);
+        }
+
+        List<JobOpeningDto> results = new ArrayList<>();
+        for (JobOpening job : allJobs) {
+            MatchAnalysis analysis = computeMatch(profile, user, job);
+            JobApplication app = appByJobId.get(job.getId());
+            boolean isApplied = app != null;
+            String status = app != null ? app.getStatus() : null;
+            Instant appliedAt = app != null ? app.getAppliedAt() : null;
+
+            results.add(new JobOpeningDto(
+                    job.getId(),
+                    job.getTitle(),
+                    job.getCompany(),
+                    job.getCompanyLogoUrl(),
+                    job.getLocation(),
+                    job.getExperienceMin(),
+                    job.getExperienceMax(),
+                    job.getSalaryRange(),
+                    job.getJobType(),
+                    job.getWorkplaceType(),
+                    job.getRequiredSkills(),
+                    job.getDescription(),
+                    job.getExternalApplyUrl(),
+                    job.getPostedAt(),
+                    analysis.score(),
+                    analysis.matchingSkills(),
+                    analysis.missingSkills(),
+                    isApplied,
+                    status,
+                    appliedAt));
+        }
+
+        // Sort: Non-applied first, then highest match score, then most recent
+        results.sort(Comparator
+                .comparing(JobOpeningDto::isApplied)
+                .thenComparing((JobOpeningDto j) -> -j.matchScore())
+                .thenComparing(JobOpeningDto::postedAt, Comparator.reverseOrder()));
+
+        return results;
+    }
+
+    @Transactional
+    public JobApplicationDto apply(Long userId, Long jobId) {
+        User user = users.findById(userId).orElseThrow(
+                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+
+        JobOpening job = jobs.findById(jobId).orElseThrow(
+                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Job opening not found"));
+
+        var existing = applications.findByUserIdAndJobId(userId, jobId);
+        if (existing.isPresent()) {
+            return toDto(existing.get());
+        }
+
+        CandidateProfile profile = profiles.findByUserId(userId).orElse(null);
+        MatchAnalysis analysis = computeMatch(profile, user, job);
+
+        JobApplication app = new JobApplication(user, job, analysis.score());
+        app = applications.save(app);
+        return toDto(app);
+    }
+
+    @Transactional
+    public ApplyAllResult applyAllMatching(Long userId, Integer minScoreThreshold) {
+        int threshold = (minScoreThreshold != null && minScoreThreshold >= 40 && minScoreThreshold <= 100)
+                ? minScoreThreshold
+                : 70;
+
+        User user = users.findById(userId).orElseThrow(
+                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+
+        CandidateProfile profile = profiles.findByUserId(userId).orElse(null);
+        List<JobOpening> allJobs = jobs.findByIsActiveTrueOrderByPostedAtDesc();
+        List<JobApplication> userApps = applications.findAllByUserId(userId);
+
+        Set<Long> alreadyAppliedJobIds = userApps.stream()
+                .map(a -> a.getJob().getId())
+                .collect(Collectors.toSet());
+
+        List<JobApplication> newlyCreated = new ArrayList<>();
+        int matchingCount = 0;
+
+        for (JobOpening job : allJobs) {
+            MatchAnalysis analysis = computeMatch(profile, user, job);
+            if (analysis.score() >= threshold) {
+                matchingCount++;
+                if (!alreadyAppliedJobIds.contains(job.getId())) {
+                    JobApplication app = new JobApplication(user, job, analysis.score());
+                    newlyCreated.add(app);
+                }
+            }
+        }
+
+        if (!newlyCreated.isEmpty()) {
+            newlyCreated = applications.saveAll(newlyCreated);
+        }
+
+        List<JobApplicationDto> dtos = newlyCreated.stream().map(this::toDto).toList();
+        String message = newlyCreated.isEmpty()
+                ? (matchingCount > 0
+                        ? "You have already applied to all " + matchingCount + " jobs matching " + threshold + "% or above!"
+                        : "No openings currently meet the " + threshold + "% match threshold. Try adding more skills to your profile.")
+                : String.format("Successfully 1-click applied to %d matching jobs (>= %d%% match)!", newlyCreated.size(), threshold);
+
+        return new ApplyAllResult(newlyCreated.size(), matchingCount, threshold, message, dtos);
+    }
+
+    @Transactional(readOnly = true)
+    public List<JobApplicationDto> listApplications(Long userId) {
+        return applications.findByUserIdOrderByAppliedAtDesc(userId).stream()
+                .map(this::toDto)
+                .toList();
+    }
+
+    // ----------------------------------------------------------- match scoring engine
+
+    private record MatchAnalysis(int score, List<String> matchingSkills, List<String> missingSkills) {}
+
+    private MatchAnalysis computeMatch(CandidateProfile profile, User user, JobOpening job) {
+        List<String> requiredSkills = splitSkills(job.getRequiredSkills());
+        if (requiredSkills.isEmpty()) {
+            return new MatchAnalysis(75, Collections.emptyList(), Collections.emptyList());
+        }
+
+        Set<String> candidateSkills = new HashSet<>();
+        double candidateYoe = 1.0;
+        if (profile != null) {
+            candidateSkills = splitSkills(profile.getSkills()).stream()
+                    .map(String::toLowerCase)
+                    .collect(Collectors.toSet());
+            candidateYoe = profile.getYearsOfExperience();
+        }
+
+        List<String> matching = new ArrayList<>();
+        List<String> missing = new ArrayList<>();
+
+        for (String req : requiredSkills) {
+            String norm = req.toLowerCase().trim();
+            boolean match = candidateSkills.contains(norm)
+                    || candidateSkills.stream().anyMatch(cs -> cs.contains(norm) || norm.contains(cs));
+            if (match) {
+                matching.add(req);
+            } else {
+                missing.add(req);
+            }
+        }
+
+        // 1. Skills match (60% weight)
+        double skillScore = ((double) matching.size() / requiredSkills.size()) * 60.0;
+
+        // 2. Experience overlap (25% weight)
+        double expScore;
+        if (candidateYoe >= job.getExperienceMin() && candidateYoe <= job.getExperienceMax() + 1) {
+            expScore = 25.0;
+        } else if (candidateYoe >= Math.max(0, job.getExperienceMin() - 1)) {
+            expScore = 18.0;
+        } else {
+            expScore = 8.0;
+        }
+
+        // 3. PeerDSATracker Activity Bonus (15% weight)
+        int totalSolved = user.getTotalSolved();
+        double dsaBonus = 5.0;
+        if (totalSolved >= 50) {
+            dsaBonus = 15.0;
+        } else if (totalSolved >= 20) {
+            dsaBonus = 12.0;
+        } else if (totalSolved >= 5) {
+            dsaBonus = 8.0;
+        }
+
+        int finalScore = (int) Math.round(skillScore + expScore + dsaBonus);
+        finalScore = Math.min(99, Math.max(20, finalScore));
+
+        return new MatchAnalysis(finalScore, matching, missing);
+    }
+
+    private List<String> splitSkills(String s) {
+        if (s == null || s.isBlank()) {
+            return Collections.emptyList();
+        }
+        return Arrays.stream(s.split("[,;\\n]+"))
+                .map(String::trim)
+                .filter(part -> !part.isEmpty())
+                .collect(Collectors.toList());
+    }
+
+    private CandidateProfileDto toDto(CandidateProfile p) {
+        int percent = 0;
+        if (p.getHeadline() != null && !p.getHeadline().isBlank()) percent += 15;
+        if (p.getYearsOfExperience() > 0) percent += 15;
+        if (p.getSkills() != null && !p.getSkills().isBlank()) percent += 20;
+        if ((p.getResumeUrl() != null && !p.getResumeUrl().isBlank())
+                || (p.getResumeSummary() != null && !p.getResumeSummary().isBlank())) percent += 20;
+        if (p.getCurrentRole() != null && !p.getCurrentRole().isBlank()) percent += 10;
+        if (p.getCertifications() != null && !p.getCertifications().isBlank()) percent += 10;
+        if (p.getEducation() != null && !p.getEducation().isBlank()) percent += 10;
+        percent = Math.min(100, Math.max(20, percent));
+
+        return new CandidateProfileDto(
+                p.getHeadline(),
+                p.getYearsOfExperience(),
+                p.getCurrentCompany(),
+                p.getCurrentRole(),
+                p.getCurrentCtc(),
+                p.getExpectedCtc(),
+                p.getNoticePeriodDays(),
+                p.getPreferredLocations(),
+                p.getResumeUrl(),
+                p.getResumeSummary(),
+                p.getSkills(),
+                p.getCertifications(),
+                p.getEducation(),
+                p.getUpdatedAt(),
+                percent);
+    }
+
+    private JobApplicationDto toDto(JobApplication a) {
+        return new JobApplicationDto(
+                a.getId(),
+                a.getJob().getId(),
+                a.getJob().getTitle(),
+                a.getJob().getCompany(),
+                a.getJob().getCompanyLogoUrl(),
+                a.getJob().getLocation(),
+                a.getJob().getSalaryRange(),
+                a.getStatus(),
+                a.getMatchScore(),
+                a.getAppliedAt(),
+                a.getNotes());
+    }
+}
