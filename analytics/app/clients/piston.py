@@ -16,6 +16,7 @@ import httpx
 
 from app.config import settings
 from app.schemas import ExecuteRequest, ExecuteResult
+from app.clients import wandbox
 
 # language/alias -> (canonical language, version). Populated on first use, kept for the process
 # lifetime; a cache miss simply refetches.
@@ -54,10 +55,8 @@ async def execute(request: ExecuteRequest) -> ExecuteResult:
         async with httpx.AsyncClient(timeout=settings.execute_timeout_seconds) as client:
             try:
                 language, version = await _resolve(client, request.language)
-            except KeyError:
-                return unsupported.model_copy(
-                    update={"error": f"unsupported language: {request.language}"}
-                )
+            except (KeyError, httpx.HTTPError):
+                return await wandbox.execute(request)
 
             file: dict[str, str] = {"content": request.source}
             if name := _FILENAMES.get(language):
@@ -75,14 +74,12 @@ async def execute(request: ExecuteRequest) -> ExecuteResult:
                 },
             )
             body = response.json()
-    except (httpx.HTTPError, ValueError) as exc:
-        return unsupported.model_copy(update={"error": f"{type(exc).__name__}: {exc}"})
+    except (httpx.HTTPError, ValueError):
+        return await wandbox.execute(request)
 
-    # A 4xx from Piston (bad payload, rate limit) carries a `message`, not a run result.
+    # A 4xx from Piston (bad payload, rate limit, whitelist restriction)
     if "run" not in body:
-        return unsupported.model_copy(
-            update={"error": body.get("message", "execution service rejected the request")}
-        )
+        return await wandbox.execute(request)
 
     run = body["run"]
     compile_stage = body.get("compile") or {}
