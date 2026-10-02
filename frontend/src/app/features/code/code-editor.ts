@@ -593,15 +593,15 @@ export class CodeEditor {
           errorDetail &&
           (errorDetail.includes('ANALYTICS_BASE_URL') || errorDetail.includes('not configured'));
 
-        if (err?.status === 503 && !isNotConfigured && retryCount < 2) {
+        if (err?.status === 503 && !isNotConfigured && retryCount < 3) {
           this.status.set(
-            `Connecting to execution engine... Retrying automatically (attempt ${retryCount + 1}/2)`,
+            `Connecting to execution engine... Retrying automatically (attempt ${retryCount + 1}/3)`,
           );
           setTimeout(() => {
             if (this.running()) {
               this.executeRun(retryCount + 1);
             }
-          }, 3000);
+          }, 1500);
         } else {
           this.running.set(false);
           this.status.set(
@@ -643,15 +643,15 @@ export class CodeEditor {
           errorDetail &&
           (errorDetail.includes('ANALYTICS_BASE_URL') || errorDetail.includes('not configured'));
 
-        if (err?.status === 503 && !isNotConfigured && retryCount < 2) {
+        if (err?.status === 503 && !isNotConfigured && retryCount < 3) {
           this.status.set(
-            `Connecting to execution engine... Retrying submission (attempt ${retryCount + 1}/2)`,
+            `Connecting to execution engine... Retrying submission (attempt ${retryCount + 1}/3)`,
           );
           setTimeout(() => {
             if (this.submitting()) {
               this.executeSubmit(retryCount + 1);
             }
-          }, 3000);
+          }, 1500);
         } else {
           this.submitting.set(false);
           this.status.set(

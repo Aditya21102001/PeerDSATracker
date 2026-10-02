@@ -128,5 +128,18 @@ export const routes: Routes = [
     canActivate: [authGuard],
     loadComponent: () => import('./features/profile/profile-page').then((m) => m.ProfilePage),
   },
+  {
+    path: 'study-guides',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./features/study-guides/study-guides-page').then((m) => m.StudyGuidesPage),
+  },
+  {
+    // guideId is bound to StudyGuideDetail input via withComponentInputBinding()
+    path: 'study-guides/:guideId',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./features/study-guides/study-guide-detail').then((m) => m.StudyGuideDetail),
+  },
   { path: '**', redirectTo: 'dashboard' },
 ];

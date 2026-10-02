@@ -11,6 +11,7 @@ import {
   TestCaseView,
 } from '../../core/models/api.models';
 import { CodeService } from '../../core/services/code.service';
+import { ProblemCatalogService } from '../../core/services/problem-catalog.service';
 import { CodeMirror } from '../../shared/code-mirror/code-mirror';
 import { CodeEditor } from './code-editor';
 
@@ -27,6 +28,10 @@ const LANGUAGES: LanguageOption[] = [
 ];
 
 const PROBLEM = { id: 5, title: 'Reverse a number', difficulty: 'EASY', stepNo: 3, status: null } as Problem;
+
+/** Stub catalog that returns an empty spec — no fallback test cases injected. */
+const EMPTY_SPEC = { statement: '', examples: [], constraints: [], defaultTestCases: [] };
+const stubCatalog = { getProblemSpec: () => EMPTY_SPEC };
 
 describe('CodeEditor', () => {
   let fixture: ComponentFixture<CodeEditor>;
@@ -55,7 +60,11 @@ describe('CodeEditor', () => {
     };
 
     TestBed.configureTestingModule({
-      providers: [provideRouter([]), { provide: CodeService, useValue: code }],
+      providers: [
+        provideRouter([]),
+        { provide: CodeService, useValue: code },
+        { provide: ProblemCatalogService, useValue: stubCatalog },
+      ],
     });
     TestBed.overrideComponent(CodeEditor, {
       remove: { imports: [CodeMirror] },
