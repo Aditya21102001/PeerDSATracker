@@ -24,17 +24,25 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: var(--sp-4);
-  flex-wrap: wrap;
+  gap: var(--sp-6);
+  padding-bottom: var(--sp-4);
+  border-bottom: 1px solid var(--border-subtle);
+  flex-wrap: nowrap;
+
+  @media (max-width: 640px) {
+    flex-wrap: wrap;
+  }
 }
 
 .hire-header-text {
   display: flex;
   flex-direction: column;
   gap: var(--sp-2);
+  flex: 1;
+  min-width: 0;
 
   h1 {
-    font-size: clamp(1.85rem, 4vw, 2.6rem);
+    font-size: clamp(1.6rem, 3.5vw, 2.4rem);
     font-weight: 800;
     background: linear-gradient(135deg, var(--text) 0%, var(--accent) 100%);
     -webkit-background-clip: text;
@@ -80,21 +88,53 @@
 
 .hire-nav {
   display: flex;
-  align-items: center;
-  gap: var(--sp-3);
-  margin-top: 0.25rem;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--sp-2);
+  flex-shrink: 0;
+  padding-top: 0.15rem;
+
+  .hire-nav-links {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    justify-content: flex-end;
+  }
 
   a {
     color: var(--text-muted);
-    font-size: var(--fs-sm, 0.875rem);
+    font-size: 0.78rem;
     font-weight: 500;
     text-decoration: none;
-    transition: color var(--t-fast) var(--ease);
+    padding: 0.25rem 0.65rem;
+    border-radius: 999px;
+    border: 1px solid var(--border-subtle);
+    background: var(--surface-raised);
+    transition: all var(--t-fast) var(--ease);
+    white-space: nowrap;
 
     &:hover {
       color: var(--text);
+      border-color: var(--border);
+      background: var(--surface);
+    }
+
+    &.active-link {
+      color: var(--accent);
+      border-color: rgba(99, 102, 241, 0.4);
+      background: rgba(99, 102, 241, 0.1);
     }
   }
+}
+
+.hire-nav-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  opacity: 0.6;
 }
 
 // ------------------------------------------------------------- Toast
