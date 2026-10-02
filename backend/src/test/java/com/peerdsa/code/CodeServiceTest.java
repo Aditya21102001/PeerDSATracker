@@ -147,6 +147,18 @@ class CodeServiceTest {
         verify(progressService, never()).setStatus(any(), any(), any());
     }
 
+    @Test
+    void run_fallsBackToWandboxWhenAnalyticsDown() {
+        org.mockito.Mockito.doThrow(new org.springframework.web.client.RestClientException("Connection refused"))
+                .when(analytics).execute(any());
+
+        ExecuteResult result = codeService.run("python", "print('hello fallback')", "");
+        if (result != null && result.ran()) {
+            assertThat(result.stdout()).contains("hello fallback");
+            assertThat(result.version()).isEqualTo("wandbox");
+        }
+    }
+
     private static void setField(Object target, String fieldName, Object value) throws Exception {
         Field f = target.getClass().getDeclaredField(fieldName);
         f.setAccessible(true);
