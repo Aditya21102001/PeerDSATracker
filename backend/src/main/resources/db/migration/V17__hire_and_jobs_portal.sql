@@ -5,7 +5,7 @@ CREATE TABLE candidate_profiles (
     headline            text NOT NULL DEFAULT '',
     years_of_experience numeric(4, 1) NOT NULL DEFAULT 0.0,
     current_company     text NOT NULL DEFAULT '',
-    current_role        text NOT NULL DEFAULT '',
+    current_role_title  text NOT NULL DEFAULT '',
     current_ctc         text NOT NULL DEFAULT '',
     expected_ctc        text NOT NULL DEFAULT '',
     notice_period_days  integer NOT NULL DEFAULT 30,

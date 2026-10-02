@@ -33,7 +33,7 @@ public class CandidateProfile {
     @Column(name = "current_company", nullable = false)
     private String currentCompany = "";
 
-    @Column(name = "current_role", nullable = false)
+    @Column(name = "current_role_title", nullable = false)
     private String currentRole = "";
 
     @Column(name = "current_ctc", nullable = false)
