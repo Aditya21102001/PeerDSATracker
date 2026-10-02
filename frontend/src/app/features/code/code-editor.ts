@@ -375,7 +375,6 @@ export class CodeEditor {
     queueMicrotask(() => {
       const id = Number(this.problemId());
       this.code.problem(id).subscribe({ next: (p) => this.problem.set(p) });
-      this.code.warmup().subscribe({ error: () => {} });
 
       forkJoin({
         langs: this.code.languages(),
