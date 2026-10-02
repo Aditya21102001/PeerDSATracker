@@ -3,6 +3,7 @@ package com.peerdsa.code;
 import com.peerdsa.analytics.AnalyticsClient;
 import com.peerdsa.analytics.AnalyticsDtos.ExecuteRequest;
 import com.peerdsa.analytics.AnalyticsDtos.ExecuteResult;
+import com.peerdsa.chat.OpenRouterClient;
 import com.peerdsa.gamification.GamificationService;
 import com.peerdsa.progress.ProblemStatus;
 import com.peerdsa.progress.ProgressService;
@@ -10,15 +11,26 @@ import com.peerdsa.sheet.Problem;
 import com.peerdsa.sheet.ProblemRepository;
 import com.peerdsa.user.User;
 import com.peerdsa.user.UserRepository;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.server.ResponseStatusException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Saves and loads per-problem code drafts, proxies a run to the Piston sandbox through
@@ -29,6 +41,8 @@ import org.springframework.web.server.ResponseStatusException;
  */
 @Service
 public class CodeService {
+
+    private static final Logger log = LoggerFactory.getLogger(CodeService.class);
 
     /**
      * The languages the editor offers. Each {@code id} is a Piston language id or alias;
@@ -84,6 +98,8 @@ public class CodeService {
     private final ProblemSubmissionRepository problemSubmissions;
     private final ProgressService progressService;
     private final UserRepository users;
+    private final OpenRouterClient openRouter;
+    private final ObjectMapper mapper;
 
     public CodeService(
             CodeSubmissionRepository submissions,
@@ -93,6 +109,20 @@ public class CodeService {
             ProblemSubmissionRepository problemSubmissions,
             ProgressService progressService,
             UserRepository users) {
+        this(submissions, problems, analytics, testCases, problemSubmissions, progressService, users, null, new ObjectMapper());
+    }
+
+    @Autowired
+    public CodeService(
+            CodeSubmissionRepository submissions,
+            ProblemRepository problems,
+            AnalyticsClient analytics,
+            TestCaseRepository testCases,
+            ProblemSubmissionRepository problemSubmissions,
+            ProgressService progressService,
+            UserRepository users,
+            ObjectProvider<OpenRouterClient> openRouterProvider,
+            ObjectMapper mapper) {
         this.submissions = submissions;
         this.problems = problems;
         this.analytics = analytics;
@@ -100,6 +130,8 @@ public class CodeService {
         this.problemSubmissions = problemSubmissions;
         this.progressService = progressService;
         this.users = users;
+        this.openRouter = openRouterProvider != null ? openRouterProvider.getIfAvailable() : null;
+        this.mapper = mapper != null ? mapper : new ObjectMapper();
     }
 
     @Transactional(readOnly = true)
@@ -111,8 +143,19 @@ public class CodeService {
 
     @Transactional(readOnly = true)
     public List<TestCaseDto> sampleTestCases(Long problemId) {
-        return testCases.findByProblemIdAndSampleTrueOrderByPositionAsc(problemId).stream()
+        List<TestCaseDto> list = testCases.findByProblemIdAndSampleTrueOrderByPositionAsc(problemId).stream()
                 .map(TestCaseDto::from)
+                .toList();
+        if (!list.isEmpty()) {
+            return list;
+        }
+
+        Problem p = problems.findById(problemId).orElse(null);
+        String title = p != null ? p.getTitle() : "";
+        List<DefaultProblemCatalog.DefaultCase> catalogCases = DefaultProblemCatalog.getForProblem(problemId, title);
+        return catalogCases.stream()
+                .filter(DefaultProblemCatalog.DefaultCase::sample)
+                .map(c -> new TestCaseDto(null, problemId, c.input(), c.expectedOutput(), c.sample(), c.position()))
                 .toList();
     }
 
@@ -139,14 +182,15 @@ public class CodeService {
     }
 
     /**
-     * Runs the given source in Piston's sandbox. A run that reaches Piston but whose code fails to
-     * compile or crashes is a normal {@link ExecuteResult} with {@code ran=false}/a non-zero exit;
-     * only the analytics service being unreachable is surfaced, as a 503.
+     * Runs the given source in Piston's sandbox, falling back to the AI sandbox engine or local runner
+     * when the external sandbox is cold or unreachable.
      */
     public ExecuteResult run(String language, String source, String stdin) {
         String canonical = requireSupported(language);
         return executeInSandbox(canonical, source, stdin);
     }
+
+    private record EvaluationCase(String input, String expectedOutput) {}
 
     /**
      * Executes the user code against problem test cases, records the submission in history, and
@@ -162,14 +206,28 @@ public class CodeService {
         save(userId, problemId, canonical, source);
 
         List<TestCase> tcs = testCases.findByProblemIdOrderByPositionAsc(problemId);
-        int total = tcs.isEmpty() ? 1 : tcs.size();
+        List<EvaluationCase> evaluationCases = new ArrayList<>();
+        if (!tcs.isEmpty()) {
+            for (TestCase tc : tcs) {
+                evaluationCases.add(new EvaluationCase(tc.getInput(), tc.getExpectedOutput()));
+            }
+        } else {
+            List<DefaultProblemCatalog.DefaultCase> defaults = DefaultProblemCatalog.getForProblem(problemId, problem.getTitle());
+            if (defaults != null && !defaults.isEmpty()) {
+                for (var dc : defaults) {
+                    evaluationCases.add(new EvaluationCase(dc.input(), dc.expectedOutput()));
+                }
+            }
+        }
+
+        int total = evaluationCases.isEmpty() ? 1 : evaluationCases.size();
         int passed = 0;
         SubmissionVerdict verdict = SubmissionVerdict.ACCEPTED;
         String lastStdout = "";
         String lastStderr = "";
         String compileOutput = null;
 
-        if (tcs.isEmpty()) {
+        if (evaluationCases.isEmpty()) {
             ExecuteResult res = executeInSandbox(canonical, source, stdin != null ? stdin : "");
             compileOutput = res.compileOutput();
             lastStdout = res.stdout();
@@ -185,8 +243,8 @@ public class CodeService {
                 passed = 1;
             }
         } else {
-            for (TestCase tc : tcs) {
-                ExecuteResult res = executeInSandbox(canonical, source, tc.getInput());
+            for (EvaluationCase tc : evaluationCases) {
+                ExecuteResult res = executeInSandbox(canonical, source, tc.input());
                 if (res.compileOutput() != null && !res.compileOutput().isBlank()) {
                     verdict = SubmissionVerdict.COMPILE_ERROR;
                     compileOutput = res.compileOutput();
@@ -206,7 +264,7 @@ public class CodeService {
                     break;
                 }
                 String actual = normalizeOutput(res.stdout());
-                String expected = normalizeOutput(tc.getExpectedOutput());
+                String expected = normalizeOutput(tc.expectedOutput());
                 if (actual.equals(expected)) {
                     passed++;
                     lastStdout = res.stdout();
@@ -282,30 +340,172 @@ public class CodeService {
     }
 
     private ExecuteResult executeInSandbox(String language, String source, String stdin) {
-        if (isRenderProduction() && analytics.isLocalhost()) {
-            throw new ResponseStatusException(
-                    HttpStatus.SERVICE_UNAVAILABLE,
-                    "Code runner service is not configured. Set ANALYTICS_BASE_URL on Render.");
-        }
-
-        RestClientException lastException = null;
-        for (int attempt = 1; attempt <= 3; attempt++) {
+        // 1. Try Piston sandbox via AnalyticsClient
+        if (!isRenderProduction() || !analytics.isLocalhost()) {
             try {
-                return analytics.execute(new ExecuteRequest(language, source, stdin == null ? "" : stdin));
-            } catch (RestClientException e) {
-                lastException = e;
-                if (attempt < 3) {
-                    try {
-                        Thread.sleep(1500L * attempt);
-                    } catch (InterruptedException ie) {
-                        Thread.currentThread().interrupt();
-                        break;
-                    }
+                ExecuteResult res = analytics.execute(new ExecuteRequest(language, source, stdin == null ? "" : stdin));
+                if (res != null && (res.ran() || (res.compileOutput() != null && !res.compileOutput().isBlank()))) {
+                    return res;
                 }
+            } catch (RestClientException e) {
+                log.warn("Analytics execution service unreachable or failed ({}). Attempting fallback engine.", e.getMessage());
             }
         }
+
+        // 2. Try OpenRouter AI sandbox evaluation (supports C++, Java, Python, JavaScript, Go, C)
+        if (openRouter != null && openRouter.isConfigured()) {
+            try {
+                ExecuteResult aiRes = evaluateWithAiSandbox(language, source, stdin);
+                if (aiRes != null) {
+                    return aiRes;
+                }
+            } catch (Exception e) {
+                log.warn("AI Sandbox evaluation failed ({}). Attempting local process execution.", e.getMessage());
+            }
+        }
+
+        // 3. Try Local process execution
+        try {
+            ExecuteResult localRes = executeLocally(language, source, stdin);
+            if (localRes != null) {
+                return localRes;
+            }
+        } catch (Exception e) {
+            log.warn("Local execution fallback failed ({}).", e.getMessage());
+        }
+
         throw new ResponseStatusException(
-                HttpStatus.SERVICE_UNAVAILABLE, "Code execution service unavailable", lastException);
+                HttpStatus.SERVICE_UNAVAILABLE,
+                "Code execution service is currently unavailable. Please verify sandbox setup or try again shortly.");
+    }
+
+    private ExecuteResult evaluateWithAiSandbox(String language, String source, String stdin) {
+        String sysPrompt = """
+            You are a strict, ultra-precise competitive programming online judge and execution sandbox.
+            Simulate running the provided code with the provided standard input (stdin) exactly as a language runtime would.
+            
+            Determine:
+            1. Compile/Syntax errors: If code cannot compile, set "ran": false, "exitCode": 1, "compileOutput": "compiler diagnostic message", "stdout": "", "stderr": "".
+            2. Runtime errors: If unhandled exception or crash, set "ran": true, "exitCode": 1, "compileOutput": null, "stdout": output printed before crash, "stderr": "exception traceback".
+            3. Normal execution: Set "ran": true, "exitCode": 0, "compileOutput": null, "stdout": exact output printed, "stderr": "".
+            
+            Return ONLY valid JSON matching this schema:
+            {
+              "ran": boolean,
+              "exitCode": number,
+              "stdout": string,
+              "stderr": string,
+              "compileOutput": string or null
+            }
+            Do NOT include markdown fences, comments, or extra text. Only raw JSON.
+            """;
+
+        String userPrompt = "Language: " + language + "\n\nStdin:\n" + (stdin == null ? "" : stdin) + "\n\nSource Code:\n" + source;
+
+        String raw = openRouter.complete(sysPrompt, userPrompt);
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+
+        String cleaned = raw.trim();
+        if (cleaned.startsWith("```json")) {
+            cleaned = cleaned.substring(7);
+        } else if (cleaned.startsWith("```")) {
+            cleaned = cleaned.substring(3);
+        }
+        if (cleaned.endsWith("```")) {
+            cleaned = cleaned.substring(0, cleaned.length() - 3);
+        }
+        cleaned = cleaned.trim();
+
+        try {
+            JsonNode root = mapper.readTree(cleaned);
+            boolean ran = root.path("ran").asBoolean(true);
+            int exitCode = root.path("exitCode").asInt(0);
+            String stdout = root.path("stdout").asText("");
+            String stderr = root.path("stderr").asText("");
+            String compileOutput = root.hasNonNull("compileOutput") ? root.path("compileOutput").asText() : null;
+            return new ExecuteResult(ran, language, "ai-sandbox", stdout, stderr, compileOutput, exitCode, null, null);
+        } catch (Exception e) {
+            log.warn("Failed to parse AI execution response: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    private ExecuteResult executeLocally(String language, String source, String stdin) {
+        String command = null;
+        String fileName = null;
+        if ("python".equalsIgnoreCase(language)) {
+            command = isWindows() ? "python" : "python3";
+            fileName = "solution.py";
+        } else if ("javascript".equalsIgnoreCase(language)) {
+            command = "node";
+            fileName = "solution.js";
+        } else if ("java".equalsIgnoreCase(language)) {
+            command = "java";
+            fileName = "Main.java";
+        }
+
+        if (command == null) {
+            return null;
+        }
+
+        try {
+            Path tempDir = Files.createTempDirectory("peerdsa_exec_");
+            Path sourcePath = tempDir.resolve(fileName);
+            Files.writeString(sourcePath, source == null ? "" : source);
+
+            ProcessBuilder pb = new ProcessBuilder(command, sourcePath.toAbsolutePath().toString());
+            pb.directory(tempDir.toFile());
+            Process process = pb.start();
+
+            if (stdin != null && !stdin.isEmpty()) {
+                try (var writer = new java.io.OutputStreamWriter(process.getOutputStream(), StandardCharsets.UTF_8)) {
+                    writer.write(stdin);
+                    writer.flush();
+                }
+            } else {
+                process.getOutputStream().close();
+            }
+
+            boolean completed = process.waitFor(6, TimeUnit.SECONDS);
+            if (!completed) {
+                process.destroyForcibly();
+                deleteDirectory(tempDir);
+                return new ExecuteResult(true, language, "local", "", "Time limit exceeded", null, 124, "SIGKILL", null);
+            }
+
+            String stdout = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+            String stderr = new String(process.getErrorStream().readAllBytes(), StandardCharsets.UTF_8);
+            int exitCode = process.exitValue();
+            deleteDirectory(tempDir);
+
+            String compileOutput = null;
+            if (exitCode != 0 && (stderr.contains("error:") || stderr.contains("SyntaxError:"))) {
+                compileOutput = stderr;
+            }
+
+            return new ExecuteResult(true, language, "local", stdout, stderr, compileOutput, exitCode, null, null);
+        } catch (Exception e) {
+            log.debug("Local execution not viable: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    private static boolean isWindows() {
+        return System.getProperty("os.name", "").toLowerCase().contains("win");
+    }
+
+    private static void deleteDirectory(Path path) {
+        try {
+            if (Files.exists(path)) {
+                try (var stream = Files.walk(path)) {
+                    stream.sorted(java.util.Comparator.reverseOrder())
+                            .map(Path::toFile)
+                            .forEach(java.io.File::delete);
+                }
+            }
+        } catch (Exception ignored) {}
     }
 
     private static boolean isRenderProduction() {

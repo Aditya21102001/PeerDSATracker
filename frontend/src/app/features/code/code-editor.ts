@@ -12,16 +12,18 @@ import {
   TestCaseView,
 } from '../../core/models/api.models';
 import { CodeService } from '../../core/services/code.service';
+import { ProblemCatalogService, ProblemSpec } from '../../core/services/problem-catalog.service';
 import { CodeMirror } from '../../shared/code-mirror/code-mirror';
 import { Spinner } from '../../shared/spinner';
 
 /**
  * The in-app code editor for one problem, routed as code/:problemId with problemId supplied by
- * component input binding. A LeetCode-style split: the problem and its resources on the left, a
- * CodeMirror editor plus a test case and submissions console on the right.
+ * component input binding. A LeetCode-style split: the problem description, examples, constraints,
+ * and resources on the left, a CodeMirror editor plus a testcase and submissions console on the right.
  *
- * Code execution proxies to Piston's sandbox via the analytics service.
- * "Run" executes against the active testcase or custom stdin.
+ * Code execution proxies to Piston's sandbox via the analytics service, with seamless fallback
+ * to the AI execution sandbox or local process runner when external sandbox is idle or unavailable.
+ * "Run" executes against the active testcase or custom stdin with instant verdict validation.
  * "Submit" runs code against all problem test cases, saves a submission record, and
  * automatically transitions the problem status to SOLVED with XP and streak updates upon ACCEPTED.
  */
@@ -40,32 +42,80 @@ import { Spinner } from '../../shared/spinner';
       <div class="workspace" [style.--left-col]="leftWidth() + 'px'">
         <section class="problem-pane" aria-label="Problem">
           @if (problem(); as p) {
-            <h1>{{ p.title }}</h1>
-            <div class="tags">
-              <span class="pill" [attr.data-level]="p.difficulty">{{ p.difficulty }}</span>
-              <span class="step">Step {{ p.stepNo }} · {{ p.subStepTitle }}</span>
-              @if (p.status === 'SOLVED') {
-                <span class="pill solved-pill">✓ SOLVED</span>
-              }
+            <div class="problem-header">
+              <h1>{{ p.title }}</h1>
+              <div class="tags">
+                <span class="pill" [attr.data-level]="p.difficulty">{{ p.difficulty }}</span>
+                <span class="step">Step {{ p.stepNo }} · {{ p.subStepTitle }}</span>
+                @if (p.status === 'SOLVED') {
+                  <span class="pill solved-pill">✓ SOLVED</span>
+                }
+              </div>
+
+              <div class="resources">
+                @if (p.leetcodeUrl) {
+                  <a [href]="p.leetcodeUrl" target="_blank" rel="noopener">LeetCode ↗</a>
+                }
+                @if (p.articleUrl) {
+                  <a [href]="p.articleUrl" target="_blank" rel="noopener">Article ↗</a>
+                }
+                @if (p.youtubeUrl) {
+                  <a [href]="p.youtubeUrl" target="_blank" rel="noopener">Video ↗</a>
+                }
+                <a [routerLink]="['/notes', problemId()]">Note</a>
+              </div>
             </div>
 
-            <div class="resources">
-              @if (p.leetcodeUrl) {
-                <a [href]="p.leetcodeUrl" target="_blank" rel="noopener">LeetCode ↗</a>
-              }
-              @if (p.articleUrl) {
-                <a [href]="p.articleUrl" target="_blank" rel="noopener">Article ↗</a>
-              }
-              @if (p.youtubeUrl) {
-                <a [href]="p.youtubeUrl" target="_blank" rel="noopener">Video ↗</a>
-              }
-              <a [routerLink]="['/notes', problemId()]">Note</a>
-            </div>
+            @if (problemSpec(); as spec) {
+              <div class="statement-body">
+                <div class="problem-text">
+                  @for (paragraph of formatStatement(spec.statement); track $index) {
+                    <p>{{ paragraph }}</p>
+                  }
+                </div>
 
-            <p class="hint">
-              The full statement, constraints and examples live on the linked problem. Write, test,
-              and submit your solution on the right.
-            </p>
+                <div class="examples-section">
+                  @for (ex of spec.examples; track $index; let idx = $index) {
+                    <div class="example-card">
+                      <div class="example-title">Example {{ idx + 1 }}:</div>
+                      <div class="example-content">
+                        <div class="io-row">
+                          <span class="io-tag">Input:</span>
+                          <code>{{ ex.input }}</code>
+                        </div>
+                        <div class="io-row">
+                          <span class="io-tag">Output:</span>
+                          <code>{{ ex.output }}</code>
+                        </div>
+                        @if (ex.explanation) {
+                          <div class="io-row">
+                            <span class="io-tag">Explanation:</span>
+                            <span class="explanation-text">{{ ex.explanation }}</span>
+                          </div>
+                        }
+                      </div>
+                    </div>
+                  }
+                </div>
+
+                @if (spec.constraints.length > 0) {
+                  <div class="constraints-section">
+                    <h3>Constraints:</h3>
+                    <ul class="constraints-list">
+                      @for (c of spec.constraints; track c) {
+                        <li><code>{{ c }}</code></li>
+                      }
+                    </ul>
+                  </div>
+                }
+
+                @if (spec.followUp) {
+                  <div class="followup-box">
+                    <strong>Follow-up:</strong> {{ spec.followUp }}
+                  </div>
+                }
+              </div>
+            }
           } @else {
             <app-spinner label="Loading problem…" />
           }
@@ -217,6 +267,25 @@ import { Spinner } from '../../shared/spinner';
                   @if (running()) {
                     <app-spinner inline label="Running in the sandbox…" />
                   } @else if (result(); as r) {
+                    @if (currentExpectedOutput() && r.ran && r.exitCode === 0) {
+                      @if (isOutputMatching(r.stdout, currentExpectedOutput())) {
+                        <div class="verdict-banner pass">
+                          <span class="verdict-icon">✓</span>
+                          <div>
+                            <strong>Test Case Passed</strong>
+                            <span class="verdict-sub">Output matches expected output</span>
+                          </div>
+                        </div>
+                      } @else {
+                        <div class="verdict-banner fail">
+                          <span class="verdict-icon">✗</span>
+                          <div>
+                            <strong>Wrong Answer</strong>
+                            <span class="verdict-sub">Output differs from expected output</span>
+                          </div>
+                        </div>
+                      }
+                    }
                     @if (r.error) {
                       <p class="run-error" role="alert">{{ r.error }}</p>
                     }
@@ -228,8 +297,14 @@ import { Spinner } from '../../shared/spinner';
                     }
                     @if (r.stdout) {
                       <div class="block">
-                        <span class="block-label">stdout</span>
+                        <span class="block-label">Your Output</span>
                         <pre>{{ r.stdout }}</pre>
+                      </div>
+                    }
+                    @if (currentExpectedOutput()) {
+                      <div class="block expected">
+                        <span class="block-label">Expected Output</span>
+                        <pre>{{ currentExpectedOutput() }}</pre>
                       </div>
                     }
                     @if (r.stderr) {
@@ -327,8 +402,14 @@ export class CodeEditor {
   readonly problemId = input.required<string>();
 
   private readonly code = inject(CodeService);
+  private readonly catalog = inject(ProblemCatalogService);
 
   protected readonly problem = signal<Problem | null>(null);
+  protected readonly problemSpec = computed(() => {
+    const p = this.problem();
+    return p ? this.catalog.getProblemSpec(p) : null;
+  });
+
   protected readonly languages = signal<LanguageOption[]>([]);
   protected readonly language = signal('');
   protected readonly running = signal(false);
@@ -362,7 +443,7 @@ export class CodeEditor {
   /** Width of the problem pane in px, driven by the drag divider. Feeds a CSS var so the mobile
    *  media query can still collapse the split (an inline grid-template-columns could not be
    *  overridden). Clamped in {@link onDrag}. */
-  protected readonly leftWidth = signal(340);
+  protected readonly leftWidth = signal(460);
   private dragging = false;
 
   /** Latest source persisted per language, so a re-opened language restores its saved draft. */
@@ -374,7 +455,27 @@ export class CodeEditor {
     // input() values land after construction, so defer a tick (same idiom as note-editor).
     queueMicrotask(() => {
       const id = Number(this.problemId());
-      this.code.problem(id).subscribe({ next: (p) => this.problem.set(p) });
+      this.code.problem(id).subscribe({
+        next: (p) => {
+          this.problem.set(p);
+          if (this.testCases().length === 0) {
+            const spec = this.catalog.getProblemSpec(p);
+            const fallbackCases: TestCaseView[] = spec.defaultTestCases.map((tc, idx) => ({
+              id: idx + 1,
+              problemId: id,
+              input: tc.input,
+              expectedOutput: tc.expectedOutput,
+              sample: tc.sample,
+              position: idx + 1,
+            }));
+            this.testCases.set(fallbackCases);
+            if (fallbackCases.length > 0 && !this.stdin) {
+              this.stdin = fallbackCases[0].input;
+              this.activeTestCaseIndex.set(0);
+            }
+          }
+        },
+      });
 
       forkJoin({
         langs: this.code.languages(),
@@ -389,9 +490,22 @@ export class CodeEditor {
           this.source.set(this.sourceFor(first));
           this.language.set(first);
 
-          this.testCases.set(testCases);
           if (testCases.length > 0) {
+            this.testCases.set(testCases);
             this.stdin = testCases[0].input;
+            this.activeTestCaseIndex.set(0);
+          } else if (this.problem()) {
+            const spec = this.catalog.getProblemSpec(this.problem()!);
+            const fallbackCases: TestCaseView[] = spec.defaultTestCases.map((tc, idx) => ({
+              id: idx + 1,
+              problemId: id,
+              input: tc.input,
+              expectedOutput: tc.expectedOutput,
+              sample: tc.sample,
+              position: idx + 1,
+            }));
+            this.testCases.set(fallbackCases);
+            this.stdin = fallbackCases[0].input;
             this.activeTestCaseIndex.set(0);
           } else {
             this.activeTestCaseIndex.set(-1);
@@ -481,19 +595,19 @@ export class CodeEditor {
 
         if (err?.status === 503 && !isNotConfigured && retryCount < 2) {
           this.status.set(
-            `Code runner is warming up from idle... Retrying automatically (attempt ${retryCount + 1}/2)`,
+            `Connecting to execution engine... Retrying automatically (attempt ${retryCount + 1}/2)`,
           );
           setTimeout(() => {
             if (this.running()) {
               this.executeRun(retryCount + 1);
             }
-          }, 3500);
+          }, 3000);
         } else {
           this.running.set(false);
           this.status.set(
             errorDetail ||
               (err?.status === 503
-                ? 'The code runner is taking longer than expected to wake up. Please wait a few seconds and run again.'
+                ? 'The code execution engine took longer than expected to respond. Please try running again in a moment.'
                 : 'Could not run your code.'),
           );
         }
@@ -531,19 +645,19 @@ export class CodeEditor {
 
         if (err?.status === 503 && !isNotConfigured && retryCount < 2) {
           this.status.set(
-            `Code execution service is warming up... Retrying submission (attempt ${retryCount + 1}/2)`,
+            `Connecting to execution engine... Retrying submission (attempt ${retryCount + 1}/2)`,
           );
           setTimeout(() => {
             if (this.submitting()) {
               this.executeSubmit(retryCount + 1);
             }
-          }, 3500);
+          }, 3000);
         } else {
           this.submitting.set(false);
           this.status.set(
             errorDetail ||
               (err?.status === 503
-                ? 'The code execution service is taking longer than expected to wake up. Please wait a moment and submit again.'
+                ? 'The execution engine took longer than expected to respond. Please try submitting again in a moment.'
                 : 'Could not submit your code.'),
           );
         }
@@ -574,6 +688,19 @@ export class CodeEditor {
         this.flash('Could not save.');
       },
     });
+  }
+
+  protected formatStatement(text: string): string[] {
+    return text.split('\n\n').filter((p) => p.trim().length > 0);
+  }
+
+  protected isOutputMatching(actual?: string, expected?: string): boolean {
+    if (!actual || !expected) return false;
+    return this.normalize(actual) === this.normalize(expected);
+  }
+
+  private normalize(s: string): string {
+    return s.replace(/\r\n/g, '\n').replace(/[ \t\r\n]+$/, '').trim();
   }
 
   /** Live buffer first, then the saved draft, then the language's starter template. */

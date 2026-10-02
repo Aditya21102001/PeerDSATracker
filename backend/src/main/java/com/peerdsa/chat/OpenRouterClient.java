@@ -55,6 +55,24 @@ public class OpenRouterClient {
                 .build();
     }
 
+    public boolean isConfigured() {
+        return props != null && props.isConfigured();
+    }
+
+    /**
+     * Executes a non-streaming chat completion and returns the aggregated text reply.
+     */
+    public String complete(String systemPrompt, String userPrompt) {
+        List<Turn> messages = new ArrayList<>();
+        if (systemPrompt != null && !systemPrompt.isBlank()) {
+            messages.add(new Turn("system", systemPrompt));
+        }
+        messages.add(new Turn("user", userPrompt == null ? "" : userPrompt));
+        StringBuilder sb = new StringBuilder();
+        streamReply(messages, sb::append);
+        return sb.toString();
+    }
+
     /** A single turn sent upstream. Role is one of system/user/assistant. */
     public record Turn(String role, String content) {}
 
