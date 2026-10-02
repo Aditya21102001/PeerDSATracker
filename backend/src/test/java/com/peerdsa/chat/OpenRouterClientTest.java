@@ -187,6 +187,64 @@ class OpenRouterClientTest {
         assertThat(requests.get()).isEqualTo(3);
     }
 
+    @Test
+    void resolveModelsAppendsHealthyFreeFallbacksWhenGivenFreeModel() {
+        OpenRouterClient client = new OpenRouterClient(props("http://localhost:1", "sk-test"), mapper);
+        List<String> models = client.resolveModels();
+        assertThat(models).contains("test/model:free", "google/gemma-4-31b-it:free", "cohere/north-mini-code:free", "openrouter/free");
+        assertThat(models.get(0)).isEqualTo("test/model:free");
+    }
+
+    @Test
+    void resolveModelsPreservesExplicitCommaSeparatedList() {
+        OpenRouterProperties explicitProps = new OpenRouterProperties(
+                "sk-test",
+                "http://localhost:1",
+                "model-a:free, model-b:free",
+                "You are a tutor.",
+                20,
+                Duration.ofSeconds(2),
+                Duration.ofSeconds(10),
+                "http://ref",
+                "test");
+        OpenRouterClient client = new OpenRouterClient(explicitProps, mapper);
+        List<String> models = client.resolveModels();
+        assertThat(models.get(0)).isEqualTo("model-a:free");
+        assertThat(models.get(1)).isEqualTo("model-b:free");
+    }
+
+    @Test
+    void resolveModelsLeavesPaidModelAlone() {
+        OpenRouterProperties paidProps = new OpenRouterProperties(
+                "sk-test",
+                "http://localhost:1",
+                "openai/gpt-4o",
+                "You are a tutor.",
+                20,
+                Duration.ofSeconds(2),
+                Duration.ofSeconds(10),
+                "http://ref",
+                "test");
+        OpenRouterClient client = new OpenRouterClient(paidProps, mapper);
+        List<String> models = client.resolveModels();
+        assertThat(models).containsExactly("openai/gpt-4o");
+    }
+
+    @Test
+    void requestBodyIncludesBothModelAndFallbackArray() throws Exception {
+        OpenRouterClient client = new OpenRouterClient(props("http://localhost:1", "sk-test"), mapper);
+        String json = client.requestBody(List.of(new OpenRouterClient.Turn("user", "solve two sum")));
+        tools.jackson.databind.JsonNode root = mapper.readTree(json);
+
+        assertThat(root.get("model").asText()).isEqualTo("test/model:free");
+        assertThat(root.has("models")).isTrue();
+        tools.jackson.databind.JsonNode modelsArr = root.get("models");
+        assertThat(modelsArr.get(0).asText()).isEqualTo("test/model:free");
+        assertThat(modelsArr.get(1).asText()).isEqualTo("qwen/qwen3.8-27b:free");
+        assertThat(modelsArr.get(2).asText()).isEqualTo("google/gemma-4-31b-it:free");
+        assertThat(root.get("stream").asBoolean()).isTrue();
+    }
+
     private OpenRouterProperties props(String baseUrl, String apiKey) {
         return new OpenRouterProperties(
                 apiKey,

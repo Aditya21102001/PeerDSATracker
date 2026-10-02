@@ -165,9 +165,46 @@ public class OpenRouterClient {
         }
     }
 
-    private String requestBody(List<Turn> messages) {
+    private static final List<String> DEFAULT_FREE_FALLBACKS = List.of(
+            "qwen/qwen3.8-27b:free",
+            "google/gemma-4-31b-it:free",
+            "cohere/north-mini-code:free",
+            "openrouter/free");
+
+    List<String> resolveModels() {
+        List<String> list = new ArrayList<>();
+        if (props.model() != null && !props.model().isBlank()) {
+            for (String part : props.model().split(",")) {
+                String trimmed = part.strip();
+                if (!trimmed.isEmpty() && !list.contains(trimmed)) {
+                    list.add(trimmed);
+                }
+            }
+        }
+        if (list.isEmpty()) {
+            list.add("qwen/qwen3.8-27b:free");
+        }
+        boolean hasFreeModel = list.stream().anyMatch(m -> m.endsWith(":free") || m.equals("openrouter/free"));
+        if (hasFreeModel) {
+            for (String fallback : DEFAULT_FREE_FALLBACKS) {
+                if (!list.contains(fallback)) {
+                    list.add(fallback);
+                }
+            }
+        }
+        return list;
+    }
+
+    String requestBody(List<Turn> messages) {
         ObjectNode root = mapper.createObjectNode();
-        root.put("model", props.model());
+        List<String> models = resolveModels();
+        root.put("model", models.get(0));
+        if (models.size() > 1) {
+            ArrayNode modelsArr = root.putArray("models");
+            for (String m : models) {
+                modelsArr.add(m);
+            }
+        }
         root.put("stream", true);
         ArrayNode arr = root.putArray("messages");
         for (Turn t : messages) {

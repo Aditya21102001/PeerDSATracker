@@ -367,26 +367,19 @@ Two faults on that endpoint were fixed with it:
 `OpenRequest.peerId` is also `@NotNull` with `@Valid` on the controller now, so a missing field is a
 400 rather than whatever the first line to touch it happened to do.
 
-### `OPENROUTER_MODEL` goes stale on its own
+### `OPENROUTER_MODEL` and Automatic Fallback Routing
 
-The study assistant runs on OpenRouter's free tier, and **that list rotates**. An id that worked last
-month is retired without notice, OpenRouter answers 404, and `OpenRouterClient` reports *"The
-assistant's model is not available. Check OPENROUTER_MODEL"*. Nothing is broken except one value.
+The study assistant runs on OpenRouter's free tier models. Free models rotate over time and can hit transient concurrency rate limits (HTTP 429). To prevent outages:
 
-There is no startup validation on purpose — checking would mean a network call on every boot, on an
-instance that already takes a minute to start. The cost is that the failure appears at first use
-rather than at deploy.
+1. **Multi-Model Fallback**: `OpenRouterClient` passes OpenRouter's native `models: [...]` fallback chain (`qwen/qwen3.8-27b:free,google/gemma-4-31b-it:free,cohere/north-mini-code:free,openrouter/free`). If a model experiences rate-limiting or an outage, OpenRouter automatically fails over to the next healthy model.
+2. **Dynamic Free Router**: `openrouter/free` is included in the chain as an automatic fallback that routes dynamically to any active free model.
+3. **Manual Override**: You can set `OPENROUTER_MODEL` on the Render dashboard to either a single model or a comma-separated fallback chain.
 
-The live list is public and needs no key:
+The live list of free models is public and needs no key:
 
 ```
-curl -s https://openrouter.ai/api/v1/models | python -c "import json,sys;[print(m['id']) for m in json.load(sys.stdin)['data'] if m['id'].endswith(':free')]"
+curl -s https://openrouter.ai/api/v1/models | python -c "import json,sys;[print(m['id']) for m in json.load(sys.stdin)['data'] if m['id'].endswith(':free') or m['id']=='openrouter/free']"
 ```
-
-Pick one, set `OPENROUTER_MODEL` on the backend service, redeploy. The default in `application.yml`
-is only a starting point for a fresh deployment — it is not authoritative and will itself rotate out.
-`meta-llama/llama-3.3-70b-instruct:free` was the default until it was retired along with every other
-`meta-llama` free id.
 
 ### `MANAGEMENT_HEALTH_DB_ENABLED=false`
 

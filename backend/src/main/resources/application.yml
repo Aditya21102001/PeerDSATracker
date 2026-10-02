@@ -201,18 +201,14 @@ app:
     # "not configured" instead of calling upstream with an empty credential.
     api-key: ${OPENROUTER_API_KEY:}
     base-url: ${OPENROUTER_BASE_URL:https://openrouter.ai/api/v1}
-    # Must be a real free model id (ends in ":free"). The free list rotates, hence an
-    # env var. NOTE: "openrouter/free" is NOT a valid id and will 404.
+    # Free tier model id(s). Can be a single model or a comma-separated fallback chain.
+    # OpenRouter and OpenRouterClient automatically fail over across the models list if any model
+    # hits a 429 rate limit or outage.
     #
-    # This default WILL go stale -- that is the nature of the free list, not a bug to fix here.
-    # When the assistant starts answering "the model is not available", OpenRouter has retired
-    # the id and the whole repair is this one environment variable. The live list is public and
-    # needs no key: GET https://openrouter.ai/api/v1/models and keep the ids ending in ":free".
+    # The free list rotates, hence an env var. The live list is public and needs no key:
+    # GET https://openrouter.ai/api/v1/models and keep ids ending in ":free" or "openrouter/free".
     # The README has a ready-made one-liner under "OPENROUTER_MODEL goes stale on its own".
-    #
-    # Previously meta-llama/llama-3.3-70b-instruct:free, then z-ai/glm-5.2:free, retired
-    # when OpenRouter rotated the free tier. Updated to currently active model.
-    model: "${OPENROUTER_MODEL:qwen/qwen3.8-27b:free}"
+    model: "${OPENROUTER_MODEL:qwen/qwen3.8-27b:free,google/gemma-4-31b-it:free,cohere/north-mini-code:free,openrouter/free}"
     system-prompt: "${OPENROUTER_SYSTEM_PROMPT:You are Grind Buddy, a concise coding-interview tutor inside a DSA progress tracker. Help with data structures, algorithms, complexity analysis, and debugging. Prefer hints and step-by-step reasoning over dumping full solutions unless explicitly asked. Use short paragraphs and fenced code blocks. If a question is unrelated to programming or studying, gently steer back.}"
     # Most-recent messages replayed as context. Caps the token bill on a long thread.
     max-history: ${OPENROUTER_MAX_HISTORY:20}

@@ -228,6 +228,15 @@ class ApplicationYamlBindingTest {
         assertThat(environment.getProperty("server.forward-headers-strategy")).isEqualTo("framework");
     }
 
+    @Test
+    void openrouterPropertiesBindWithFallbackChain() {
+        OpenRouterProperties openRouter = bind("app.openrouter", OpenRouterProperties.class);
+        assertThat(openRouter.model()).contains("qwen/qwen3.8-27b:free");
+        assertThat(openRouter.model()).contains("google/gemma-4-31b-it:free");
+        assertThat(openRouter.model()).contains("cohere/north-mini-code:free");
+        assertThat(openRouter.model()).contains("openrouter/free");
+    }
+
     // ---------------------------------------------------------------------------- helpers
 
     private <T> T bind(String prefix, Class<T> type) {
