@@ -74611,7 +74611,7 @@ Controller → Exception → DispatcherServlet
 So, in Spring, we faced a few challenges. First, when we created beans, we had to manually register them using XML. Second, we had to explicitly search for beans we needed. Lastly, we had to configure everything manually—the dispatcher servlet, view resolvers, object mapper, transaction manager, even the Tomcat server. This infrastructure setup was quite heavy compared to business logic.
 
 Now, Spring Boot solved these issues. With @Configuration, we just annotate and beans are registered automatically—no XML needed. With @ComponentScan, beans like services or repositories are automatically detected, again without XML. Finally, @EnableAutoConfiguration does the magic—based on dependencies like Spring Boot Web, it automatically configures things like the dispatcher servlet. If something is missing, it will set it up. In short, I no longer need to handle infrastructure manually; Spring Boot does it for me.', 'springbootdaily,spring-boot,backend,java'),
-    ('Spring Boot Internals Roadmap (3 YOE Java Developer)', 'Spring Boot', 'Tight Coupling vs Loose Coupling Boilerplate code problem (JDBC, EJB era) Dependency Management headache Why IoC was introduced Spring as a lightweight alternative to EJB', '# Spring Boot Internals Roadmap (3 YOE Java Developer)
+    ('Spring Boot Internals Roadmap (3 YOE Java Developer) (Part 1)', 'Spring Boot', 'Tight Coupling vs Loose Coupling Boilerplate code problem (JDBC, EJB era) Dependency Management headache Why IoC was introduced Spring as a lightweight alternative to EJB', '# Spring Boot Internals Roadmap (3 YOE Java Developer)
 
 ---
 
@@ -75165,7 +75165,7 @@ All matching @EventListener methods called
 ---
 
 ## Corrected Learning Sequence', 'springbootdaily,spring-boot,backend,java'),
-    ('Spring Boot Internals Roadmap (3 YOE Java Developer)', 'Spring Boot', 'Tight Coupling vs Loose Coupling Dependency Management Why IoC was introduced Tight coupling means a class directly depends on a concrete implementation, making the code hard to change, test, and maintain.', '# Spring Boot Internals Roadmap (3 YOE Java Developer)
+    ('Spring Boot Internals Roadmap (3 YOE Java Developer) (Part 2)', 'Spring Boot', 'Tight Coupling vs Loose Coupling Dependency Management Why IoC was introduced Tight coupling means a class directly depends on a concrete implementation, making the code hard to change, test, and maintain.', '# Spring Boot Internals Roadmap (3 YOE Java Developer)
 
 ## Phase 1: Core Spring Foundation
 

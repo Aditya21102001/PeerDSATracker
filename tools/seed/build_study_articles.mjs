@@ -297,6 +297,24 @@ function parseAllArticles(sourceDir) {
     });
   }
 
+  // Ensure unique (subject, title) pairs
+  const titleCounts = new Map();
+  for (const a of articles) {
+    const key = `${a.subject}|||${a.title}`;
+    titleCounts.set(key, (titleCounts.get(key) || 0) + 1);
+  }
+  for (const a of articles) {
+    const key = `${a.subject}|||${a.title}`;
+    if (titleCounts.get(key) > 1) {
+      const stem = path.basename(a.relPath, path.extname(a.relPath));
+      if (stem.toLowerCase().endsWith('2') || stem.toLowerCase().includes('part2')) {
+        a.title = `${a.title} (Part 2)`;
+      } else {
+        a.title = `${a.title} (Part 1)`;
+      }
+    }
+  }
+
   articles.sort((a, b) => a.subject.localeCompare(b.subject) || a.title.localeCompare(b.title));
   return articles;
 }
