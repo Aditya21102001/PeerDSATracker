@@ -42,6 +42,11 @@ export class ProctoredTestPage implements OnInit, OnDestroy {
   protected selectedTrack = signal<string>('FULL_STACK');
   protected isStarting = signal<boolean>(false);
   protected isSubmitting = signal<boolean>(false);
+  protected readonly errorMessage = signal<string | null>(null);
+
+  protected dismissError(): void {
+    this.errorMessage.set(null);
+  }
 
   // Active Test Session
   protected readonly currentSession = signal<TestSession | null>(null);
@@ -172,9 +177,23 @@ export class ProctoredTestPage implements OnInit, OnDestroy {
           this.startProctoringMonitors();
           this.attachWindowListeners();
         },
-        error: () => {
+        error: (err: any) => {
           this.isStarting.set(false);
-          alert('Could not start test session. Please try again.');
+          this.cleanupMedia();
+          if (document.fullscreenElement) {
+            document.exitFullscreen().catch(() => {});
+            this.isFullscreen.set(false);
+          }
+          if (err?.status === 401) {
+            this.errorMessage.set('Please sign in to start your proctored technical assessment.');
+          } else if (err?.status === 503 || err?.status === 504) {
+            this.errorMessage.set('The backend server is currently starting up (cold start). Please wait 30 seconds and try again.');
+          } else {
+            this.errorMessage.set(
+              err?.error?.message ||
+              'Could not start test session. The backend service may be deploying or restarting. Please try again shortly.'
+            );
+          }
         },
       });
   }
@@ -398,9 +417,9 @@ export class ProctoredTestPage implements OnInit, OnDestroy {
         this.testResult.set(result);
         this.activeView.set('result');
       },
-      error: () => {
+      error: (err: any) => {
         this.isSubmitting.set(false);
-        alert('Failed to submit test. Please retry.');
+        this.errorMessage.set(err?.error?.message || 'Failed to submit test. Please retry.');
       },
     });
   }

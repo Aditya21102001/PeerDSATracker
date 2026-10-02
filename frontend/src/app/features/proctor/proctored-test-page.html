@@ -27,6 +27,20 @@
     </div>
   }
 
+  <!-- Error Alert Banner -->
+  @if (errorMessage(); as error) {
+    <div class="proctor-error-banner" role="alert">
+      <div class="error-content">
+        <span class="error-icon" aria-hidden="true">⚠️</span>
+        <div class="error-text">
+          <strong>Notice</strong>
+          <p>{{ error }}</p>
+        </div>
+      </div>
+      <button type="button" class="btn-dismiss" (click)="dismissError()" aria-label="Dismiss error">×</button>
+    </div>
+  }
+
   <!-- ========================================================================= -->
   <!-- RULES & PERMISSIONS VIEW                                                  -->
   <!-- ========================================================================= -->

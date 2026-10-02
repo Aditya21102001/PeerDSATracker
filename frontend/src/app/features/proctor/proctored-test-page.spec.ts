@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 import { describe, expect, it } from 'vitest';
 import {
   TestResult,
@@ -130,4 +130,21 @@ describe('ProctoredTestPage — AI-Proctored Assessment & Live Proctoring HUD', 
     expect((component as any).testResult()).toEqual(mockResult);
     expect((component as any).testResult()?.proctoringVerdict).toBe('CLEARED');
   });
+
+  it('should handle startTest failure and display error banner with dismiss capability', async () => {
+    const interviewService = TestBed.inject(InterviewService);
+    vitest.spyOn(interviewService, 'startTest').mockReturnValue(
+      throwError(() => ({ status: 401, error: { message: 'Unauthorized' } }))
+    );
+
+    await (component as any).startTestSession();
+    fixture.detectChanges();
+
+    expect((component as any).isStarting()).toBe(false);
+    expect((component as any).errorMessage()).toContain('Please sign in');
+
+    (component as any).dismissError();
+    expect((component as any).errorMessage()).toBeNull();
+  });
 });
+
