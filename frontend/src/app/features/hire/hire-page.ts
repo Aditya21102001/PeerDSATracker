@@ -326,14 +326,184 @@ export class HirePage implements OnInit {
     });
   }
 
-  // Save Candidate Profile
+  // Resume extraction methods & handlers
+  protected setResumeMode(mode: 'file' | 'paste'): void {
+    this.resumeInputMode.set(mode);
+  }
+
+  protected onFileSelect(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files.length > 0) {
+      this.processResumeFile(input.files[0]);
+    }
+  }
+
+  protected onDragOver(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isDraggingResume.set(true);
+  }
+
+  protected onDragLeave(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isDraggingResume.set(false);
+  }
+
+  protected onDrop(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isDraggingResume.set(false);
+    if (event.dataTransfer?.files && event.dataTransfer.files.length > 0) {
+      this.processResumeFile(event.dataTransfer.files[0]);
+    }
+  }
+
+  protected processResumeFile(file: File): void {
+    this.uploadedFileName.set(file.name);
+    const reader = new FileReader();
+
+    if (file.name.endsWith('.txt') || file.name.endsWith('.md') || file.type.startsWith('text/')) {
+      reader.onload = () => {
+        const text = (reader.result as string) || '';
+        this.resumeRawText.set(text);
+        this.showToast(`Loaded "${file.name}" (${file.size} bytes). Ready to extract profile!`, 'info');
+      };
+      reader.readAsText(file);
+    } else {
+      // Binary (PDF / Word / Docx): Extract readable text strings
+      reader.onload = () => {
+        const buffer = reader.result as ArrayBuffer;
+        const bytes = new Uint8Array(buffer);
+        let extractedAscii = '';
+        let currentWord = '';
+        for (let i = 0; i < bytes.length; i++) {
+          const charCode = bytes[i];
+          if ((charCode >= 32 && charCode <= 126) || charCode === 10 || charCode === 13 || charCode === 9) {
+            currentWord += String.fromCharCode(charCode);
+          } else {
+            if (currentWord.length > 2) {
+              extractedAscii += currentWord + ' ';
+            }
+            currentWord = '';
+          }
+        }
+        if (currentWord.length > 2) extractedAscii += currentWord;
+
+        const cleanText = extractedAscii.replace(/[^\x20-\x7E\n\r\t]/g, ' ').replace(/\s{3,}/g, ' \n');
+        if (cleanText.trim().length > 30) {
+          this.resumeRawText.set(cleanText);
+          this.showToast(`Extracted readable text from "${file.name}". Ready to analyze!`, 'info');
+        } else {
+          this.showToast(`Selected "${file.name}". For highest accuracy, you can also paste text directly.`, 'info');
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+  }
+
+  protected loadSampleResume(type: 'java' | 'dsa' | 'angular'): void {
+    if (type === 'java') {
+      this.resumeRawText.set(SAMPLE_JAVA_RESUME);
+      this.uploadedFileName.set('Aditya_Java_FullStack_Resume.txt');
+    } else if (type === 'dsa') {
+      this.resumeRawText.set(SAMPLE_DSA_RESUME);
+      this.uploadedFileName.set('Rohan_DSA_Backend_Resume.txt');
+    } else {
+      this.resumeRawText.set(SAMPLE_ANGULAR_RESUME);
+      this.uploadedFileName.set('Neha_Angular_Frontend_Resume.txt');
+    }
+    this.resumeInputMode.set('paste');
+    this.showToast(`Loaded sample ${type.toUpperCase()} resume! Click "Extract Profile with AI".`, 'info');
+  }
+
+  // AI Profile Extraction from Resume
+  protected extractProfileFromResume(): void {
+    const text = this.resumeRawText().trim();
+    if (!text && !this.uploadedFileName()) {
+      this.showToast('Please upload a resume file or paste your resume text first.', 'error');
+      return;
+    }
+
+    this.extractingResume.set(true);
+    this.hire.extractResume(text).subscribe({
+      next: (extracted: ExtractedProfile) => {
+        this.extractingResume.set(false);
+        this.extractedReviewPending.set(true);
+        this.extractionSuccess.set(true);
+
+        // Populate the profile form with extracted data for user review and editing
+        this.profileForm = {
+          headline: extracted.headline || this.profileForm.headline || '',
+          yearsOfExperience: Math.max(0, Math.min(50, extracted.yearsOfExperience ?? this.profileForm.yearsOfExperience ?? 0)),
+          currentCompany: extracted.currentCompany || this.profileForm.currentCompany || '',
+          currentRole: extracted.currentRole || this.profileForm.currentRole || '',
+          currentCtc: extracted.currentCtc || this.profileForm.currentCtc || '',
+          expectedCtc: extracted.expectedCtc || this.profileForm.expectedCtc || '',
+          noticePeriodDays: Math.max(0, Math.min(180, extracted.noticePeriodDays ?? this.profileForm.noticePeriodDays ?? 30)),
+          preferredLocations: extracted.preferredLocations || this.profileForm.preferredLocations || '',
+          resumeUrl: this.profileForm.resumeUrl || '',
+          resumeSummary: extracted.resumeSummary || this.profileForm.resumeSummary || '',
+          skills: extracted.skills || this.profileForm.skills || '',
+          certifications: extracted.certifications || this.profileForm.certifications || '',
+          education: extracted.education || this.profileForm.education || '',
+        };
+
+        this.showToast('Profile extracted! Please review and edit the fields below, then click Save.', 'success');
+
+        // Smooth scroll to the form for review and editing
+        setTimeout(() => {
+          const formEl = document.getElementById('profile-edit-section');
+          if (formEl) {
+            formEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        }, 150);
+      },
+      error: () => {
+        this.extractingResume.set(false);
+        this.showToast('Could not extract resume. Check format or try pasting text.', 'error');
+      },
+    });
+  }
+
+  protected dismissReviewBanner(): void {
+    this.extractedReviewPending.set(false);
+  }
+
+  protected cancelReviewAndReset(): void {
+    this.extractedReviewPending.set(false);
+    if (this.profile()) {
+      this.initForm(this.profile()!);
+    }
+    this.showToast('Restored previous saved profile state.', 'info');
+  }
+
+  // Save Candidate Profile with sanitization to prevent Jackson numeric 400 Bad Request
   protected saveProfile(): void {
     this.savingProfile.set(true);
-    this.hire.saveProfile(this.profileForm).subscribe({
+
+    const sanitizedPayload: SaveCandidateProfileRequest = {
+      headline: (this.profileForm.headline || '').trim(),
+      yearsOfExperience: Math.max(0, Math.min(50, Number(this.profileForm.yearsOfExperience) || 0)),
+      currentCompany: (this.profileForm.currentCompany || '').trim(),
+      currentRole: (this.profileForm.currentRole || '').trim(),
+      currentCtc: (this.profileForm.currentCtc || '').trim(),
+      expectedCtc: (this.profileForm.expectedCtc || '').trim(),
+      noticePeriodDays: Math.max(0, Math.min(180, Number(this.profileForm.noticePeriodDays) || 30)),
+      preferredLocations: (this.profileForm.preferredLocations || '').trim(),
+      resumeUrl: (this.profileForm.resumeUrl || '').trim(),
+      resumeSummary: (this.profileForm.resumeSummary || '').trim(),
+      skills: (this.profileForm.skills || '').trim(),
+      certifications: (this.profileForm.certifications || '').trim(),
+      education: (this.profileForm.education || '').trim(),
+    };
+
+    this.hire.saveProfile(sanitizedPayload).subscribe({
       next: (p) => {
         this.savingProfile.set(false);
         this.profile.set(p);
-        this.showToast('Profile updated! Job match scores recalculated.', 'success');
+        this.extractedReviewPending.set(false);
+        this.showToast('Profile successfully saved! Realtime job match scores recalculated.', 'success');
         // Refresh jobs to reflect updated match scores
         this.hire.listJobs().subscribe((jobs) => this.jobs.set(jobs));
       },

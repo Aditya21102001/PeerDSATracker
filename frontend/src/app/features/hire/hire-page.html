@@ -308,6 +308,152 @@
   <!-- TAB 2: CANDIDATE PROFILE & RESUME -->
   @if (activeTab() === 'profile') {
     <section class="profile-section">
+      <!-- AI RESUME PARSER & PROFILE EXTRACTOR CARD -->
+      <div class="resume-extractor-card">
+        <div class="extractor-header">
+          <div class="extractor-title-group">
+            <span class="extractor-badge">✨ AI-Powered</span>
+            <h3>Resume Parser & Profile Auto-Fill</h3>
+            <p>Upload your resume file or paste raw text. Our AI will automatically extract your experience, skills, roles, CTC, and education, then let you <strong>review, edit, and save</strong> your candidate profile.</p>
+          </div>
+
+          <!-- Mode Switcher -->
+          <div class="mode-tabs" role="tablist">
+            <button
+              type="button"
+              class="mode-tab-btn"
+              [class.active]="resumeInputMode() === 'file'"
+              (click)="setResumeMode('file')"
+            >
+              📄 Upload File
+            </button>
+            <button
+              type="button"
+              class="mode-tab-btn"
+              [class.active]="resumeInputMode() === 'paste'"
+              (click)="setResumeMode('paste')"
+            >
+              📋 Paste Text
+            </button>
+          </div>
+        </div>
+
+        <!-- Mode 1: File Upload / Drag & Drop -->
+        @if (resumeInputMode() === 'file') {
+          <div
+            class="drag-drop-zone"
+            [class.drag-over]="isDraggingResume()"
+            (dragover)="onDragOver($event)"
+            (dragleave)="onDragLeave($event)"
+            (drop)="onDrop($event)"
+            (click)="resumeFileInput.click()"
+            role="button"
+            tabindex="0"
+          >
+            <input
+              #resumeFileInput
+              type="file"
+              accept=".pdf,.doc,.docx,.txt,.md,.rtf"
+              (change)="onFileSelect($event)"
+              style="display: none"
+              id="resume-file-input"
+            />
+            <div class="zone-icon">📁</div>
+            <div class="zone-text">
+              @if (uploadedFileName()) {
+                <span class="file-name-highlight">✓ Selected: {{ uploadedFileName() }}</span>
+                <span class="file-action-hint">Click or drop another file to replace</span>
+              } @else {
+                <span class="zone-prompt">Drag & drop your resume file here, or <span class="browse-link">browse files</span></span>
+                <span class="zone-hint">Supports PDF, Word (.docx), Plain Text (.txt), and Markdown (.md)</span>
+              }
+            </div>
+          </div>
+        }
+
+        <!-- Mode 2: Paste Raw Resume Text -->
+        @if (resumeInputMode() === 'paste') {
+          <div class="paste-zone">
+            <textarea
+              [ngModel]="resumeRawText()"
+              (ngModelChange)="resumeRawText.set($event)"
+              name="resumeRawTextInput"
+              rows="6"
+              placeholder="Paste your complete resume text here (experience, skills, company history, projects, certifications, education)…"
+              class="resume-paste-textarea"
+              id="resume-paste-textarea"
+            ></textarea>
+
+            <!-- Quick Sample Resumes for 1-click test -->
+            <div class="sample-resumes-bar">
+              <span class="sample-label">Or load a sample resume:</span>
+              <button type="button" class="btn-sample" (click)="loadSampleResume('java')">
+                ⚡ Java Full Stack Engineer
+              </button>
+              <button type="button" class="btn-sample" (click)="loadSampleResume('dsa')">
+                ⚡ DSA & Backend Specialist
+              </button>
+              <button type="button" class="btn-sample" (click)="loadSampleResume('angular')">
+                ⚡ Angular Frontend Lead
+              </button>
+            </div>
+          </div>
+        }
+
+        <!-- Action Row -->
+        <div class="extractor-action-row">
+          <div class="action-info">
+            <span class="info-dot">●</span>
+            <span>Profile will be extracted into the editable form below. You can inspect and adjust every field before saving.</span>
+          </div>
+
+          <button
+            type="button"
+            class="btn-extract"
+            (click)="extractProfileFromResume()"
+            [disabled]="extractingResume() || (!resumeRawText().trim() && !uploadedFileName())"
+            id="btn-extract-resume"
+          >
+            @if (extractingResume()) {
+              <span class="spinner-inline"></span> Analyzing Resume with AI…
+            } @else {
+              ✨ Extract Profile from Resume
+            }
+          </button>
+        </div>
+      </div>
+
+      <!-- REVIEW & EDIT BANNER (Appears immediately after extraction) -->
+      @if (extractedReviewPending()) {
+        <div class="extracted-review-banner" id="extracted-review-banner">
+          <div class="banner-top">
+            <div class="banner-badge">
+              <span class="sparkle-icon">✨</span>
+              <span>RESUME DATA EXTRACTED — READY FOR YOUR REVIEW</span>
+            </div>
+            <button type="button" class="btn-dismiss-banner" (click)="dismissReviewBanner()" title="Dismiss banner">✕</button>
+          </div>
+          <div class="banner-body">
+            <h4>Please review the pre-filled fields below, edit any information, and save:</h4>
+            <p>
+              Our AI extracted your experience, skills, designation, and CTC. <strong>Please review every field below and adjust anything you want (such as your expected CTC, notice period, or adding more technical skills)</strong>. When satisfied, click <strong>Save Candidate Profile</strong> to recalculate your real-time job match scores!
+            </p>
+          </div>
+          <div class="banner-cta-row">
+            <button type="button" class="btn-banner-save" (click)="saveProfile()" [disabled]="savingProfile()">
+              @if (savingProfile()) {
+                <span class="spinner-inline"></span> Saving…
+              } @else {
+                💾 Save Candidate Profile Now
+              }
+            </button>
+            <button type="button" class="btn-banner-reset" (click)="cancelReviewAndReset()">
+              ↺ Revert to Previous Saved Profile
+            </button>
+          </div>
+        </div>
+      }
+
       <!-- Profile Strength Card -->
       @if (profile(); as p) {
         <div class="profile-strength-card">
@@ -324,10 +470,19 @@
         </div>
       }
 
-      <form class="profile-form" (ngSubmit)="saveProfile()">
+      <form class="profile-form" id="profile-edit-section" (ngSubmit)="saveProfile()">
+        @if (extractedReviewPending()) {
+          <div class="form-review-notice">
+            <span>✏️ <strong>Review & Edit Mode:</strong> The fields below were extracted from your resume. Modify any values, then click Save below.</span>
+          </div>
+        }
+
         <!-- Professional Headline -->
-        <div class="form-group">
-          <label for="headline">Professional Headline *</label>
+        <div class="form-group" [class.highlighted]="extractedReviewPending()">
+          <label for="headline">
+            Professional Headline *
+            @if (extractedReviewPending()) { <span class="tag-extracted">Extracted</span> }
+          </label>
           <input
             type="text"
             id="headline"
@@ -338,6 +493,7 @@
           />
           <span class="form-hint">Summarize your specialization, core tech stack, and experience.</span>
         </div>
+
 
         <!-- Experience & Current Role -->
         <div class="form-grid-3">
@@ -514,6 +670,15 @@
         </div>
 
         <div class="form-submit-row">
+          @if (extractedReviewPending()) {
+            <button
+              type="button"
+              class="btn-reset-changes"
+              (click)="cancelReviewAndReset()"
+            >
+              ↺ Reset to Saved Profile
+            </button>
+          }
           <button
             type="submit"
             class="btn-save-profile"
@@ -522,11 +687,14 @@
           >
             @if (savingProfile()) {
               <span class="spinner-inline"></span> Saving Profile…
+            } @else if (extractedReviewPending()) {
+              💾 Review Complete — Save Candidate Profile
             } @else {
               💾 Save Candidate Profile
             }
           </button>
         </div>
+
       </form>
     </section>
   }
