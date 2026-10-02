@@ -51,6 +51,8 @@ import { Spinner } from '../../shared/spinner';
           <a routerLink="/blog">Articles</a>
           <a routerLink="/study-guides">Study Guides</a>
           <a routerLink="/hire">Hire</a>
+          <a routerLink="/interview">AI Interview</a>
+          <a routerLink="/proctor">AI Test</a>
           <a routerLink="/peers">Peers</a>
           <a routerLink="/messages">Messages</a>
           <a routerLink="/leaderboard">Leaderboard</a>

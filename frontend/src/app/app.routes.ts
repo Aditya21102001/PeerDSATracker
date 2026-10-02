@@ -146,5 +146,15 @@ export const routes: Routes = [
     canActivate: [authGuard],
     loadComponent: () => import('./features/hire/hire-page').then((m) => m.HirePage),
   },
+  {
+    path: 'interview',
+    canActivate: [authGuard],
+    loadComponent: () => import('./features/interview/interview-page').then((m) => m.InterviewPage),
+  },
+  {
+    path: 'proctor',
+    canActivate: [authGuard],
+    loadComponent: () => import('./features/proctor/proctored-test-page').then((m) => m.ProctoredTestPage),
+  },
   { path: '**', redirectTo: 'dashboard' },
 ];

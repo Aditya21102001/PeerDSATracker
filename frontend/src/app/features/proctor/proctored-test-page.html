@@ -1,0 +1,392 @@
+<main id="main-content" tabindex="-1" class="proctor-page">
+  <!-- Header & Navigation -->
+  <header class="proctor-header">
+    <div class="header-left">
+      <div class="badge-row">
+        <span class="proctor-badge">🛡️ AI-Proctored Exam</span>
+        <span class="proctor-sub-badge">Live Vision & Audio Integrity Engine</span>
+      </div>
+      <h1>AI Proctored Technical Assessment</h1>
+      <p class="header-lead">
+        Comprehensive full-stack coding & MCQ assessment with real-time biometric face detection, tab-switch monitoring, and automated sandbox verification.
+      </p>
+    </div>
+    <nav class="proctor-nav">
+      <a routerLink="/dashboard">Dashboard</a>
+      <a routerLink="/sheet">Sheet</a>
+      <a routerLink="/hire">Hire</a>
+      <a routerLink="/interview">AI Interview</a>
+      <button type="button" class="nav-btn" (click)="openHistory()">Past Audits</button>
+    </nav>
+  </header>
+
+  <!-- Live Warning Toast -->
+  @if (alertToast(); as msg) {
+    <div class="proctor-toast" role="alert">
+      <span>{{ msg }}</span>
+    </div>
+  }
+
+  <!-- ========================================================================= -->
+  <!-- RULES & PERMISSIONS VIEW                                                  -->
+  <!-- ========================================================================= -->
+  @if (activeView() === 'rules') {
+    <section class="rules-container">
+      <div class="rules-card">
+        <h2>Assessment Integrity Protocols & Rules</h2>
+        <p class="rules-intro">
+          This test is monitored in real-time by the PeerDSA AI Proctoring Engine. Please review the rules carefully before entering the examination environment.
+        </p>
+
+        <div class="protocols-grid">
+          <div class="protocol-item">
+            <span class="protocol-icon">📷</span>
+            <div class="protocol-text">
+              <strong>Webcam & Vision Tracking</strong>
+              <p>Your camera must remain enabled. The proctor continuously tracks face presence and flags if the face is obscured or leaves the frame.</p>
+            </div>
+          </div>
+
+          <div class="protocol-item">
+            <span class="protocol-icon">🖥️</span>
+            <div class="protocol-text">
+              <strong>Fullscreen & Window Lock</strong>
+              <p>The exam runs strictly in fullscreen mode. Any tab-switching, window minimization, or blur event deducts 15% from your Trust Score.</p>
+            </div>
+          </div>
+
+          <div class="protocol-item">
+            <span class="protocol-icon">📋</span>
+            <div class="protocol-text">
+              <strong>Keystroke & Clipboard Guard</strong>
+              <p>External copy-pasting of large code blocks is intercepted and logged as a suspicious anomaly.</p>
+            </div>
+          </div>
+
+          <div class="protocol-item">
+            <span class="protocol-icon">🎙️</span>
+            <div class="protocol-text">
+              <strong>Audio Disturbance Monitor</strong>
+              <p>Elevated background voices or conversations in the testing environment are tracked and flagged.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="agreement-box">
+          <p>
+            <strong>Trust Score Threshold:</strong> A final integrity score of <strong>80%+</strong> is required for a <em>CLEARED</em> certificate. Scores below 50% result in automated disqualification.
+          </p>
+          <button
+            type="button"
+            class="btn-enter"
+            [disabled]="isStarting()"
+            (click)="startTestSession()"
+          >
+            @if (isStarting()) {
+              <app-spinner [inline]="true" [size]="18" label="Verifying peripherals & entering fullscreen…" />
+            } @else {
+              <span>🔒 Agree & Enter Proctored Assessment</span>
+            }
+          </button>
+        </div>
+      </div>
+    </section>
+  }
+
+  <!-- ========================================================================= -->
+  <!-- LIVE TEST ENVIRONMENT                                                     -->
+  <!-- ========================================================================= -->
+  @if (activeView() === 'test') {
+    <section class="test-container">
+      <!-- Top Monitor HUD -->
+      <div class="proctor-hud">
+        <div class="hud-left">
+          <div class="timer-box" [class.urgent]="remainingSeconds() < 300">
+            <span class="timer-label">TIME REMAINING</span>
+            <span class="timer-digits">⏱️ {{ formattedTime() }}</span>
+          </div>
+
+          <div class="integrity-meter">
+            <span class="integrity-label">TRUST SCORE</span>
+            <div class="meter-bar">
+              <div
+                class="meter-fill"
+                [style.width.%]="integrityScore()"
+                [class.warning]="integrityScore() < 80"
+                [class.danger]="integrityScore() < 50"
+              ></div>
+            </div>
+            <strong class="meter-value">{{ integrityScore() }}%</strong>
+          </div>
+        </div>
+
+        <!-- Real-Time Webcam Monitor PIP -->
+        <div class="webcam-pip">
+          <video #webcamVideo autoplay playsinline muted class="pip-video"></video>
+          <canvas #proctorCanvas class="pip-canvas"></canvas>
+          <div class="pip-status" [class.warning]="faceStatus() !== 'DETECTED'">
+            <span class="status-dot"></span>
+            <span>{{ faceStatus() === 'DETECTED' ? 'AI Proctor: Face Detected' : 'AI Proctor: Face Obscured' }}</span>
+          </div>
+        </div>
+
+        <div class="hud-actions">
+          <button
+            type="button"
+            class="btn-finish"
+            [disabled]="isSubmitting()"
+            (click)="submitAssessment(false)"
+          >
+            @if (isSubmitting()) {
+              <app-spinner [inline]="true" [size]="16" label="Submitting…" />
+            } @else {
+              <span>Finish & Submit Exam</span>
+            }
+          </button>
+        </div>
+      </div>
+
+      <!-- Section Switcher Tabs -->
+      <div class="section-tabs" role="tablist">
+        <button
+          type="button"
+          class="tab-btn"
+          [class.active]="activeSection() === 'mcq'"
+          (click)="switchSection('mcq')"
+        >
+          Section 1: Technical MCQs (5 Questions)
+        </button>
+        <button
+          type="button"
+          class="tab-btn"
+          [class.active]="activeSection() === 'coding'"
+          (click)="switchSection('coding')"
+        >
+          Section 2: Coding Challenge (Prefix Sum / Subarrays)
+        </button>
+      </div>
+
+      <!-- SECTION 1: MCQs -->
+      @if (activeSection() === 'mcq' && currentSession(); as s) {
+        <div class="mcq-section">
+          @for (q of s.mcqs; track q.id; let idx = $index) {
+            <div class="mcq-card">
+              <div class="mcq-header">
+                <span class="mcq-index">Question {{ idx + 1 }}</span>
+                <span class="mcq-cat">{{ q.category }}</span>
+              </div>
+              <p class="mcq-prompt">{{ q.question }}</p>
+
+              <div class="mcq-options">
+                @for (opt of q.options; track opt; let optIdx = $index) {
+                  <label
+                    class="option-label"
+                    [class.selected]="mcqAnswers[q.id.toString()] === optIdx"
+                    (click)="selectMcqOption(q.id, optIdx)"
+                  >
+                    <input
+                      type="radio"
+                      [name]="'mcq-' + q.id"
+                      [value]="optIdx"
+                      [checked]="mcqAnswers[q.id.toString()] === optIdx"
+                    />
+                    <span class="option-text">{{ opt }}</span>
+                  </label>
+                }
+              </div>
+            </div>
+          }
+          <div class="section-nav-footer">
+            <button type="button" class="btn-next-sec" (click)="switchSection('coding')">
+              Proceed to Coding Challenge →
+            </button>
+          </div>
+        </div>
+      }
+
+      <!-- SECTION 2: Coding Challenge -->
+      @if (activeSection() === 'coding' && currentCodingProblem(); as prob) {
+        <div class="coding-split">
+          <!-- Problem Description -->
+          <div class="problem-pane">
+            <h2>{{ prob.title }}</h2>
+            <div class="desc-text">
+              <p>{{ prob.description }}</p>
+            </div>
+
+            <div class="constraints-box">
+              <strong>Constraints:</strong>
+              <pre>{{ prob.constraints }}</pre>
+            </div>
+
+            <div class="sample-cases">
+              <strong>Sample Test Cases:</strong>
+              @for (tc of prob.sampleCases; track tc.input; let tcIdx = $index) {
+                <div class="tc-block">
+                  <span class="tc-title">Sample Case {{ tcIdx + 1 }}:</span>
+                  <div class="tc-io">
+                    <div><small>Input:</small><code>{{ tc.input }}</code></div>
+                    <div><small>Expected Output:</small><code>{{ tc.expectedOutput }}</code></div>
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+
+          <!-- Code Editor Pane -->
+          <div class="editor-pane">
+            <div class="editor-toolbar">
+              <label for="lang-select">Language:</label>
+              <select
+                id="lang-select"
+                class="lang-dropdown"
+                [ngModel]="codeLanguage()"
+                (ngModelChange)="changeLanguage($event)"
+              >
+                <option value="java">Java 21</option>
+                <option value="python">Python 3</option>
+                <option value="cpp">C++ (GCC)</option>
+              </select>
+
+              <button
+                type="button"
+                class="btn-run-sample"
+                [disabled]="isRunningSample()"
+                (click)="runSampleCases()"
+              >
+                @if (isRunningSample()) {
+                  <app-spinner [inline]="true" [size]="14" label="Testing…" />
+                } @else {
+                  <span>▶ Run Sample Cases</span>
+                }
+              </button>
+            </div>
+
+            <textarea
+              class="code-textarea"
+              rows="16"
+              [ngModel]="codeSubmission()"
+              (ngModelChange)="codeSubmission.set($event)"
+              (paste)="onCodePaste($event)"
+              spellcheck="false"
+              placeholder="// Write your solution here..."
+            ></textarea>
+
+            @if (runOutput(); as out) {
+              <div class="run-output-box">
+                <span class="output-title">Sandbox Execution Result:</span>
+                <pre>{{ out }}</pre>
+              </div>
+            }
+          </div>
+        </div>
+      }
+    </section>
+  }
+
+  <!-- ========================================================================= -->
+  <!-- ASSESSMENT RESULT & PROCTORING AUDIT REPORT                               -->
+  <!-- ========================================================================= -->
+  @if (activeView() === 'result' && testResult(); as res) {
+    <section class="result-container">
+      <div class="result-hero">
+        <div class="verdict-col">
+          <div class="verdict-badge" [class]="getVerdictBadgeClass(res.proctoringVerdict)">
+            {{ res.proctoringVerdict === 'CLEARED' ? '🛡️ Proctoring Cleared — Authentic' : res.proctoringVerdict === 'FLAGGED_FOR_REVIEW' ? '⚠️ Flagged for Manual Review' : '🚫 Disqualified' }}
+          </div>
+          <h2>{{ res.title }}</h2>
+          <p class="result-feedback">{{ res.feedback }}</p>
+        </div>
+
+        <div class="score-cards-col">
+          <div class="metric-card">
+            <span class="metric-num">{{ res.score }}</span>
+            <span class="metric-lbl">Technical Score / 100</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-num">{{ res.integrityScore }}%</span>
+            <span class="metric-lbl">Proctoring Trust Score</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Technical Breakdown -->
+      <div class="scores-grid">
+        <div class="score-item">
+          <strong>MCQ Performance:</strong>
+          <span>{{ res.mcqScore }} / 50 pts</span>
+        </div>
+        <div class="score-item">
+          <strong>Coding Test Cases:</strong>
+          <span>{{ res.testCasesPassed }} / {{ res.testCasesTotal }} passed ({{ res.codeScore }} / 50 pts)</span>
+        </div>
+        <div class="score-item">
+          <strong>Completion Date:</strong>
+          <span>{{ res.submittedAt | date:'medium' }}</span>
+        </div>
+      </div>
+
+      <!-- Proctoring Audit Incident Log -->
+      <div class="audit-log-card">
+        <h3>Proctoring Incident Audit Log</h3>
+        @if (res.violations.length === 0) {
+          <p class="clean-audit">✅ Zero violations recorded. Perfect environmental integrity!</p>
+        } @else {
+          <div class="incidents-list">
+            @for (v of res.violations; track v.timestampMs) {
+              <div class="incident-item">
+                <span class="incident-type">{{ v.type }}</span>
+                <span class="incident-details">{{ v.details }}</span>
+                <span class="incident-time">{{ v.timestampMs | date:'mediumTime' }}</span>
+              </div>
+            }
+          </div>
+        }
+      </div>
+
+      <div class="result-actions">
+        <button type="button" class="btn-enter" (click)="resetToRules()">Take Another Assessment</button>
+        <a routerLink="/hire" class="btn-ghost">View Matching Tech Openings on Hire Portal →</a>
+      </div>
+    </section>
+  }
+
+  <!-- ========================================================================= -->
+  <!-- PAST AUDITS HISTORY VIEW                                                  -->
+  <!-- ========================================================================= -->
+  @if (activeView() === 'history') {
+    <section class="history-container">
+      <div class="history-header-row">
+        <h2>Past Proctored Assessments & Audit Reports</h2>
+        <button type="button" class="btn-ghost-sm" (click)="activeView.set('rules')">← Back to Assessment</button>
+      </div>
+
+      @if (loadingHistory()) {
+        <app-spinner label="Loading your audit history…" />
+      } @else if (historyTests().length === 0) {
+        <div class="empty-history">
+          <p>No proctored assessment records found yet.</p>
+          <button type="button" class="btn-enter" (click)="activeView.set('rules')">Start First Assessment</button>
+        </div>
+      } @else {
+        <div class="history-grid">
+          @for (test of historyTests(); track test.id) {
+            <div class="history-card" (click)="viewPastResult(test)">
+              <div class="history-card-top">
+                <span class="verdict-badge" [class]="getVerdictBadgeClass(test.proctoringVerdict)">{{ test.proctoringVerdict }}</span>
+                <span class="score-badge">{{ test.score }}/100</span>
+              </div>
+              <h3>{{ test.title }}</h3>
+              <div class="history-meta">
+                <span>Trust Score: {{ test.integrityScore }}%</span> &bull;
+                <span>{{ test.submittedAt | date:'mediumDate' }}</span>
+              </div>
+              <p class="history-feedback">{{ test.feedback }}</p>
+              <button type="button" class="btn-view">View Audit Certificate →</button>
+            </div>
+          }
+        </div>
+      }
+    </section>
+  }
+</main>

@@ -1,0 +1,386 @@
+<main id="main-content" tabindex="-1" class="interview-page">
+  <!-- Header & Navigation -->
+  <header class="interview-header">
+    <div class="header-left">
+      <div class="badge-row">
+        <span class="ai-badge">🤖 AI Technical Interviewer</span>
+        <span class="ai-sub-badge">Realtime Voice & Adaptive Evaluation</span>
+      </div>
+      <h1>Interactive AI Mock Interview</h1>
+      <p class="header-lead">
+        Practice realistic technical interview rounds. Get instant, rigorous feedback on architectural trade-offs, concurrency edge cases, and algorithmic complexity.
+      </p>
+    </div>
+    <nav class="interview-nav">
+      <a routerLink="/dashboard">Dashboard</a>
+      <a routerLink="/sheet">Sheet</a>
+      <a routerLink="/hire">Hire</a>
+      <a routerLink="/proctor">Proctored Test</a>
+      <button type="button" class="nav-btn" (click)="openHistory()">Past Sessions</button>
+    </nav>
+  </header>
+
+  <!-- ========================================================================= -->
+  <!-- SETUP VIEW                                                                -->
+  <!-- ========================================================================= -->
+  @if (activeView() === 'setup') {
+    <section class="setup-container">
+      <div class="step-card">
+        <div class="step-header">
+          <span class="step-num">1</span>
+          <div>
+            <h2>Select Interview Track</h2>
+            <p>Choose the technical domain you want the AI interviewer to probe.</p>
+          </div>
+        </div>
+
+        <div class="tracks-grid">
+          @for (t of tracks; track t.id) {
+            <div
+              class="track-card"
+              [class.active]="selectedTrack() === t.id"
+              (click)="selectTrack(t.id)"
+            >
+              <div class="track-card-top">
+                <span class="track-icon">{{ t.icon }}</span>
+                <span class="track-badge">{{ t.badge }}</span>
+              </div>
+              <h3>{{ t.title }}</h3>
+              <p>{{ t.desc }}</p>
+            </div>
+          }
+        </div>
+      </div>
+
+      <div class="setup-row">
+        <!-- Step 2: Level Selection -->
+        <div class="step-card level-card">
+          <div class="step-header">
+            <span class="step-num">2</span>
+            <div>
+              <h2>Experience Level</h2>
+              <p>Calibrates question depth and rigor.</p>
+            </div>
+          </div>
+          <div class="levels-list">
+            @for (lvl of levels; track lvl.id) {
+              <div
+                class="level-item"
+                [class.active]="selectedLevel() === lvl.id"
+                (click)="selectLevel(lvl.id)"
+              >
+                <div class="level-radio">
+                  <div class="dot" *ngIf="selectedLevel() === lvl.id"></div>
+                </div>
+                <div class="level-info">
+                  <strong>{{ lvl.label }}</strong>
+                  <small>{{ lvl.desc }}</small>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+
+        <!-- Step 3: Target Role -->
+        <div class="step-card role-card">
+          <div class="step-header">
+            <span class="step-num">3</span>
+            <div>
+              <h2>Target Role Details</h2>
+              <p>Customize the role persona for tailored questioning.</p>
+            </div>
+          </div>
+          <div class="role-form">
+            <label for="target-role-input">Target Job Title / Role</label>
+            <input
+              id="target-role-input"
+              type="text"
+              class="text-input"
+              [ngModel]="targetRole()"
+              (ngModelChange)="targetRole.set($event)"
+              placeholder="e.g. Senior Java & Spring Boot Backend Engineer"
+            />
+
+            <div class="audio-toggle-row">
+              <label class="toggle-label">
+                <input
+                  type="checkbox"
+                  [checked]="voiceEnabled()"
+                  (change)="toggleAutoVoice()"
+                />
+                <span>Enable AI Voice Reader (Text-to-Speech)</span>
+              </label>
+            </div>
+
+            <button
+              type="button"
+              class="btn-start"
+              [disabled]="isStarting()"
+              (click)="startInterview()"
+            >
+              @if (isStarting()) {
+                <app-spinner [inline]="true" [size]="18" label="Spinning up Interview Room…" />
+              } @else {
+                <span>🎙️ Enter Interview Room</span>
+              }
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+  }
+
+  <!-- ========================================================================= -->
+  <!-- LIVE INTERVIEW VIEW                                                       -->
+  <!-- ========================================================================= -->
+  @if (activeView() === 'live') {
+    <section class="live-container">
+      <!-- Progress Bar & Session Metadata -->
+      <div class="stage-bar">
+        <div class="stage-meta">
+          <span class="track-pill">{{ selectedTrack() }}</span>
+          <span class="level-pill">{{ selectedLevel() }}</span>
+          <span class="turn-count">Question {{ currentTurnIndex() }} of 5</span>
+        </div>
+        <div class="progress-track" role="progressbar" [attr.aria-valuenow]="progressPercent()" aria-valuemin="0" aria-valuemax="100">
+          <div class="progress-fill" [style.width.%]="progressPercent()"></div>
+        </div>
+      </div>
+
+      <!-- Main Stage Split -->
+      <div class="stage-grid">
+        <!-- Left: AI Interviewer Question Box -->
+        <div class="interviewer-panel">
+          <div class="avatar-row">
+            <div class="ai-avatar" [class.speaking]="isSpeaking()">
+              <span class="avatar-emoji">🤖</span>
+              <div class="pulse-ring" *ngIf="isSpeaking()"></div>
+            </div>
+            <div class="ai-status">
+              <strong>Antigravity AI Principal Interviewer</strong>
+              <small>{{ isSpeaking() ? 'Speaking question aloud…' : 'Awaiting candidate response' }}</small>
+            </div>
+            <div class="voice-controls">
+              <button
+                type="button"
+                class="icon-btn"
+                [attr.aria-label]="isSpeaking() ? 'Stop audio' : 'Read question aloud'"
+                (click)="isSpeaking() ? stopSpeaking() : speakCurrentQuestion()"
+              >
+                {{ isSpeaking() ? '⏹️ Mute' : '🔊 Listen' }}
+              </button>
+            </div>
+          </div>
+
+          @if (activeTurn(); as turn) {
+            <div class="question-card">
+              <div class="topic-tag">{{ turn.topic }}</div>
+              <p class="question-text">{{ turn.question }}</p>
+
+              <div class="hint-section">
+                <button type="button" class="btn-ghost-sm" (click)="toggleHint()">
+                  {{ hintVisible() ? 'Hide Hint' : '💡 Need a hint?' }}
+                </button>
+                @if (hintVisible()) {
+                  <div class="hint-box">
+                    <strong>Interviewer Cue:</strong> Structure your answer using fundamental trade-offs: state your primary technical strategy first, explain the concurrency or memory implications, and mention failure recovery.
+                  </div>
+                }
+              </div>
+            </div>
+          }
+
+          <!-- Previous Turn AI Critique (if available) -->
+          @if (latestEvaluation(); as ev) {
+            <div class="evaluation-card">
+              <div class="eval-header">
+                <span class="eval-title">Previous Question Feedback</span>
+                <span class="eval-score" [class]="getScoreBadgeClass(ev.score)">{{ ev.score }} / 100</span>
+              </div>
+              <p class="eval-feedback">{{ ev.feedback }}</p>
+            </div>
+          }
+        </div>
+
+        <!-- Right: Candidate Response Box -->
+        <div class="candidate-panel">
+          <div class="response-header">
+            <h3>Your Technical Response</h3>
+            <button
+              type="button"
+              class="btn-voice"
+              [class.listening]="isListening()"
+              (click)="toggleVoiceInput()"
+            >
+              {{ isListening() ? '🔴 Listening… (Click to Stop)' : '🎙️ Dictate via Voice' }}
+            </button>
+          </div>
+
+          <div class="editor-wrapper">
+            <textarea
+              class="answer-textarea"
+              rows="12"
+              [ngModel]="candidateAnswer()"
+              (ngModelChange)="candidateAnswer.set($event)"
+              placeholder="Explain your approach, design decisions, data structures, and edge cases here. You can speak using the microphone or type directly..."
+            ></textarea>
+          </div>
+
+          <div class="response-footer">
+            <div class="char-count">
+              {{ candidateAnswer().length }} characters &bull; {{ candidateAnswer().split(' ').length }} words
+            </div>
+            <button
+              type="button"
+              class="btn-submit"
+              [disabled]="candidateAnswer().trim().length === 0 || isSubmitting()"
+              (click)="submitAnswer()"
+            >
+              @if (isSubmitting()) {
+                <app-spinner [inline]="true" [size]="16" label="Evaluating technical depth…" />
+              } @else {
+                <span>Submit Answer →</span>
+              }
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+  }
+
+  <!-- ========================================================================= -->
+  <!-- SCORECARD VIEW                                                            -->
+  <!-- ========================================================================= -->
+  @if (activeView() === 'scorecard' && currentSession(); as s) {
+    <section class="scorecard-container">
+      <div class="scorecard-hero">
+        <div class="score-circle">
+          <span class="score-number">{{ s.overallScore }}</span>
+          <span class="score-max">/ 100</span>
+        </div>
+        <div class="score-summary">
+          <div class="score-badge" [class]="getScoreBadgeClass(s.overallScore)">
+            {{ s.overallScore >= 85 ? 'Senior Level Ready 🚀' : s.overallScore >= 70 ? 'Strong Candidate 👍' : 'Developing Competence 📈' }}
+          </div>
+          <h2>{{ s.targetRole }}</h2>
+          <p class="summary-text">{{ s.feedbackSummary }}</p>
+        </div>
+      </div>
+
+      <!-- Dimension Breakdown Cards -->
+      <div class="dimensions-grid">
+        <div class="dim-card">
+          <span class="dim-label">Technical Depth</span>
+          <div class="dim-bar">
+            <div class="dim-fill" [style.width.%]="s.technicalDepth"></div>
+          </div>
+          <strong>{{ s.technicalDepth }}%</strong>
+        </div>
+        <div class="dim-card">
+          <span class="dim-label">Problem Solving</span>
+          <div class="dim-bar">
+            <div class="dim-fill" [style.width.%]="s.problemSolving"></div>
+          </div>
+          <strong>{{ s.problemSolving }}%</strong>
+        </div>
+        <div class="dim-card">
+          <span class="dim-label">Communication</span>
+          <div class="dim-bar">
+            <div class="dim-fill" [style.width.%]="s.communication"></div>
+          </div>
+          <strong>{{ s.communication }}%</strong>
+        </div>
+      </div>
+
+      <!-- Strengths & Growth Areas -->
+      <div class="analysis-grid">
+        <div class="analysis-card strengths">
+          <h3>✅ Demonstrated Strengths</h3>
+          <p>{{ s.strengths }}</p>
+        </div>
+        <div class="analysis-card weaknesses">
+          <h3>🎯 Recommended Focus Areas</h3>
+          <p>{{ s.weaknesses }}</p>
+        </div>
+      </div>
+
+      <!-- Recommended Study Topics -->
+      <div class="study-card">
+        <h3>📚 Recommended Study Topics to Deepen</h3>
+        <p class="study-topics">{{ s.recommendedTopics }}</p>
+        <div class="study-links">
+          <a routerLink="/study-guides" class="btn-ghost-sm">Browse PeerDSA Study Guides →</a>
+          <a routerLink="/sheet" class="btn-ghost-sm">Practice Topics on Sheet →</a>
+        </div>
+      </div>
+
+      <!-- Turn by Turn Recap Transcript -->
+      <div class="transcript-section">
+        <h3>Full Interview Transcript & Evaluations</h3>
+        <div class="turns-list">
+          @for (turn of s.turns; track turn.turnIndex) {
+            <div class="turn-recap-card">
+              <div class="turn-recap-header">
+                <span class="turn-num">Q{{ turn.turnIndex }}: {{ turn.topic }}</span>
+                <span class="turn-score" [class]="getScoreBadgeClass(turn.score)">{{ turn.score }}/100</span>
+              </div>
+              <p class="recap-question"><strong>Interviewer:</strong> {{ turn.question }}</p>
+              <div class="recap-answer">
+                <strong>Your Answer:</strong>
+                <p>{{ turn.candidateAnswer || '(No answer provided)' }}</p>
+              </div>
+              <div class="recap-evaluation">
+                <strong>AI Feedback:</strong> {{ turn.aiEvaluation }}
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="scorecard-actions">
+        <button type="button" class="btn-start" (click)="restart()">Start New Mock Interview</button>
+        <a routerLink="/proctor" class="btn-ghost">Take AI-Proctored Test →</a>
+      </div>
+    </section>
+  }
+
+  <!-- ========================================================================= -->
+  <!-- PAST SESSIONS HISTORY VIEW                                                -->
+  <!-- ========================================================================= -->
+  @if (activeView() === 'history') {
+    <section class="history-container">
+      <div class="history-header-row">
+        <h2>Past AI Mock Interview Sessions</h2>
+        <button type="button" class="btn-ghost-sm" (click)="activeView.set('setup')">← Back to Setup</button>
+      </div>
+
+      @if (loadingHistory()) {
+        <app-spinner label="Loading your interview history…" />
+      } @else if (historySessions().length === 0) {
+        <div class="empty-history">
+          <p>No past interview sessions found. Complete your first session to track progress!</p>
+          <button type="button" class="btn-start" (click)="activeView.set('setup')">Start First Interview</button>
+        </div>
+      } @else {
+        <div class="history-grid">
+          @for (session of historySessions(); track session.id) {
+            <div class="history-card" (click)="viewSessionScorecard(session)">
+              <div class="history-card-top">
+                <span class="track-pill">{{ session.track }}</span>
+                <span class="score-badge" [class]="getScoreBadgeClass(session.overallScore)">{{ session.overallScore }}%</span>
+              </div>
+              <h3>{{ session.targetRole }}</h3>
+              <div class="history-meta">
+                <span>{{ session.level }}</span> &bull;
+                <span>{{ session.createdAt | date:'mediumDate' }}</span>
+              </div>
+              <p class="history-feedback">{{ session.feedbackSummary }}</p>
+              <button type="button" class="btn-view">View Scorecard →</button>
+            </div>
+          }
+        </div>
+      }
+    </section>
+  }
+</main>
