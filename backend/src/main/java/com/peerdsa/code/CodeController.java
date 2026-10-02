@@ -54,7 +54,13 @@ public class CodeController {
     @GetMapping("/problems/{problemId}")
     public List<CodeService.CodeDraft> drafts(
             @AuthenticationPrincipal User user, @PathVariable Long problemId) {
+        code.warmup();
         return code.drafts(user.getId(), problemId);
+    }
+
+    @PostMapping("/warmup")
+    public void warmup() {
+        code.warmup();
     }
 
     @GetMapping("/problems/{problemId}/testcases")

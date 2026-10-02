@@ -24,6 +24,7 @@ import org.springframework.web.client.RestClient;
 public class AnalyticsClient {
 
     private final RestClient client;
+    private final String baseUrl;
 
     public AnalyticsClient(
             RestClient.Builder builder,
@@ -31,6 +32,8 @@ public class AnalyticsClient {
             @Value("${app.analytics.internal-token}") String internalToken,
             @Value("${app.analytics.connect-timeout}") Duration connectTimeout,
             @Value("${app.analytics.read-timeout}") Duration readTimeout) {
+
+        this.baseUrl = baseUrl;
 
         // Spring Boot 4's default JDK HttpClient negotiates HTTP/2, which over plaintext
         // means an h2c upgrade (Upgrade: h2c + HTTP2-Settings). uvicorn's h11 server does
@@ -51,6 +54,14 @@ public class AnalyticsClient {
                 .requestFactory(requestFactory)
                 .defaultHeader("X-Internal-Token", internalToken)
                 .build();
+    }
+
+    public String getBaseUrl() {
+        return baseUrl;
+    }
+
+    public boolean isLocalhost() {
+        return baseUrl != null && (baseUrl.contains("localhost") || baseUrl.contains("127.0.0.1"));
     }
 
     /**

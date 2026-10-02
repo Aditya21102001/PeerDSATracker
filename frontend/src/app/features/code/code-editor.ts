@@ -375,6 +375,7 @@ export class CodeEditor {
     queueMicrotask(() => {
       const id = Number(this.problemId());
       this.code.problem(id).subscribe({ next: (p) => this.problem.set(p) });
+      this.code.warmup().subscribe({ error: () => {} });
 
       forkJoin({
         langs: this.code.languages(),
@@ -458,6 +459,10 @@ export class CodeEditor {
   }
 
   protected run(): void {
+    this.executeRun(0);
+  }
+
+  private executeRun(retryCount: number): void {
     this.running.set(true);
     this.status.set(null);
     this.result.set(null);
@@ -466,20 +471,42 @@ export class CodeEditor {
     this.code.run(this.language(), this.source(), this.stdin).subscribe({
       next: (r) => {
         this.running.set(false);
+        this.status.set(null);
         this.result.set(r);
       },
       error: (err) => {
-        this.running.set(false);
-        this.status.set(
-          err?.status === 503
-            ? 'The code runner is waking up — give it a few seconds and run again.'
-            : 'Could not run your code.',
-        );
+        const errorDetail = err?.error?.message;
+        const isNotConfigured =
+          errorDetail &&
+          (errorDetail.includes('ANALYTICS_BASE_URL') || errorDetail.includes('not configured'));
+
+        if (err?.status === 503 && !isNotConfigured && retryCount < 2) {
+          this.status.set(
+            `Code runner is warming up from idle... Retrying automatically (attempt ${retryCount + 1}/2)`,
+          );
+          setTimeout(() => {
+            if (this.running()) {
+              this.executeRun(retryCount + 1);
+            }
+          }, 3500);
+        } else {
+          this.running.set(false);
+          this.status.set(
+            errorDetail ||
+              (err?.status === 503
+                ? 'The code runner is taking longer than expected to wake up. Please wait a few seconds and run again.'
+                : 'Could not run your code.'),
+          );
+        }
       },
     });
   }
 
   protected submit(): void {
+    this.executeSubmit(0);
+  }
+
+  private executeSubmit(retryCount: number): void {
     this.submitting.set(true);
     this.status.set(null);
     this.activeTab.set('submissions');
@@ -488,6 +515,7 @@ export class CodeEditor {
     this.code.submit(id, this.language(), this.source(), this.stdin).subscribe({
       next: (res) => {
         this.submitting.set(false);
+        this.status.set(null);
         this.submitResult.set(res);
         this.submissions.update((list) => [res.submission, ...list]);
         this.saved.set(this.language(), this.source());
@@ -497,12 +525,29 @@ export class CodeEditor {
         this.flash(res.message);
       },
       error: (err) => {
-        this.submitting.set(false);
-        this.status.set(
-          err?.status === 503
-            ? 'The code execution service is waking up — give it a moment and submit again.'
-            : 'Could not submit your code.',
-        );
+        const errorDetail = err?.error?.message;
+        const isNotConfigured =
+          errorDetail &&
+          (errorDetail.includes('ANALYTICS_BASE_URL') || errorDetail.includes('not configured'));
+
+        if (err?.status === 503 && !isNotConfigured && retryCount < 2) {
+          this.status.set(
+            `Code execution service is warming up... Retrying submission (attempt ${retryCount + 1}/2)`,
+          );
+          setTimeout(() => {
+            if (this.submitting()) {
+              this.executeSubmit(retryCount + 1);
+            }
+          }, 3500);
+        } else {
+          this.submitting.set(false);
+          this.status.set(
+            errorDetail ||
+              (err?.status === 503
+                ? 'The code execution service is taking longer than expected to wake up. Please wait a moment and submit again.'
+                : 'Could not submit your code.'),
+          );
+        }
       },
     });
   }

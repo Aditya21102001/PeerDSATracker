@@ -77,4 +77,9 @@ export class CodeService {
   problem(problemId: number): Observable<Problem> {
     return this.http.get<Problem>(`/api/sheet/problems/${problemId}`);
   }
+
+  /** Wakes up the analytics/sandbox container from cold start. */
+  warmup(): Observable<void> {
+    return this.http.post<void>('/api/code/warmup', {});
+  }
 }

@@ -161,7 +161,7 @@ app:
   analytics:
     base-url: ${ANALYTICS_BASE_URL:http://localhost:8000}
     internal-token: ${INTERNAL_TOKEN:dev-internal-token}
-    connect-timeout: ${ANALYTICS_CONNECT_TIMEOUT:5s}
+    connect-timeout: ${ANALYTICS_CONNECT_TIMEOUT:15s}
     # Render queues a request to a spun-down service rather than refusing it: the
     # TCP connect succeeds at the edge immediately, but the response is withheld
     # for 30-60s while the instance wakes. A 30s read timeout would fail every

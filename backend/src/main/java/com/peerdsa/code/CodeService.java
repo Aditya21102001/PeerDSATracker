@@ -265,13 +265,51 @@ public class CodeService {
                 message);
     }
 
+    /**
+     * Sends a background non-blocking ping to the analytics service to wake it up
+     * from a cold start if it was spun down on Render.
+     */
+    public void warmup() {
+        Thread thread = new Thread(() -> {
+            try {
+                analytics.ping();
+            } catch (Exception ignored) {
+                // Background warm-up ping to wake up spun-down instances; non-critical
+            }
+        }, "analytics-warmup");
+        thread.setDaemon(true);
+        thread.start();
+    }
+
     private ExecuteResult executeInSandbox(String language, String source, String stdin) {
-        try {
-            return analytics.execute(new ExecuteRequest(language, source, stdin == null ? "" : stdin));
-        } catch (RestClientException e) {
+        if (isRenderProduction() && analytics.isLocalhost()) {
             throw new ResponseStatusException(
-                    HttpStatus.SERVICE_UNAVAILABLE, "Code execution service unavailable", e);
+                    HttpStatus.SERVICE_UNAVAILABLE,
+                    "Code runner service is not configured. Set ANALYTICS_BASE_URL on Render.");
         }
+
+        RestClientException lastException = null;
+        for (int attempt = 1; attempt <= 3; attempt++) {
+            try {
+                return analytics.execute(new ExecuteRequest(language, source, stdin == null ? "" : stdin));
+            } catch (RestClientException e) {
+                lastException = e;
+                if (attempt < 3) {
+                    try {
+                        Thread.sleep(1500L * attempt);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
+                }
+            }
+        }
+        throw new ResponseStatusException(
+                HttpStatus.SERVICE_UNAVAILABLE, "Code execution service unavailable", lastException);
+    }
+
+    private static boolean isRenderProduction() {
+        return System.getenv("RENDER") != null || System.getenv("RENDER_EXTERNAL_URL") != null;
     }
 
     private static String normalizeOutput(String s) {
