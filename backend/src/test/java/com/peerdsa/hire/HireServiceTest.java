@@ -174,6 +174,27 @@ class HireServiceTest {
         assertThat(result.appliedApplications()).isNotEmpty();
     }
 
+    @Test
+    void extractProfileFromResume_withHeuristicFallback_extractsExpectedFields() {
+        String sampleResume = """
+                Senior Software Engineer
+                5.5 years experience in building distributed systems
+                Current company: Infosys
+                Skills: Java, Spring Boot, Microservices, Kafka, Redis, Docker, AWS
+                Education: B.Tech in Computer Science
+                Certifications: AWS Certified Developer
+                """;
+
+        HireDtos.ExtractedProfileDto dto = hireService.extractProfileFromResume(sampleResume);
+
+        assertThat(dto).isNotNull();
+        assertThat(dto.yearsOfExperience()).isEqualTo(5.5);
+        assertThat(dto.skills()).contains("Java", "Spring Boot", "Kafka");
+        assertThat(dto.currentCompany()).isEqualTo("Infosys");
+        assertThat(dto.education()).contains("B.Tech");
+        assertThat(dto.certifications()).contains("AWS Certified Developer");
+    }
+
     private static void setField(Object target, String fieldName, Object value) throws Exception {
         Field f = target.getClass().getDeclaredField(fieldName);
         f.setAccessible(true);

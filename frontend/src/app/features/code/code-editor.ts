@@ -505,8 +505,12 @@ export class CodeEditor {
               position: idx + 1,
             }));
             this.testCases.set(fallbackCases);
-            this.stdin = fallbackCases[0].input;
-            this.activeTestCaseIndex.set(0);
+            if (fallbackCases.length > 0) {
+              this.stdin = fallbackCases[0].input;
+              this.activeTestCaseIndex.set(0);
+            } else {
+              this.activeTestCaseIndex.set(-1);
+            }
           } else {
             this.activeTestCaseIndex.set(-1);
           }

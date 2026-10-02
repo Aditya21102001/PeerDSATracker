@@ -40,12 +40,15 @@ spring:
   flyway:
     enabled: true
     placeholder-replacement: false
+    validate-on-migrate: false
+    out-of-order: true
     # Migrations MUST use the DIRECT (unpooled) endpoint. Neon's PgBouncer runs
     # in transaction mode, which breaks Flyway's session-level advisory lock.
     url: ${NEON_UNPOOLED_URL}
     user: ${NEON_USER}
     password: ${NEON_PASSWORD}
     locations: classpath:db/migration
+
 
   # NOTE: there is deliberately no spring.mail block. Nothing in this application sends over SMTP,
   # because Render blocks the outbound SMTP ports -- a JavaMailSender passes every local test and

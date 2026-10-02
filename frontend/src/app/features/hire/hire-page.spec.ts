@@ -153,11 +153,27 @@ describe('HirePage — Naukri-style Career Portal & 1-Click Auto Apply', () => {
       });
     },
     listApplications: () => of(mockApplications),
+    extractResume: (text: string) =>
+      of({
+        headline: 'Lead Java Cloud Architect | 6 YOE',
+        yearsOfExperience: 6.0,
+        currentCompany: 'Infosys',
+        currentRole: 'Technical Lead',
+        currentCtc: '₹22 LPA',
+        expectedCtc: '₹36 LPA',
+        noticePeriodDays: 30,
+        preferredLocations: 'Bengaluru, Remote',
+        skills: 'Java, Spring Boot, Microservices, AWS, Docker, Kubernetes',
+        certifications: 'AWS Certified Solutions Architect',
+        education: 'B.Tech in Computer Science',
+        resumeSummary: 'Experienced technical lead specializing in cloud systems.',
+      }),
   };
 
   beforeEach(async () => {
     // Reset test data
     currentJobs = currentJobs.map((j) => ({ ...j, isApplied: false, applicationStatus: null }));
+
 
     await TestBed.configureTestingModule({
       imports: [HirePage],
@@ -227,4 +243,59 @@ describe('HirePage — Naukri-style Career Portal & 1-Click Auto Apply', () => {
     expect((component as any).profile().headline).toBe('Principal Distributed Systems Engineer');
     expect((component as any).notification()?.type).toBe('success');
   });
+
+  it('should extract profile from resume and enter review & edit pending state', () => {
+    (component as any).resumeRawText.set('Senior Java Engineer with 6 years experience in Spring Boot and AWS');
+    (component as any).extractProfileFromResume();
+
+    expect((component as any).extractingResume()).toBe(false);
+    expect((component as any).extractedReviewPending()).toBe(true);
+    expect((component as any).profileForm.headline).toBe('Lead Java Cloud Architect | 6 YOE');
+    expect((component as any).profileForm.yearsOfExperience).toBe(6.0);
+    expect((component as any).profileForm.currentCompany).toBe('Infosys');
+    expect((component as any).profileForm.skills).toContain('Spring Boot');
+    expect((component as any).notification()?.type).toBe('success');
+  });
+
+  it('should allow user to edit extracted fields and then save profile', () => {
+    (component as any).resumeRawText.set('Some resume text');
+    (component as any).extractProfileFromResume();
+
+    // User reviews and edits extracted fields
+    (component as any).profileForm.expectedCtc = '₹42 LPA';
+    (component as any).profileForm.yearsOfExperience = 7.0;
+
+    // User clicks save
+    (component as any).saveProfile();
+
+    expect((component as any).savingProfile()).toBe(false);
+    expect((component as any).extractedReviewPending()).toBe(false);
+    expect((component as any).notification()?.type).toBe('success');
+    expect((component as any).notification()?.message).toContain('Profile successfully saved');
+  });
+
+  it('should allow reverting review changes back to previous saved profile', () => {
+    (component as any).resumeRawText.set('Some resume text');
+    (component as any).extractProfileFromResume();
+    expect((component as any).extractedReviewPending()).toBe(true);
+
+    (component as any).cancelReviewAndReset();
+
+    expect((component as any).extractedReviewPending()).toBe(false);
+    expect((component as any).profileForm.headline).toBe(mockProfile.headline);
+    expect((component as any).notification()?.type).toBe('info');
+  });
+
+  it('should load sample resumes properly', () => {
+    (component as any).loadSampleResume('java');
+    expect((component as any).resumeRawText()).toContain('Aditya Yadav');
+    expect((component as any).resumeInputMode()).toBe('paste');
+
+    (component as any).loadSampleResume('dsa');
+    expect((component as any).resumeRawText()).toContain('Rohan Sharma');
+
+    (component as any).loadSampleResume('angular');
+    expect((component as any).resumeRawText()).toContain('Neha Verma');
+  });
 });
+
