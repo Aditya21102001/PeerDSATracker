@@ -77,6 +77,12 @@ public class AnalyticsController {
                         response.getStatusCode());
                 return unavailable(e);
             }
+            if (response.getStatusCode().value() == 429) {
+                // Rate-limited: the service is alive and the token is accepted; it is just
+                // throttling. Transient by nature -- map to 503 so the client retries.
+                log.warn("Analytics rate-limited this request (429); the service is reachable.");
+                return unavailable(e);
+            }
             String hint = hintFor(response.getStatusCode().value());
             log.error(
                     "Analytics returned {} for an internal call. {} Body: {}",
