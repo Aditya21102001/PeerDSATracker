@@ -343,6 +343,16 @@ public class CodeService {
         thread.start();
     }
 
+    private static final Map<String, String> WANDBOX_COMPILERS = Map.of(
+            "python", "cpython-3.12.7",
+            "c++", "gcc-head",
+            "cpp", "gcc-head",
+            "c", "gcc-13.2.0-c",
+            "java", "openjdk-jdk-21+35",
+            "javascript", "nodejs-20.17.0",
+            "go", "go-1.23.2"
+    );
+
     private ExecuteResult executeInSandbox(String language, String source, String stdin) {
         // 1. Try Piston sandbox via AnalyticsClient
         if (!isRenderProduction() || !analytics.isLocalhost()) {
@@ -356,7 +366,17 @@ public class CodeService {
             }
         }
 
-        // 2. Try OpenRouter AI sandbox evaluation (supports C++, Java, Python, JavaScript, Go, C)
+        // 2. Try Wandbox online execution sandbox (supports C++, Java, Python, JS, C, Go)
+        try {
+            ExecuteResult wandboxRes = executeViaWandbox(language, source, stdin);
+            if (wandboxRes != null && (wandboxRes.ran() || (wandboxRes.compileOutput() != null && !wandboxRes.compileOutput().isBlank()))) {
+                return wandboxRes;
+            }
+        } catch (Exception e) {
+            log.warn("Wandbox execution fallback failed ({}). Attempting other engines.", e.getMessage());
+        }
+
+        // 3. Try OpenRouter AI sandbox evaluation (supports C++, Java, Python, JavaScript, Go, C)
         if (openRouter != null && openRouter.isConfigured()) {
             try {
                 ExecuteResult aiRes = evaluateWithAiSandbox(language, source, stdin);
@@ -368,7 +388,7 @@ public class CodeService {
             }
         }
 
-        // 3. Try Local process execution
+        // 4. Try Local process execution
         try {
             ExecuteResult localRes = executeLocally(language, source, stdin);
             if (localRes != null) {
@@ -381,6 +401,80 @@ public class CodeService {
         throw new ResponseStatusException(
                 HttpStatus.SERVICE_UNAVAILABLE,
                 "Code execution service is currently unavailable. Please verify sandbox setup or try again shortly.");
+    }
+
+    private ExecuteResult executeViaWandbox(String language, String source, String stdin) {
+        String canonical = language != null ? language.toLowerCase().trim() : "";
+        String compiler = WANDBOX_COMPILERS.get(canonical);
+        if (compiler == null) {
+            return null;
+        }
+
+        String code = source != null ? source : "";
+        if ("java".equalsIgnoreCase(canonical)) {
+            code = code.replaceAll("\\bpublic\\s+class\\b", "class");
+        }
+
+        Map<String, Object> payload = Map.of(
+                "compiler", compiler,
+                "code", code,
+                "stdin", stdin != null ? stdin : ""
+        );
+
+        try {
+            var httpClient = java.net.http.HttpClient.newBuilder()
+                    .connectTimeout(Duration.ofSeconds(10))
+                    .build();
+            var requestFactory = new JdkClientHttpRequestFactory(httpClient);
+            requestFactory.setReadTimeout(Duration.ofSeconds(25));
+
+            RestClient wandbox = RestClient.builder()
+                    .baseUrl("https://wandbox.org")
+                    .requestFactory(requestFactory)
+                    .build();
+
+            String raw = wandbox.post()
+                    .uri("/api/compile.json")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(payload)
+                    .retrieve()
+                    .body(String.class);
+
+            if (raw == null || raw.isBlank()) {
+                return null;
+            }
+
+            JsonNode node = mapper.readTree(raw);
+            String status = node.path("status").asText("0");
+            int exitCode = 0;
+            try {
+                exitCode = Integer.parseInt(status);
+            } catch (NumberFormatException ignored) {}
+
+            String compilerError = node.path("compiler_error").asText("");
+            String programOutput = node.path("program_output").asText("");
+            String programError = node.path("program_error").asText("");
+            String signal = node.hasNonNull("signal") && !node.path("signal").asText().isBlank()
+                    ? node.path("signal").asText()
+                    : null;
+
+            String compileOutput = (compilerError != null && !compilerError.isBlank()) ? compilerError : null;
+
+            return new ExecuteResult(
+                    true,
+                    language,
+                    "wandbox",
+                    programOutput,
+                    programError,
+                    compileOutput,
+                    exitCode,
+                    signal,
+                    null
+            );
+        } catch (Exception e) {
+            log.warn("Wandbox execution fallback failed: {}", e.getMessage());
+            return null;
+        }
     }
 
     private ExecuteResult evaluateWithAiSandbox(String language, String source, String stdin) {
@@ -437,6 +531,14 @@ public class CodeService {
     }
 
     private ExecuteResult executeLocally(String language, String source, String stdin) {
+        String canonical = language != null ? language.toLowerCase().trim() : "";
+        if ("c++".equals(canonical) || "cpp".equals(canonical)) {
+            return executeCompiledLocally("g++", "solution.cpp", "solution.exe", source, stdin, language);
+        }
+        if ("c".equals(canonical)) {
+            return executeCompiledLocally("gcc", "solution.c", "solution.exe", source, stdin, language);
+        }
+
         String command = null;
         String fileName = null;
         if ("python".equalsIgnoreCase(language)) {
@@ -457,7 +559,11 @@ public class CodeService {
         try {
             Path tempDir = Files.createTempDirectory("peerdsa_exec_");
             Path sourcePath = tempDir.resolve(fileName);
-            Files.writeString(sourcePath, source == null ? "" : source);
+            String safeSource = source == null ? "" : source;
+            if ("java".equalsIgnoreCase(language)) {
+                safeSource = safeSource.replaceAll("(?m)^\\s*package\\s+[^;]+;\\s*", "");
+            }
+            Files.writeString(sourcePath, safeSource);
 
             ProcessBuilder pb = new ProcessBuilder(command, sourcePath.toAbsolutePath().toString());
             pb.directory(tempDir.toFile());
@@ -492,6 +598,64 @@ public class CodeService {
             return new ExecuteResult(true, language, "local", stdout, stderr, compileOutput, exitCode, null, null);
         } catch (Exception e) {
             log.debug("Local execution not viable: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    private ExecuteResult executeCompiledLocally(
+            String compilerCmd, String srcName, String binName, String source, String stdin, String language) {
+        try {
+            Path tempDir = Files.createTempDirectory("peerdsa_cmp_");
+            Path sourcePath = tempDir.resolve(srcName);
+            Path binaryPath = tempDir.resolve(binName);
+            Files.writeString(sourcePath, source == null ? "" : source);
+
+            ProcessBuilder compilePb = new ProcessBuilder(
+                    compilerCmd, "-O2", sourcePath.toAbsolutePath().toString(), "-o", binaryPath.toAbsolutePath().toString());
+            compilePb.directory(tempDir.toFile());
+            Process compileProcess = compilePb.start();
+            boolean compiled = compileProcess.waitFor(10, TimeUnit.SECONDS);
+            if (!compiled) {
+                compileProcess.destroyForcibly();
+                deleteDirectory(tempDir);
+                return new ExecuteResult(false, language, "local", "", "Compilation timed out", "Compilation timed out", 1, null, null);
+            }
+
+            int compileExit = compileProcess.exitValue();
+            String compileErr = new String(compileProcess.getErrorStream().readAllBytes(), StandardCharsets.UTF_8);
+            if (compileExit != 0) {
+                deleteDirectory(tempDir);
+                return new ExecuteResult(false, language, "local", "", compileErr, compileErr, compileExit, null, null);
+            }
+
+            ProcessBuilder runPb = new ProcessBuilder(binaryPath.toAbsolutePath().toString());
+            runPb.directory(tempDir.toFile());
+            Process runProcess = runPb.start();
+
+            if (stdin != null && !stdin.isEmpty()) {
+                try (var writer = new java.io.OutputStreamWriter(runProcess.getOutputStream(), StandardCharsets.UTF_8)) {
+                    writer.write(stdin);
+                    writer.flush();
+                }
+            } else {
+                runProcess.getOutputStream().close();
+            }
+
+            boolean runCompleted = runProcess.waitFor(6, TimeUnit.SECONDS);
+            if (!runCompleted) {
+                runProcess.destroyForcibly();
+                deleteDirectory(tempDir);
+                return new ExecuteResult(true, language, "local", "", "Time limit exceeded", null, 124, "SIGKILL", null);
+            }
+
+            String stdout = new String(runProcess.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+            String stderr = new String(runProcess.getErrorStream().readAllBytes(), StandardCharsets.UTF_8);
+            int exitCode = runProcess.exitValue();
+            deleteDirectory(tempDir);
+
+            return new ExecuteResult(true, language, "local", stdout, stderr, null, exitCode, null, null);
+        } catch (Exception e) {
+            log.debug("Local compiled execution failed: {}", e.getMessage());
             return null;
         }
     }
