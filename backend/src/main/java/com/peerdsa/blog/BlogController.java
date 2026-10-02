@@ -31,7 +31,7 @@ public class BlogController {
             @NotBlank @Size(max = 180) String title,
             @NotBlank @Size(max = 80) String subject,
             @Size(max = 500) String excerpt,
-            @NotBlank @Size(max = 30_000) String content,
+            @NotBlank @Size(max = 500_000) String content,
             @Size(max = 8) List<@Size(max = 32) String> tags,
             BlogPostStatus status) {}
 
