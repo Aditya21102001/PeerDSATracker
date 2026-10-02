@@ -5,11 +5,84 @@ import { RouterLink } from '@angular/router';
 import {
   ApplyAllResult,
   CandidateProfile,
+  ExtractedProfile,
   JobApplication,
   JobOpening,
   SaveCandidateProfileRequest,
 } from '../../core/models/hire.models';
 import { HireService } from '../../core/services/hire.service';
+
+const SAMPLE_JAVA_RESUME = `Aditya Yadav
+Senior Java Full Stack Engineer
+Bengaluru, India | 4.5 Years Experience
+
+PROFESSIONAL SUMMARY:
+Experienced Java and Spring Boot Engineer with 4.5+ years building distributed backend microservices, high-throughput REST APIs, and responsive web portals with Angular and TypeScript. Strong background in DSA, Kafka, and PostgreSQL.
+
+TECHNICAL SKILLS:
+Java, Spring Boot, Microservices, Spring Security, Hibernate, JPA, Angular, TypeScript, PostgreSQL, Redis, Kafka, Docker, Kubernetes, AWS, REST APIs, Git, DSA, System Design
+
+EXPERIENCE:
+Senior Software Engineer - Infosys (2022 - Present)
+- Architected payment processing microservices using Spring Boot and Kafka handling 15K req/min.
+- Optimized database query execution and caching with Redis, reducing latency by 40%.
+- Developed modular Angular management portal.
+
+Software Engineer - TCS (2020 - 2022)
+- Implemented secure RESTful web services in Java and Spring MVC.
+- Created unit tests with JUnit 5 and Mockito.
+
+EDUCATION:
+B.Tech in Computer Science and Engineering
+
+CERTIFICATIONS:
+AWS Certified Developer Associate, Oracle Certified Java SE 11
+Current CTC: ₹14 LPA | Expected CTC: ₹26 LPA | Notice Period: 30 days | Preferred: Bengaluru, Remote, Pune`;
+
+const SAMPLE_DSA_RESUME = `Rohan Sharma
+Backend & Algorithms Engineer
+Pune, India | 3.5 Years Experience
+
+PROFESSIONAL SUMMARY:
+Backend engineer with expertise in Data Structures, Algorithms, low-latency system design, and distributed caching. Solved 500+ LeetCode problems.
+
+TECHNICAL SKILLS:
+DSA, System Design, Java, Spring Boot, C++, Python, Redis, PostgreSQL, MySQL, Docker, Kafka, Git, Linux, REST APIs
+
+EXPERIENCE:
+Software Engineer - Swiggy (2021 - Present)
+- Designed real-time driver allocation and routing engine with Redis geospatial indexing.
+- Improved order dispatch throughput by 25%.
+
+EDUCATION:
+B.E. in Computer Engineering
+
+CERTIFICATIONS:
+Certified Kubernetes Administrator (CKA)
+Current CTC: ₹16 LPA | Expected CTC: ₹30 LPA | Notice Period: 15 days | Preferred: Bengaluru, Pune, Remote`;
+
+const SAMPLE_ANGULAR_RESUME = `Neha Verma
+Lead Frontend & Full Stack Developer
+Hyderabad, India | 5 Years Experience
+
+PROFESSIONAL SUMMARY:
+Frontend specialist with 5 years experience crafting scalable web applications with Angular, TypeScript, RxJS, Node.js, and modern CSS.
+
+TECHNICAL SKILLS:
+Angular, TypeScript, JavaScript, RxJS, HTML5, CSS3, SCSS, Node.js, REST APIs, Git, Docker, AWS, SQL
+
+EXPERIENCE:
+Lead Frontend Developer - Capgemini (2021 - Present)
+- Built enterprise portals in Angular 17+ with standalone components and signals.
+- Reduced initial bundle load by 35% using lazy loading and tree-shaking.
+
+EDUCATION:
+Master of Computer Applications (MCA)
+
+CERTIFICATIONS:
+AWS Certified Cloud Practitioner
+Current CTC: ₹13 LPA | Expected CTC: ₹24 LPA | Notice Period: 45 days | Preferred: Hyderabad, Bengaluru, Remote`;
+
 
 @Component({
   selector: 'app-hire-page',
@@ -36,6 +109,15 @@ export class HirePage implements OnInit {
   protected readonly savingProfile = signal<boolean>(false);
   protected readonly notification = signal<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
   protected readonly selectedJobModal = signal<JobOpening | null>(null);
+
+  // Resume extraction signals & states
+  protected readonly resumeInputMode = signal<'file' | 'paste'>('file');
+  protected readonly resumeRawText = signal<string>('');
+  protected readonly uploadedFileName = signal<string>('');
+  protected readonly extractingResume = signal<boolean>(false);
+  protected readonly isDraggingResume = signal<boolean>(false);
+  protected readonly extractedReviewPending = signal<boolean>(false);
+  protected readonly extractionSuccess = signal<boolean>(false);
 
   // Filters
   protected readonly searchQuery = signal<string>('');

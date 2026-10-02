@@ -81,5 +81,21 @@ public final class HireDtos {
             String message,
             List<JobApplicationDto> appliedApplications) {}
 
+    public record ExtractResumeRequest(String resumeText) {}
+
+    public record ExtractedProfileDto(
+            String headline,
+            double yearsOfExperience,
+            String currentCompany,
+            String currentRole,
+            String currentCtc,
+            String expectedCtc,
+            int noticePeriodDays,
+            String preferredLocations,
+            String skills,
+            String certifications,
+            String education,
+            String resumeSummary) {}
+
     private HireDtos() {}
 }

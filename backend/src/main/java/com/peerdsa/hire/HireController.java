@@ -3,6 +3,8 @@ package com.peerdsa.hire;
 import com.peerdsa.hire.HireDtos.ApplyAllRequest;
 import com.peerdsa.hire.HireDtos.ApplyAllResult;
 import com.peerdsa.hire.HireDtos.CandidateProfileDto;
+import com.peerdsa.hire.HireDtos.ExtractResumeRequest;
+import com.peerdsa.hire.HireDtos.ExtractedProfileDto;
 import com.peerdsa.hire.HireDtos.JobApplicationDto;
 import com.peerdsa.hire.HireDtos.JobOpeningDto;
 import com.peerdsa.hire.HireDtos.SaveCandidateProfileRequest;
@@ -28,6 +30,14 @@ public class HireController {
         this.hireService = hireService;
     }
 
+    @PostMapping("/extract-resume")
+    public ExtractedProfileDto extractResume(
+            @AuthenticationPrincipal User user,
+            @RequestBody(required = false) ExtractResumeRequest request) {
+        String text = request != null && request.resumeText() != null ? request.resumeText() : "";
+        return hireService.extractProfileFromResume(text);
+    }
+
     @GetMapping("/profile")
     public CandidateProfileDto getProfile(@AuthenticationPrincipal User user) {
         return hireService.getProfile(user.getId());
@@ -36,7 +46,7 @@ public class HireController {
     @PutMapping("/profile")
     public CandidateProfileDto saveProfile(
             @AuthenticationPrincipal User user,
-            @Valid @RequestBody SaveCandidateProfileRequest request) {
+            @RequestBody(required = false) SaveCandidateProfileRequest request) {
         return hireService.saveProfile(user.getId(), request);
     }
 

@@ -4,6 +4,7 @@ import { Observable } from 'rxjs';
 import {
   ApplyAllResult,
   CandidateProfile,
+  ExtractedProfile,
   JobApplication,
   JobOpening,
   SaveCandidateProfileRequest,
@@ -12,6 +13,10 @@ import {
 @Injectable({ providedIn: 'root' })
 export class HireService {
   private readonly http = inject(HttpClient);
+
+  extractResume(resumeText: string): Observable<ExtractedProfile> {
+    return this.http.post<ExtractedProfile>('/api/hire/extract-resume', { resumeText });
+  }
 
   getProfile(): Observable<CandidateProfile> {
     return this.http.get<CandidateProfile>('/api/hire/profile');

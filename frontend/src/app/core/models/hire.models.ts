@@ -32,6 +32,22 @@ export interface SaveCandidateProfileRequest {
   education: string;
 }
 
+export interface ExtractedProfile {
+  headline: string;
+  yearsOfExperience: number;
+  currentCompany: string;
+  currentRole: string;
+  currentCtc: string;
+  expectedCtc: string;
+  noticePeriodDays: number;
+  preferredLocations: string;
+  skills: string;
+  certifications: string;
+  education: string;
+  resumeSummary: string;
+}
+
+
 export interface JobOpening {
   id: number;
   title: string;
