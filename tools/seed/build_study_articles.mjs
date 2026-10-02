@@ -248,7 +248,9 @@ function extractTitleAndExcerpt(rawContent, fallbackTitle) {
 }
 
 function escapeSqlLiteral(val) {
-  return "'" + val.replace(/'/g, "''") + "'";
+  // Replace ${ with $ { to prevent Flyway from interpreting code snippets as placeholders
+  const sanitized = val.replace(/\$\{/g, '$ {');
+  return "'" + sanitized.replace(/'/g, "''") + "'";
 }
 
 function walkDir(dir) {
