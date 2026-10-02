@@ -200,6 +200,7 @@ class ApplicationYamlBindingTest {
         // safe fallback for a database URL. Only their presence is being checked.
         assertThat(raw("spring.datasource.url")).isEqualTo("${NEON_POOLED_URL}");
         assertThat(raw("spring.flyway.url")).isEqualTo("${NEON_UNPOOLED_URL}");
+        assertThat(environment.getProperty("spring.flyway.placeholder-replacement")).isEqualTo("false");
         assertThat(environment.getProperty("spring.jpa.hibernate.ddl-auto")).isEqualTo("validate");
     }
 

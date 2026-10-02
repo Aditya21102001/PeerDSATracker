@@ -1,6 +1,7 @@
 import { Component, effect, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { TourService } from '../core/services/tour.service';
+import { VideoTourService } from '../core/services/video-tour.service';
 
 interface Box {
   top: number;
@@ -63,6 +64,14 @@ function isVisible(el: HTMLElement): boolean {
             <p class="body">{{ step.body }}</p>
             <div class="controls">
               <button type="button" class="btn btn-quiet btn-sm" (click)="tour.stop()">Skip</button>
+              <button
+                type="button"
+                class="btn btn-quiet btn-sm"
+                title="Switch to the 2-minute video tour"
+                (click)="watchVideoTour()"
+              >
+                🎬 Video tour
+              </button>
               <span class="spacer"></span>
               @if (!tour.isFirst()) {
                 <button type="button" class="btn btn-ghost btn-sm" (click)="tour.prev()">Back</button>
@@ -164,7 +173,13 @@ function isVisible(el: HTMLElement): boolean {
 })
 export class TourOverlay {
   protected readonly tour = inject(TourService);
+  protected readonly videoTour = inject(VideoTourService);
   private readonly router = inject(Router);
+
+  protected watchVideoTour(): void {
+    this.tour.stop();
+    this.videoTour.open();
+  }
 
   protected readonly spot = signal<Box | null>(null);
   protected readonly tipTop = signal(0);

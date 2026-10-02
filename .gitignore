@@ -26,3 +26,6 @@ __pycache__/
 *.iml
 Thumbs.db
 .DS_Store
+
+# local seed sources
+Tech_Interview_Prep/

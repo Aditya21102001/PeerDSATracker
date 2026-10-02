@@ -8,6 +8,7 @@ import { InsightsService } from '../../core/services/insights.service';
 import { NotesService } from '../../core/services/notes.service';
 import { SheetService } from '../../core/services/sheet.service';
 import { TourService } from '../../core/services/tour.service';
+import { VideoTourService } from '../../core/services/video-tour.service';
 import { Spinner } from '../../shared/spinner';
 
 /** One row of the signed-in user's "next steps" checklist. */
@@ -68,11 +69,84 @@ interface GuideStats {
         that into XP, a streak, and a revision plan. Here's each piece.
       </p>
 
+      <!-- Video Tour Guide Showcase Section -->
+      <section id="video-tour" class="card video-tour-hero" aria-label="Video tour guide">
+        <div class="video-hero-content">
+          <div class="video-hero-text">
+            <span class="badge video-badge">
+              <span class="pulse-icon" aria-hidden="true">▶</span>
+              Featured Walkthrough
+            </span>
+            <h2>PeerDSA Video Tour Guide</h2>
+            <p>
+              Take a high-impact 2-minute visual walkthrough of the entire platform: solving problems,
+              in-browser code runner, spaced repetition memory system, 214 technical study articles,
+              and our AI Grind Buddy assistant.
+            </p>
+            <div class="video-hero-actions">
+              <button
+                type="button"
+                class="btn btn-sm video-start-btn"
+                (click)="videoTour.open()"
+              >
+                <span class="play-triangle" aria-hidden="true">▶</span> Watch Video Tour (2m 55s)
+              </button>
+              <button
+                type="button"
+                class="btn btn-sm btn-ghost"
+                (click)="tour.start()"
+              >
+                ↺ Interactive Spotlight Tour
+              </button>
+            </div>
+          </div>
+
+          <div
+            class="video-preview-thumb"
+            role="button"
+            tabindex="0"
+            aria-label="Play video tour guide"
+            (click)="videoTour.open()"
+            (keydown.enter)="videoTour.open()"
+            (keydown.space)="videoTour.open()"
+          >
+            <div class="thumb-cinema-screen">
+              <div class="thumb-header">
+                <span class="th-dot red"></span>
+                <span class="th-dot yellow"></span>
+                <span class="th-dot green"></span>
+                <span class="th-title">PeerDSA Demo Cinema</span>
+              </div>
+              <div class="thumb-body">
+                <div class="thumb-play-circle">
+                  <span class="tp-icon" aria-hidden="true">▶</span>
+                </div>
+                <div class="thumb-overlay-meta">
+                  <span class="thumb-duration">2:55</span>
+                  <span class="thumb-quality">HD 60FPS</span>
+                </div>
+              </div>
+            </div>
+            <div class="thumb-chapters-preview">
+              <span class="chap-pill">⚡ The Grind Loop</span>
+              <span class="chap-pill">📋 SDE Sheet</span>
+              <span class="chap-pill">💻 Code Runner</span>
+              <span class="chap-pill">🧠 Spaced Repetition</span>
+              <span class="chap-pill">📚 Study Articles</span>
+              <span class="chap-pill">🤖 AI Tutor</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
       @if (isAuthenticated()) {
         <section class="you card" aria-label="Your next steps">
           <div class="you-head">
             <h2>Your next steps</h2>
-            <button type="button" class="btn btn-sm" (click)="tour.start()">↺ Take the tour</button>
+            <div class="tour-btn-group">
+              <button type="button" class="btn btn-sm" (click)="videoTour.open()">▶ Video tour</button>
+              <button type="button" class="btn btn-sm btn-ghost" (click)="tour.start()">↺ Spotlight tour</button>
+            </div>
           </div>
 
           @if (loading()) {
@@ -107,6 +181,7 @@ interface GuideStats {
       }
 
       <ol class="toc" aria-label="Contents">
+        <li><a href="#video-tour">Video tour guide</a></li>
         <li><a href="#start">Getting started</a></li>
         <li><a href="#sheet">The sheet &amp; statuses</a></li>
         <li><a href="#xp">XP, levels &amp; badges</a></li>
@@ -247,6 +322,7 @@ export class GuidePage {
   private readonly notes = inject(NotesService);
   private readonly insights = inject(InsightsService);
   protected readonly tour = inject(TourService);
+  protected readonly videoTour = inject(VideoTourService);
 
   /** Drives the header/footer CTAs: Dashboard/Open the sheet when signed in, Get started when not. */
   protected readonly isAuthenticated = this.auth.isAuthenticated;

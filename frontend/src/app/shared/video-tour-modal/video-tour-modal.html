@@ -1,0 +1,496 @@
+@if (tour.isOpen()) {
+  <div
+    class="video-tour-overlay"
+    role="dialog"
+    aria-modal="true"
+    aria-label="PeerDSA Video Tour Guide"
+  >
+    <!-- Light-dismiss backdrop -->
+    <div class="backdrop" (click)="tour.close()"></div>
+
+    <div class="modal-dialog card">
+      <!-- Header -->
+      <header class="tour-header">
+        <div class="title-group">
+          <span class="badge live-badge">
+            <span class="pulse-dot" aria-hidden="true"></span>
+            Video Tour Guide
+          </span>
+          <h2 id="video-tour-title" class="tour-title">
+            <span class="chapter-idx">Chapter {{ tour.currentChapterIndex() + 1 }} of {{ tour.chapters.length }}:</span>
+            {{ tour.currentChapter().title }}
+          </h2>
+        </div>
+
+        <div class="header-actions">
+          <span class="hotkeys-hint" title="Space: Play/Pause · ←/→: 10s · M: Mute · C: Captions · Esc: Close">
+            ⌨ Shortcuts enabled
+          </span>
+          <button
+            type="button"
+            class="btn btn-sm btn-ghost close-btn"
+            aria-label="Close video tour"
+            (click)="tour.close()"
+          >
+            ✕
+          </button>
+        </div>
+      </header>
+
+      <!-- Main Body: Player + Chapters Sidebar -->
+      <div class="tour-content">
+        <!-- Cinema Screen & Controls Viewport -->
+        <div class="cinema-column">
+          <div
+            #playerStage
+            class="player-stage"
+            [class.playing]="tour.isPlaying()"
+            (click)="tour.togglePlay()"
+          >
+            <!-- Ambient Cinema Backdrop Glow -->
+            <div class="ambient-glow" [attr.data-chapter]="tour.currentChapter().id"></div>
+
+            <!-- Visual Stage Content (Simulated Interactive UI by Chapter) -->
+            <div class="stage-screen">
+              <!-- CHAPTER 1: THE GRIND LOOP -->
+              @if (tour.currentChapter().id === 'welcome') {
+                <div class="sim-screen sim-welcome">
+                  <div class="sim-hero-badge">
+                    <span class="streak-flame">🔥</span>
+                    <div class="streak-text">
+                      <span class="streak-val">14 Days</span>
+                      <span class="streak-lbl">Active Streak</span>
+                    </div>
+                  </div>
+
+                  <div class="sim-xp-card">
+                    <div class="xp-head">
+                      <span>Level 4 · Specialist</span>
+                      <span class="xp-val">+150 XP Today</span>
+                    </div>
+                    <div class="xp-bar">
+                      <div class="xp-fill"></div>
+                    </div>
+                  </div>
+
+                  <div class="sim-heatmap">
+                    <span class="grid-label">GitHub-Style Activity Heatmap</span>
+                    <div class="heatmap-dots">
+                      @for (i of [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21]; track i) {
+                        <div class="dot" [class.active]="i % 2 === 0 || i > 12"></div>
+                      }
+                    </div>
+                  </div>
+                </div>
+              }
+
+              <!-- CHAPTER 2: STRIVER SDE SHEET -->
+              @if (tour.currentChapter().id === 'sheet') {
+                <div class="sim-screen sim-sheet">
+                  <div class="sim-search-bar">
+                    <span class="search-icon">🔍</span>
+                    <span class="search-typed">Search: Two Sum, DP, Graphs...</span>
+                    <span class="filter-pill">Difficulty: All</span>
+                  </div>
+
+                  <div class="sim-problems-list">
+                    <div class="prob-row solved">
+                      <span class="check">✓</span>
+                      <span class="prob-num">01.</span>
+                      <span class="prob-name">Two Sum</span>
+                      <span class="tag easy">Easy</span>
+                      <span class="prob-cta">Code</span>
+                    </div>
+                    <div class="prob-row solving">
+                      <span class="check pulse">○</span>
+                      <span class="prob-num">15.</span>
+                      <span class="prob-name">3Sum Problem</span>
+                      <span class="tag med">Medium</span>
+                      <span class="prob-cta">Code</span>
+                    </div>
+                    <div class="prob-row">
+                      <span class="check">○</span>
+                      <span class="prob-num">42.</span>
+                      <span class="prob-name">Trapping Rain Water</span>
+                      <span class="tag hard">Hard</span>
+                      <span class="prob-cta">Code</span>
+                    </div>
+                  </div>
+                </div>
+              }
+
+              <!-- CHAPTER 3: CODE RUNNER -->
+              @if (tour.currentChapter().id === 'code') {
+                <div class="sim-screen sim-code">
+                  <div class="code-window-bar">
+                    <div class="win-dots">
+                      <span class="w-dot red"></span>
+                      <span class="w-dot yellow"></span>
+                      <span class="w-dot green"></span>
+                    </div>
+                    <span class="win-tab active">Solution.java</span>
+                    <span class="win-tab">Solution.py</span>
+                    <span class="win-lang">Java 17 (OpenJDK)</span>
+                  </div>
+
+                  <pre class="code-body"><code><span class="kw">class</span> <span class="cls">Solution</span> &#123;
+    <span class="kw">public int</span>[] <span class="fn">twoSum</span>(<span class="kw">int</span>[] nums, <span class="kw">int</span> target) &#123;
+        <span class="cls">Map</span>&lt;<span class="cls">Integer</span>, <span class="cls">Integer</span>&gt; seen = <span class="kw">new</span> <span class="cls">HashMap</span>&lt;&gt;();
+        <span class="kw">for</span> (<span class="kw">int</span> i = <span class="num">0</span>; i &lt; nums.length; i++) &#123;
+            <span class="kw">int</span> diff = target - nums[i];
+            <span class="kw">if</span> (seen.containsKey(diff)) <span class="kw">return new int</span>[] &#123; seen.get(diff), i &#125;;
+            seen.put(nums[i], i);
+        &#125;
+        <span class="kw">return new int</span>[<span class="num">0</span>];
+    &#125;
+&#125;</code></pre>
+
+                  <div class="code-terminal">
+                    <div class="term-status">
+                      <span class="term-check">✓</span>
+                      <span class="term-text">All Test Cases Passed (Runtime: 2ms · Piston Sandbox)</span>
+                    </div>
+                  </div>
+                </div>
+              }
+
+              <!-- CHAPTER 4: SPACED REPETITION -->
+              @if (tour.currentChapter().id === 'revision') {
+                <div class="sim-screen sim-revision">
+                  <div class="ladder-header">
+                    <span class="ladder-title">Spaced Repetition Retention Ladder</span>
+                    <span class="ladder-badge">Ebbinghaus Curve</span>
+                  </div>
+
+                  <div class="ladder-steps">
+                    <div class="ladder-step done">
+                      <span class="l-day">Day 1</span>
+                      <span class="l-dot"></span>
+                      <span class="l-sub">Immediate</span>
+                    </div>
+                    <div class="ladder-step done">
+                      <span class="l-day">Day 3</span>
+                      <span class="l-dot"></span>
+                      <span class="l-sub">Consolidate</span>
+                    </div>
+                    <div class="ladder-step active">
+                      <span class="l-day">Day 7</span>
+                      <span class="l-dot pulse"></span>
+                      <span class="l-sub">Due Today</span>
+                    </div>
+                    <div class="ladder-step">
+                      <span class="l-day">Day 14</span>
+                      <span class="l-dot"></span>
+                      <span class="l-sub">Long-term</span>
+                    </div>
+                    <div class="ladder-step">
+                      <span class="l-day">Day 30</span>
+                      <span class="l-dot"></span>
+                      <span class="l-sub">Mastery</span>
+                    </div>
+                  </div>
+
+                  <div class="revision-card-sample">
+                    <span class="rev-alert">🔔 3 Problems Scheduled for Revision Today</span>
+                    <div class="rev-actions">
+                      <span class="rev-btn red">Hard (Repeat Day 1)</span>
+                      <span class="rev-btn yellow">Good (Advance)</span>
+                      <span class="rev-btn green">Easy (Lock in)</span>
+                    </div>
+                  </div>
+                </div>
+              }
+
+              <!-- CHAPTER 5: STUDY ARTICLES -->
+              @if (tour.currentChapter().id === 'articles') {
+                <div class="sim-screen sim-articles">
+                  <div class="subject-chips">
+                    <span class="chip active">System Design (34)</span>
+                    <span class="chip">Apache Kafka (28)</span>
+                    <span class="chip">Spring Boot (42)</span>
+                    <span class="chip">Concurrency (26)</span>
+                    <span class="chip">SQL Internals (18)</span>
+                  </div>
+
+                  <div class="article-preview-card">
+                    <div class="art-meta">
+                      <span class="art-sub">Apache Kafka & Messaging</span>
+                      <span class="art-time">8 min read · Curated</span>
+                    </div>
+                    <h3 class="art-title">Kafka Partitions, Consumer Groups & Rebalancing Explained</h3>
+                    <p class="art-snippet">
+                      How consumer rebalancing protocols work under the hood, cooperative sticky assignors,
+                      and avoiding partition starvation under high throughput workloads.
+                    </p>
+                    <div class="art-tags">
+                      <span class="atag">kafka</span>
+                      <span class="atag">distributed-systems</span>
+                      <span class="atag">architecture</span>
+                    </div>
+                  </div>
+                </div>
+              }
+
+              <!-- CHAPTER 6: AI GRIND BUDDY -->
+              @if (tour.currentChapter().id === 'buddy') {
+                <div class="sim-screen sim-buddy">
+                  <div class="chat-header-sim">
+                    <span class="bot-icon">🤖</span>
+                    <span class="bot-name">Grind Buddy (AI DSA Tutor)</span>
+                    <span class="online-tag">Online</span>
+                  </div>
+
+                  <div class="chat-messages-sim">
+                    <div class="msg user">
+                      I am getting TLE on Longest Substring Without Repeating Characters. Any hints?
+                    </div>
+                    <div class="msg bot">
+                      <p><strong>Hint:</strong> Instead of checking all substrings in O(N^2), try the <strong>Sliding Window</strong> pattern.</p>
+                      <p>Keep a left and right pointer with a character set. When you encounter a duplicate, shrink the window from the left until the duplicate is gone!</p>
+                      <div class="complexity-box">Time Complexity: O(N) · Space: O(min(N, M))</div>
+                    </div>
+                  </div>
+                </div>
+              }
+
+              <!-- CHAPTER 7: COMMUNITY & LEADERBOARD -->
+              @if (tour.currentChapter().id === 'community') {
+                <div class="sim-screen sim-community">
+                  <div class="podium-row">
+                    <div class="podium rank-2">
+                      <div class="pod-avatar">🥈</div>
+                      <span class="pod-name">&#64;sarah_dev</span>
+                      <span class="pod-xp">4,820 XP</span>
+                      <div class="pod-bar silver">2</div>
+                    </div>
+                    <div class="podium rank-1">
+                      <div class="pod-crown">👑</div>
+                      <div class="pod-avatar">🥇</div>
+                      <span class="pod-name">&#64;alex_code</span>
+                      <span class="pod-xp">6,150 XP</span>
+                      <div class="pod-bar gold">1</div>
+                    </div>
+                    <div class="podium rank-3">
+                      <div class="pod-avatar">🥉</div>
+                      <span class="pod-name">&#64;nikhil_m</span>
+                      <span class="pod-xp">3,940 XP</span>
+                      <div class="pod-bar bronze">3</div>
+                    </div>
+                  </div>
+
+                  <div class="dm-preview-bubble">
+                    <span class="dm-badge">💬 Peer Direct Messaging</span>
+                    <span class="dm-text">"Hey! Want to do a mock interview on Graph Algorithms this evening?"</span>
+                  </div>
+                </div>
+              }
+            </div>
+
+            <!-- Big Center Play Button Overlay when paused -->
+            @if (!tour.isPlaying()) {
+              <div class="center-play-overlay">
+                <button
+                  type="button"
+                  class="center-play-btn"
+                  aria-label="Play video"
+                  (click)="$event.stopPropagation(); tour.play()"
+                >
+                  <span class="play-icon" aria-hidden="true">▶</span>
+                </button>
+              </div>
+            }
+
+            <!-- Live Subtitles / Closed Captions (CC) Overlay -->
+            @if (tour.captionsEnabled() && tour.currentCaption()) {
+              <div class="captions-overlay" aria-live="polite">
+                <p class="caption-text">{{ tour.currentCaption() }}</p>
+              </div>
+            }
+          </div>
+
+          <!-- Video Controls Toolbar -->
+          <div class="controls-toolbar" (click)="$event.stopPropagation()">
+            <!-- Scrubber Timeline with Chapter Markers -->
+            <div
+              class="scrubber-track"
+              role="slider"
+              tabindex="0"
+              aria-label="Seek video position"
+              [attr.aria-valuemin]="0"
+              [attr.aria-valuemax]="tour.totalDuration"
+              [attr.aria-valuenow]="tour.currentTime()"
+              (click)="onScrubberClick($event)"
+            >
+              <div class="scrubber-buffered" [style.width.%]="100"></div>
+              <div class="scrubber-progress" [style.width.%]="tour.progressPercent()"></div>
+              <div class="scrubber-thumb" [style.left.%]="tour.progressPercent()"></div>
+
+              <!-- Chapter Breakpoint markers -->
+              @for (chap of tour.chapters; track chap.id) {
+                <div
+                  class="chapter-marker"
+                  [style.left.%]="(chap.startTime / tour.totalDuration) * 100"
+                  [title]="chap.title + ' (' + formatTime(chap.startTime) + ')'"
+                ></div>
+              }
+            </div>
+
+            <!-- Controls Row: Play/Pause, Skips, Time, Speed, CC, Sound, Fullscreen -->
+            <div class="controls-row">
+              <div class="left-controls">
+                <button
+                  type="button"
+                  class="ctrl-btn play-pause-btn"
+                  [attr.aria-label]="tour.isPlaying() ? 'Pause (Space)' : 'Play (Space)'"
+                  (click)="tour.togglePlay()"
+                >
+                  @if (tour.isPlaying()) {
+                    <span aria-hidden="true">⏸</span>
+                  } @else {
+                    <span aria-hidden="true">▶</span>
+                  }
+                </button>
+
+                <button
+                  type="button"
+                  class="ctrl-btn"
+                  aria-label="Skip backward 10 seconds"
+                  (click)="tour.skip(-10)"
+                  title="Rewind 10s (←)"
+                >
+                  ↺ 10s
+                </button>
+
+                <button
+                  type="button"
+                  class="ctrl-btn"
+                  aria-label="Skip forward 10 seconds"
+                  (click)="tour.skip(10)"
+                  title="Forward 10s (→)"
+                >
+                  10s ↻
+                </button>
+
+                <!-- Time display -->
+                <div class="time-display" aria-live="off">
+                  <span class="curr-time">{{ currentTimeFormatted() }}</span>
+                  <span class="sep">/</span>
+                  <span class="total-time">{{ totalDurationFormatted() }}</span>
+                </div>
+              </div>
+
+              <div class="right-controls">
+                <!-- Speed selector -->
+                <div class="speed-selector">
+                  @for (r of rates; track r) {
+                    <button
+                      type="button"
+                      class="speed-btn"
+                      [class.active]="tour.playbackRate() === r"
+                      (click)="tour.setRate(r)"
+                    >
+                      {{ r }}x
+                    </button>
+                  }
+                </div>
+
+                <!-- CC toggle -->
+                <button
+                  type="button"
+                  class="ctrl-btn cc-btn"
+                  [class.active]="tour.captionsEnabled()"
+                  [attr.aria-label]="tour.captionsEnabled() ? 'Turn captions off (C)' : 'Turn captions on (C)'"
+                  (click)="tour.toggleCaptions()"
+                  title="Closed Captions (C)"
+                >
+                  CC
+                </button>
+
+                <!-- Mute toggle -->
+                <button
+                  type="button"
+                  class="ctrl-btn mute-btn"
+                  [class.muted]="tour.isMuted()"
+                  [attr.aria-label]="tour.isMuted() ? 'Unmute (M)' : 'Mute (M)'"
+                  (click)="tour.toggleMute()"
+                  title="Mute/Unmute (M)"
+                >
+                  {{ tour.isMuted() ? '🔇' : '🔊' }}
+                </button>
+
+                <!-- Fullscreen -->
+                <button
+                  type="button"
+                  class="ctrl-btn fullscreen-btn"
+                  aria-label="Toggle Fullscreen (F)"
+                  (click)="toggleFullscreen()"
+                  title="Fullscreen (F)"
+                >
+                  ⛶
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Chapters Playlist Sidebar -->
+        <aside class="chapters-sidebar" aria-label="Video Tour Chapters">
+          <div class="sidebar-header">
+            <h3>Chapters</h3>
+            <span class="badge">{{ tour.chapters.length }} Sections</span>
+          </div>
+
+          <div class="chapters-list" role="list">
+            @for (chap of tour.chapters; track chap.id; let idx = $index) {
+              <div
+                class="chapter-item"
+                [class.active]="tour.currentChapterIndex() === idx"
+                (click)="tour.seekToChapter(idx)"
+                role="button"
+                tabindex="0"
+                (keydown.enter)="tour.seekToChapter(idx)"
+                (keydown.space)="tour.seekToChapter(idx)"
+              >
+                <div class="chap-left">
+                  <span class="chap-icon">{{ chap.icon }}</span>
+                  <div class="chap-info">
+                    <div class="chap-title-row">
+                      <span class="chap-num">{{ idx + 1 }}.</span>
+                      <strong class="chap-title">{{ chap.title }}</strong>
+                    </div>
+                    <span class="chap-sub">{{ chap.subtitle }}</span>
+                  </div>
+                </div>
+
+                <div class="chap-right">
+                  <span class="chap-timestamp">{{ formatTime(chap.startTime) }}</span>
+                  @if (tour.currentChapterIndex() === idx && tour.isPlaying()) {
+                    <span class="chap-playing-badge" aria-label="Currently playing">▶</span>
+                  }
+                </div>
+
+                <!-- Mini progress line for this chapter -->
+                <div
+                  class="chap-progress-line"
+                  [style.width.%]="getChapterProgress(chap)"
+                ></div>
+              </div>
+            }
+          </div>
+
+          <!-- Feature Quick Action Box -->
+          <div class="feature-action-box">
+            <span class="action-tag">Ready to try this feature?</span>
+            <button
+              type="button"
+              class="btn btn-sm action-btn"
+              (click)="tour.navigateToFeature(tour.currentChapter().ctaLink)"
+            >
+              {{ tour.currentChapter().ctaText }} &rarr;
+            </button>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </div>
+}

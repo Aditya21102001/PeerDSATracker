@@ -29,6 +29,9 @@
 <!-- Product tour. Renders nothing unless the tour is active; sits above every route. -->
 <app-tour-overlay />
 
+<!-- Video tour guide. Renders nothing unless open; sits above every route. -->
+<app-video-tour-modal />
+
 <!-- Floating study assistant, only for signed-in users. -->
 @if (auth.isAuthenticated()) {
   <app-chat-widget />

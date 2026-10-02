@@ -39,6 +39,7 @@ spring:
 
   flyway:
     enabled: true
+    placeholder-replacement: false
     # Migrations MUST use the DIRECT (unpooled) endpoint. Neon's PgBouncer runs
     # in transaction mode, which breaks Flyway's session-level advisory lock.
     url: ${NEON_UNPOOLED_URL}

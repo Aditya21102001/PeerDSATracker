@@ -13,6 +13,7 @@ import { ActivityService } from '../../core/services/activity.service';
 import { AuthStore } from '../../core/services/auth.store';
 import { InsightsService } from '../../core/services/insights.service';
 import { TourService } from '../../core/services/tour.service';
+import { VideoTourService } from '../../core/services/video-tour.service';
 import { HeatmapCalendar } from '../../shared/heatmap-calendar';
 import { MasteryChart } from '../../shared/mastery-chart/mastery-chart';
 import { MailSummaryCard, MailSummaryItem } from '../../shared/mail-summary-card/mail-summary-card';
@@ -56,6 +57,7 @@ import { Spinner } from '../../shared/spinner';
                Google has never had one, and its owner has nowhere else to go looking. -->
           <a routerLink="/security">Password</a>
           <a routerLink="/guide">Guide</a>
+          <button type="button" class="link video-tour-btn" (click)="videoTour.open()" title="Watch 2-minute video tour">🎬 Tour</button>
           <button type="button" class="link" (click)="signOut()">Sign out</button>
         </nav>
       </header>
@@ -172,6 +174,7 @@ export class Dashboard {
   private readonly insights = inject(InsightsService);
   private readonly auth = inject(AuthStore);
   private readonly tour = inject(TourService);
+  protected readonly videoTour = inject(VideoTourService);
 
   /** Captured once at construction: templates must not call new Date(). */
   protected readonly today = new Date();

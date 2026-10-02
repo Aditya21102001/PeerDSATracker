@@ -8,9 +8,11 @@ import { MobileNav } from './shared/mobile-nav/mobile-nav';
 import { ThemeToggle } from './shared/theme-toggle';
 import { TourOverlay } from './shared/tour-overlay';
 
+import { VideoTourModal } from './shared/video-tour-modal/video-tour-modal';
+
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, ThemeToggle, TourOverlay, ChatWidget, MobileNav, ColdStartNotice, AppFooter],
+  imports: [RouterOutlet, ThemeToggle, TourOverlay, VideoTourModal, ChatWidget, MobileNav, ColdStartNotice, AppFooter],
   templateUrl: './app.html',
   styleUrl: './app.scss',
 })
