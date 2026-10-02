@@ -1037,3 +1037,50 @@
     background: rgba(255, 255, 255, 0.08);
   }
 }
+
+.interview-error-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2, 0.5rem);
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-md, 8px);
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #fca5a5;
+  font-size: 0.88rem;
+  line-height: 1.4;
+  margin-bottom: var(--sp-3, 0.75rem);
+  animation: fadeIn 0.2s ease-in-out;
+
+  .error-icon {
+    font-size: 1.1rem;
+    flex-shrink: 0;
+  }
+
+  .error-msg {
+    flex: 1;
+    font-weight: 500;
+  }
+
+  .btn-dismiss-error {
+    background: transparent;
+    border: none;
+    color: #fca5a5;
+    font-size: 0.9rem;
+    cursor: pointer;
+    padding: 0.2rem 0.4rem;
+    border-radius: 4px;
+    opacity: 0.8;
+    transition: opacity 0.15s ease;
+
+    &:hover {
+      opacity: 1;
+      background: rgba(239, 68, 68, 0.2);
+    }
+  }
+
+  &.inline-error {
+    margin-top: var(--sp-2, 0.5rem);
+    margin-bottom: 0;
+  }
+}

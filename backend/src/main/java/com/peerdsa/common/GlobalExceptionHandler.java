@@ -32,6 +32,16 @@ public class GlobalExceptionHandler {
                 .body(new ApiError(Instant.now(), ex.getStatusCode().value(), ex.getReason(), Map.of()));
     }
 
+    /** Translates built-in Spring MVC exceptions (404 NoResourceFoundException, 405 MethodNotSupported, etc.) preserving status. */
+    @ExceptionHandler(org.springframework.web.ErrorResponseException.class)
+    public ResponseEntity<ApiError> handleErrorResponse(org.springframework.web.ErrorResponseException ex) {
+        String detail = ex.getBody() != null && ex.getBody().getDetail() != null
+                ? ex.getBody().getDetail()
+                : ex.getMessage();
+        return ResponseEntity.status(ex.getStatusCode())
+                .body(new ApiError(Instant.now(), ex.getStatusCode().value(), detail, Map.of()));
+    }
+
     /** Unparseable body or an unknown enum value: a client error, not a server error. */
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ApiError> handleUnreadable(HttpMessageNotReadableException ex) {

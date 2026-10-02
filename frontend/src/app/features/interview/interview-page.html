@@ -112,6 +112,14 @@
               </label>
             </div>
 
+            @if (errorMessage(); as err) {
+              <div class="interview-error-banner" role="alert">
+                <span class="error-icon">⚠️</span>
+                <span class="error-msg">{{ err }}</span>
+                <button type="button" class="btn-dismiss-error" (click)="errorMessage.set(null)" aria-label="Dismiss error">✕</button>
+              </div>
+            }
+
             <button
               type="button"
               class="btn-start"
@@ -225,6 +233,14 @@
               placeholder="Explain your approach, design decisions, data structures, and edge cases here. You can speak using the microphone or type directly..."
             ></textarea>
           </div>
+
+          @if (errorMessage(); as err) {
+            <div class="interview-error-banner inline-error" role="alert">
+              <span class="error-icon">⚠️</span>
+              <span class="error-msg">{{ err }}</span>
+              <button type="button" class="btn-dismiss-error" (click)="errorMessage.set(null)" aria-label="Dismiss error">✕</button>
+            </div>
+          }
 
           <div class="response-footer">
             <div class="char-count">

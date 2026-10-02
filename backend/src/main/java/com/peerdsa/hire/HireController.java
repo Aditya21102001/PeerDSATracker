@@ -30,6 +30,15 @@ public class HireController {
         this.hireService = hireService;
     }
 
+    private User requireUser(User user) {
+        if (user == null) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.UNAUTHORIZED,
+                    "Please sign in to access career portal features.");
+        }
+        return user;
+    }
+
     @PostMapping("/extract-resume")
     public ExtractedProfileDto extractResume(
             @AuthenticationPrincipal User user,
@@ -40,26 +49,26 @@ public class HireController {
 
     @GetMapping("/profile")
     public CandidateProfileDto getProfile(@AuthenticationPrincipal User user) {
-        return hireService.getProfile(user.getId());
+        return hireService.getProfile(requireUser(user).getId());
     }
 
     @PutMapping("/profile")
     public CandidateProfileDto saveProfile(
             @AuthenticationPrincipal User user,
             @RequestBody(required = false) SaveCandidateProfileRequest request) {
-        return hireService.saveProfile(user.getId(), request);
+        return hireService.saveProfile(requireUser(user).getId(), request);
     }
 
     @GetMapping("/jobs")
     public List<JobOpeningDto> listJobs(@AuthenticationPrincipal User user) {
-        return hireService.listJobs(user.getId());
+        return hireService.listJobs(requireUser(user).getId());
     }
 
     @PostMapping("/jobs/{jobId}/apply")
     public JobApplicationDto apply(
             @AuthenticationPrincipal User user,
             @PathVariable Long jobId) {
-        return hireService.apply(user.getId(), jobId);
+        return hireService.apply(requireUser(user).getId(), jobId);
     }
 
     @PostMapping("/apply-all")
@@ -67,11 +76,11 @@ public class HireController {
             @AuthenticationPrincipal User user,
             @RequestBody(required = false) ApplyAllRequest request) {
         Integer threshold = request != null ? request.minMatchScore() : 70;
-        return hireService.applyAllMatching(user.getId(), threshold);
+        return hireService.applyAllMatching(requireUser(user).getId(), threshold);
     }
 
     @GetMapping("/applications")
     public List<JobApplicationDto> listApplications(@AuthenticationPrincipal User user) {
-        return hireService.listApplications(user.getId());
+        return hireService.listApplications(requireUser(user).getId());
     }
 }

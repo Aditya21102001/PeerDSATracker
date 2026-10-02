@@ -37,6 +37,7 @@ export class InterviewPage implements OnInit, OnDestroy {
   protected readonly isSubmitting = signal<boolean>(false);
   protected readonly isStarting = signal<boolean>(false);
   protected readonly hintVisible = signal<boolean>(false);
+  protected readonly errorMessage = signal<string | null>(null);
   protected readonly latestEvaluation = signal<{ score: number; feedback: string } | null>(null);
 
   // Audio / Speech
@@ -144,6 +145,7 @@ export class InterviewPage implements OnInit, OnDestroy {
 
   protected startInterview(): void {
     this.isStarting.set(true);
+    this.errorMessage.set(null);
     const req: StartInterviewRequest = {
       track: this.selectedTrack(),
       targetRole: this.targetRole(),
@@ -153,6 +155,7 @@ export class InterviewPage implements OnInit, OnDestroy {
     this.interviewService.startInterview(req).subscribe({
       next: (session) => {
         this.isStarting.set(false);
+        this.errorMessage.set(null);
         this.currentSession.set(session);
         this.currentTurnIndex.set(1);
         this.candidateAnswer.set('');
@@ -164,8 +167,14 @@ export class InterviewPage implements OnInit, OnDestroy {
           this.speakText(session.turns[0].question);
         }
       },
-      error: () => {
+      error: (err) => {
         this.isStarting.set(false);
+        const detail =
+          err.error?.message ||
+          (err.status === 401
+            ? 'Please sign in to start an AI mock interview session.'
+            : 'Could not start interview room. The backend service may be waking up or deploying. Please wait a moment and try again.');
+        this.errorMessage.set(detail);
       },
     });
   }
@@ -178,11 +187,13 @@ export class InterviewPage implements OnInit, OnDestroy {
     if (!s || !ans || this.isSubmitting()) return;
 
     this.isSubmitting.set(true);
+    this.errorMessage.set(null);
     this.stopSpeaking();
 
     this.interviewService.submitAnswer(s.id, ans).subscribe({
       next: (evalResult) => {
         this.isSubmitting.set(false);
+        this.errorMessage.set(null);
         this.latestEvaluation.set({
           score: evalResult.score,
           feedback: evalResult.aiEvaluation,
@@ -209,8 +220,12 @@ export class InterviewPage implements OnInit, OnDestroy {
           }
         });
       },
-      error: () => {
+      error: (err) => {
         this.isSubmitting.set(false);
+        const detail =
+          err.error?.message ||
+          'Could not submit answer for evaluation. Please check your network and try again.';
+        this.errorMessage.set(detail);
       },
     });
   }
@@ -314,6 +329,7 @@ export class InterviewPage implements OnInit, OnDestroy {
 
   protected restart(): void {
     this.stopSpeaking();
+    this.errorMessage.set(null);
     this.currentSession.set(null);
     this.candidateAnswer.set('');
     this.latestEvaluation.set(null);

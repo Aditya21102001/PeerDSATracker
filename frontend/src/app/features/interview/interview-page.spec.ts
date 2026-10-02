@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { of } from 'rxjs';
-import { describe, expect, it } from 'vitest';
+import { of, throwError } from 'rxjs';
+import { beforeEach, describe, expect, it } from 'vitest';
 import {
   InterviewSession,
   TurnEvaluation,
@@ -127,5 +127,42 @@ describe('InterviewPage — Interactive AI Technical Mock Interviewer', () => {
     expect((component as any).hintVisible()).toBe(false);
     (component as any).toggleHint();
     expect((component as any).hintVisible()).toBe(true);
+  });
+
+  it('should display error message when startInterview fails', () => {
+    const errorService = {
+      startInterview: () => throwError(() => ({ status: 500, error: { message: 'Server is currently starting up.' } })),
+      submitAnswer: () => of(mockTurnEvaluation),
+      getInterview: () => of(mockSession),
+      listInterviews: () => of([mockSession]),
+    };
+
+    const errFixture = TestBed.createComponent(InterviewPage);
+    const errComp = errFixture.componentInstance;
+    (errComp as any).interviewService = errorService;
+
+    (errComp as any).startInterview();
+    errFixture.detectChanges();
+
+    expect((errComp as any).isStarting()).toBe(false);
+    expect((errComp as any).errorMessage()).toBe('Server is currently starting up.');
+  });
+
+  it('should display 401 sign in error message when unauthenticated', () => {
+    const authErrorService = {
+      startInterview: () => throwError(() => ({ status: 401 })),
+      submitAnswer: () => of(mockTurnEvaluation),
+      getInterview: () => of(mockSession),
+      listInterviews: () => of([mockSession]),
+    };
+
+    const authFixture = TestBed.createComponent(InterviewPage);
+    const authComp = authFixture.componentInstance;
+    (authComp as any).interviewService = authErrorService;
+
+    (authComp as any).startInterview();
+    authFixture.detectChanges();
+
+    expect((authComp as any).errorMessage()).toContain('Please sign in to start an AI mock interview session.');
   });
 });
