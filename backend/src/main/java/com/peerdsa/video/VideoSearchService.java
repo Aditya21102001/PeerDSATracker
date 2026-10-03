@@ -219,9 +219,13 @@ public class VideoSearchService {
 
                 if (marker != -1) {
                     int jsonStart = marker + "ytInitialData = ".length();
-                    int jsonEnd = html.indexOf("};", jsonStart) + 1;
+                    int scriptEnd = html.indexOf("</script>", jsonStart);
+                    int jsonEnd = scriptEnd > jsonStart ? scriptEnd : html.indexOf("};", jsonStart) + 1;
                     if (jsonEnd > jsonStart) {
-                        String jsonStr = html.substring(jsonStart, jsonEnd);
+                        String jsonStr = html.substring(jsonStart, jsonEnd).trim();
+                        if (jsonStr.endsWith(";")) {
+                            jsonStr = jsonStr.substring(0, jsonStr.length() - 1).trim();
+                        }
                         JsonNode root = objectMapper.readTree(jsonStr);
 
                         JsonNode contents = root.path("contents")
@@ -292,7 +296,7 @@ public class VideoSearchService {
                 matches.add(v);
             }
         }
-        return matches.isEmpty() ? CURATED_VIDEOS.subList(0, Math.min(10, CURATED_VIDEOS.size())) : matches;
+        return matches;
     }
 
     public List<VideoSearchResult> getCuratedRecommendations() {

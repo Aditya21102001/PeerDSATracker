@@ -276,7 +276,18 @@ textarea {
 :focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
+  box-shadow: 0 0 0 3px var(--accent-soft);
   border-radius: var(--r-sm);
+}
+
+/* Ensure all interactive controls have clear cursor affordance */
+button:not(:disabled),
+a[href],
+select,
+summary,
+[role='button']:not([aria-disabled='true']),
+[role='tab'] {
+  cursor: pointer;
 }
 
 ::selection {

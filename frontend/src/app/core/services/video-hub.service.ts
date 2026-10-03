@@ -90,7 +90,7 @@ export class VideoHubService {
 
   // --- Video Search ----------------------------------------------------------
 
-  searchVideos(query: string) {
+  searchVideos(query: string, autoSelectFirst: boolean = false) {
     const q = (query || '').trim();
     if (!q) {
       this.loadCuratedVideos();
@@ -145,9 +145,21 @@ export class VideoHubService {
           const list = results && results.length > 0 ? results : this.searchClientCurated(q);
           this.searchResultsSignal.set(list);
           this.isSearchingSignal.set(false);
+          if (autoSelectFirst && list.length > 0) {
+            this.selectVideo(list[0]);
+          }
         }),
       )
       .subscribe();
+  }
+
+  playTopSearchResult(): VideoSearchResult | null {
+    const list = this.searchResultsSignal();
+    if (list && list.length > 0) {
+      this.selectVideo(list[0]);
+      return list[0];
+    }
+    return null;
   }
 
   loadCuratedVideos() {

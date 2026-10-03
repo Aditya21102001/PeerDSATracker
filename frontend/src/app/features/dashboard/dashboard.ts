@@ -36,7 +36,7 @@ import { Spinner } from '../../shared/spinner';
         <h1>⚡ The Grind ⚡</h1>
         <!-- Who is signed in. Hidden on phones, where the More sheet carries the same block. -->
         @if (me(); as user) {
-          <a class="account" routerLink="/security">
+          <a id="dash-account-link" class="account" routerLink="/security" aria-label="Account security and profile for {{ user.displayName || user.username }}">
             <span class="avatar" aria-hidden="true">{{ user.displayName?.charAt(0)?.toUpperCase() || user.username.charAt(0).toUpperCase() }}</span>
             <span class="identity">
               <strong>{{ user.displayName || user.username }}</strong>
@@ -44,26 +44,24 @@ import { Spinner } from '../../shared/spinner';
             </span>
           </a>
         }
-        <nav data-tour="nav">
-          <a routerLink="/sheet">Sheet</a>
-          <a routerLink="/revision">Revision</a>
-          <a routerLink="/notes">Notes</a>
-          <a routerLink="/blog">Articles</a>
-          <a routerLink="/study-guides">Study Guides</a>
-          <a routerLink="/videos">Videos</a>
-          <a routerLink="/hire">Hire</a>
-          <a routerLink="/interview">AI Interview</a>
-          <a routerLink="/proctor">AI Test</a>
-          <a routerLink="/peers">Peers</a>
-          <a routerLink="/messages">Messages</a>
-          <a routerLink="/leaderboard">Leaderboard</a>
-          <a routerLink="/profile">Platforms</a>
-          <!-- Set or change a password. Reachable from here because an account created through
-               Google has never had one, and its owner has nowhere else to go looking. -->
-          <a routerLink="/security">Password</a>
-          <a routerLink="/guide">Guide</a>
-          <button type="button" class="link video-tour-btn" (click)="videoTour.open()" title="Watch 2-minute video tour">🎬 Tour</button>
-          <button type="button" class="link" (click)="signOut()">Sign out</button>
+        <nav data-tour="nav" aria-label="Dashboard Primary Navigation">
+          <a id="dash-nav-sheet" routerLink="/sheet">Sheet</a>
+          <a id="dash-nav-videos" routerLink="/videos" class="highlight-link">📺 Videos</a>
+          <a id="dash-nav-interview" routerLink="/interview" class="highlight-link">🤖 AI Interview</a>
+          <a id="dash-nav-proctor" routerLink="/proctor">AI Test</a>
+          <a id="dash-nav-revision" routerLink="/revision">Revision</a>
+          <a id="dash-nav-notes" routerLink="/notes">Notes</a>
+          <a id="dash-nav-blog" routerLink="/blog">Articles</a>
+          <a id="dash-nav-study-guides" routerLink="/study-guides">Study Guides</a>
+          <a id="dash-nav-hire" routerLink="/hire">Hire</a>
+          <a id="dash-nav-peers" routerLink="/peers">Peers</a>
+          <a id="dash-nav-messages" routerLink="/messages">Messages</a>
+          <a id="dash-nav-leaderboard" routerLink="/leaderboard">Leaderboard</a>
+          <a id="dash-nav-profile" routerLink="/profile">Platforms</a>
+          <a id="dash-nav-security" routerLink="/security">Password</a>
+          <a id="dash-nav-guide" routerLink="/guide">Guide</a>
+          <button id="dash-btn-video-tour" type="button" class="link video-tour-btn" (click)="videoTour.open()" title="Watch 2-minute video tour">🎬 Tour</button>
+          <button id="dash-btn-signout" type="button" class="link sign-out" (click)="signOut()">Sign out</button>
         </nav>
       </header>
 
@@ -72,27 +70,86 @@ import { Spinner } from '../../shared/spinner';
       } @else if (error()) {
         <p class="error" role="alert">{{ error() }}</p>
       } @else {
-        <section class="tiles stagger" data-tour="stats">
-          <div class="tile">
+        <section class="tiles stagger" data-tour="stats" id="dash-tiles-section">
+          <a id="dash-tile-streak" routerLink="/sheet" class="tile interactive-tile" aria-label="Current day streak: {{ streak()?.current ?? 0 }} days. Click to view sheet.">
             <span class="value">{{ streak()?.current ?? 0 }}</span>
             <span class="label">Day streak</span>
-          </div>
-          <div class="tile">
+          </a>
+          <a id="dash-tile-longest" routerLink="/sheet" class="tile interactive-tile" aria-label="Longest streak: {{ streak()?.longest ?? 0 }} days. Click to view sheet.">
             <span class="value">{{ streak()?.longest ?? 0 }}</span>
             <span class="label">Longest streak</span>
-          </div>
-          <div class="tile">
+          </a>
+          <a id="dash-tile-xp" routerLink="/sheet" class="tile interactive-tile" aria-label="XP: {{ xp()?.xp ?? 0 }}, Level {{ xp()?.level ?? 1 }}. Click to view sheet.">
             <span class="value">{{ xp()?.xp ?? 0 }}</span>
             <span class="label">XP · level {{ xp()?.level ?? 1 }}</span>
-          </div>
-          <div class="tile">
+          </a>
+          <a id="dash-tile-badges" href="#dash-badges-section" class="tile interactive-tile" aria-label="Badges earned: {{ earnedCount() }} of {{ badges().length }}. Click to jump to badges.">
             <span class="value">{{ earnedCount() }}/{{ badges().length }}</span>
             <span class="label">Badges</span>
+          </a>
+        </section>
+
+        <!-- Quick Action Launchpad: High-contrast, interactive hubs -->
+        <section id="dash-quick-actions" class="quick-actions-section" aria-label="Quick Actions">
+          <div class="quick-actions-grid">
+            <a id="dash-quick-sheet" routerLink="/sheet" class="action-card action-sheet">
+              <span class="action-icon" aria-hidden="true">⚡</span>
+              <div class="action-info">
+                <strong>Problem Sheet</strong>
+                <small>474 curated problems</small>
+              </div>
+              <span class="action-tag">Solve →</span>
+            </a>
+
+            <a id="dash-quick-videos" routerLink="/videos" class="action-card action-videos">
+              <span class="action-icon" aria-hidden="true">📺</span>
+              <div class="action-info">
+                <strong>Video Hub &amp; Playlists</strong>
+                <small>Search YouTube &amp; embed</small>
+              </div>
+              <span class="action-tag new-tag">New</span>
+            </a>
+
+            <a id="dash-quick-interview" routerLink="/interview" class="action-card action-interview">
+              <span class="action-icon" aria-hidden="true">🤖</span>
+              <div class="action-info">
+                <strong>AI Mock Interview</strong>
+                <small>Real-time speech &amp; hints</small>
+              </div>
+              <span class="action-tag">Start →</span>
+            </a>
+
+            <a id="dash-quick-proctor" routerLink="/proctor" class="action-card action-proctor">
+              <span class="action-icon" aria-hidden="true">🎯</span>
+              <div class="action-info">
+                <strong>AI Challenge Test</strong>
+                <small>Timed challenges &amp; anti-cheat</small>
+              </div>
+              <span class="action-tag">Test →</span>
+            </a>
+
+            <a id="dash-quick-guides" routerLink="/study-guides" class="action-card action-guides">
+              <span class="action-icon" aria-hidden="true">📚</span>
+              <div class="action-info">
+                <strong>Study Guides</strong>
+                <small>DSA, Spring &amp; Angular</small>
+              </div>
+              <span class="action-tag">Read →</span>
+            </a>
+
+            <a id="dash-quick-hire" routerLink="/hire" class="action-card action-hire">
+              <span class="action-icon" aria-hidden="true">💼</span>
+              <div class="action-info">
+                <strong>Tech Jobs Matchmaker</strong>
+                <small>1-Click verified openings</small>
+              </div>
+              <span class="action-tag">Explore →</span>
+            </a>
           </div>
         </section>
 
         @if (xp(); as x) {
-          <section class="level" aria-label="Level progress">
+          <section id="dash-level-section" class="level" aria-label="Level progress">
             <div class="bar-row">
               <span>Level {{ x.level }}</span>
               <span>{{ x.xpToNextLevel }} XP to level {{ x.level + 1 }}</span>
@@ -109,16 +166,16 @@ import { Spinner } from '../../shared/spinner';
           </section>
         }
 
-        <section class="card" data-tour="heatmap">
+        <section id="dash-heatmap-section" class="card" data-tour="heatmap">
           <app-heatmap-calendar [days]="heatmap()" [today]="today" />
         </section>
 
-        <section class="card">
+        <section id="dash-digest-section" class="card">
           <h2>Daily digest</h2>
           <app-mail-summary-card [item]="dailyDigest()" />
         </section>
 
-        <section class="card">
+        <section id="dash-insights-section" class="card">
           <h2>Insights</h2>
           @if (insightsLoading()) {
             <app-spinner
@@ -145,11 +202,17 @@ import { Spinner } from '../../shared/spinner';
 
             @if (recommendations().length) {
               <h3>Revise next</h3>
-              <ul class="recs">
+              <ul class="recs" id="dash-recs-list">
                 @for (r of recommendations(); track r.problemId) {
-                  <li>
-                    <a [routerLink]="['/notes', r.problemId]">{{ r.title }}</a>
-                    <span class="reason">{{ r.reason }}</span>
+                  <li id="dash-rec-item-{{ r.problemId }}">
+                    <div class="rec-title-wrap">
+                      <a id="dash-rec-title-{{ r.problemId }}" [routerLink]="['/notes', r.problemId]" class="rec-title-link">{{ r.title }}</a>
+                      <span class="reason">{{ r.reason }}</span>
+                    </div>
+                    <div class="rec-actions">
+                      <a id="dash-rec-solve-btn-{{ r.problemId }}" [routerLink]="['/code', r.problemId]" class="btn btn-xs btn-primary">Solve</a>
+                      <a id="dash-rec-video-btn-{{ r.problemId }}" [routerLink]="['/videos']" [queryParams]="{ q: r.title }" class="btn btn-xs btn-ghost" title="Watch video explanation in Video Hub">📺 Video</a>
+                    </div>
                   </li>
                 }
               </ul>
@@ -157,11 +220,11 @@ import { Spinner } from '../../shared/spinner';
           }
         </section>
 
-        <section class="card">
+        <section id="dash-badges-section" class="card">
           <h2>Badges</h2>
-          <ul class="badges">
+          <ul class="badges" id="dash-badges-list">
             @for (b of badges(); track b.code) {
-              <li [class.earned]="b.earned" [title]="b.description ?? b.name">
+              <li id="dash-badge-{{ b.code }}" [class.earned]="b.earned" [title]="b.description ?? b.name">
                 <span class="icon" aria-hidden="true">{{ b.icon }}</span>
                 <span class="name">{{ b.name }}</span>
                 <span class="criteria">{{ b.criteriaValue }} {{ criteriaLabel(b) }}</span>

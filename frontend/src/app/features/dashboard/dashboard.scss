@@ -26,16 +26,63 @@ header {
   nav {
     display: flex;
     align-items: center;
-    gap: var(--sp-4);
+    gap: var(--sp-2);
     flex-wrap: wrap;
 
-    a {
+    a,
+    button.link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.35rem 0.75rem;
+      font-size: var(--fs-xs);
+      font-weight: 600;
       color: var(--text-muted);
-      font-size: var(--fs-sm);
-      font-weight: 500;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--r-full);
+      text-decoration: none;
+      white-space: nowrap;
+      cursor: pointer;
+      transition:
+        transform var(--t-fast) var(--ease),
+        background-color var(--t-fast) var(--ease),
+        border-color var(--t-fast) var(--ease),
+        color var(--t-fast) var(--ease),
+        box-shadow var(--t-fast) var(--ease);
 
       &:hover {
         color: var(--text);
+        background: var(--surface);
+        border-color: var(--border-strong);
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-sm);
+      }
+
+      &.highlight-link {
+        background: var(--accent-soft);
+        border-color: var(--accent);
+        color: var(--accent);
+        font-weight: 700;
+
+        &:hover {
+          background: var(--accent);
+          color: var(--on-accent);
+          border-color: var(--accent);
+        }
+      }
+
+      &:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+    }
+
+    button.link.sign-out {
+      &:hover {
+        background: var(--danger-soft);
+        border-color: var(--danger);
+        color: var(--danger);
       }
     }
   }
@@ -123,6 +170,9 @@ header {
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
   box-shadow: var(--shadow-sm);
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
   transition:
     transform var(--t-base) var(--ease),
     box-shadow var(--t-base) var(--ease),
@@ -148,6 +198,11 @@ header {
     &::before {
       width: 100%;
     }
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
   }
 
   /* Touch has no hover, so give the press itself some feedback. */
@@ -181,6 +236,110 @@ header {
 
   &:nth-child(3) .value {
     color: var(--xp);
+  }
+}
+
+/* --- Quick Actions Launchpad --- */
+.quick-actions-section {
+  padding: 0;
+  background: transparent;
+  border: none;
+}
+
+.quick-actions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: var(--sp-3);
+}
+
+.action-card {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  text-decoration: none;
+  color: var(--text);
+  box-shadow: var(--shadow-sm);
+  transition:
+    transform var(--t-fast) var(--ease),
+    box-shadow var(--t-fast) var(--ease),
+    border-color var(--t-fast) var(--ease);
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+    border-color: var(--border-strong);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  .action-icon {
+    font-size: 1.5rem;
+    flex-shrink: 0;
+  }
+
+  .action-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 0;
+    flex: 1;
+
+    strong {
+      font-size: var(--fs-xs);
+      font-weight: 700;
+      line-height: 1.25;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    small {
+      font-size: 0.72rem;
+      color: var(--text-faint);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+  }
+
+  .action-tag {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    flex-shrink: 0;
+
+    &.new-tag {
+      background: var(--flame-soft);
+      color: var(--flame);
+      padding: 0.1rem 0.4rem;
+      border-radius: var(--r-full);
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+  }
+
+  &.action-sheet:hover {
+    border-color: var(--accent);
+  }
+
+  &.action-videos:hover {
+    border-color: var(--flame);
+  }
+
+  &.action-interview:hover {
+    border-color: var(--accent);
+  }
+
+  &.action-proctor:hover {
+    border-color: var(--medium);
   }
 }
 
@@ -254,7 +413,7 @@ h3 {
   li {
     display: flex;
     justify-content: space-between;
-    align-items: baseline;
+    align-items: center;
     gap: var(--sp-3);
     padding: var(--sp-2) 0;
     font-size: var(--fs-sm);
@@ -265,10 +424,35 @@ h3 {
     }
   }
 
+  .rec-title-wrap {
+    display: flex;
+    align-items: baseline;
+    gap: var(--sp-2);
+    min-width: 0;
+    flex-wrap: wrap;
+  }
+
+  .rec-title-link {
+    font-weight: 600;
+    color: var(--text);
+
+    &:hover {
+      color: var(--accent);
+      text-decoration: underline;
+    }
+  }
+
   .reason {
     font-size: var(--fs-xs);
     color: var(--text-faint);
     white-space: nowrap;
+  }
+
+  .rec-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    flex-shrink: 0;
   }
 }
 
