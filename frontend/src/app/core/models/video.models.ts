@@ -16,6 +16,8 @@ export interface PlaylistItem {
   channelTitle: string;
   thumbnailUrl: string;
   duration?: string;
+  viewCount?: string;
+  publishedTime?: string;
   notes?: string;
   watched?: boolean;
   position?: number;

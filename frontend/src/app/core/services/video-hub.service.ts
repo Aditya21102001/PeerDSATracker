@@ -378,6 +378,8 @@ export class VideoHubService {
       channelTitle: video.channelTitle,
       thumbnailUrl: video.thumbnailUrl,
       duration: video.duration || '',
+      viewCount: video.viewCount || '',
+      publishedTime: video.publishedTime || '',
       notes: notes || '',
       watched: false,
       position: target.items.length,
