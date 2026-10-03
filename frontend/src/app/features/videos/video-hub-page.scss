@@ -24,6 +24,42 @@
   }
 }
 
+/* --- Uniquely Visible Interactive Elements & Accessible Focus --- */
+button,
+a,
+input,
+textarea,
+[role='button'] {
+  transition: transform var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease),
+    border-color var(--t-fast) var(--ease), background var(--t-fast) var(--ease);
+
+  &:focus-visible {
+    outline: 2px solid var(--accent) !important;
+    outline-offset: 2px !important;
+    box-shadow: 0 0 0 4px var(--accent-soft) !important;
+  }
+}
+
+.btn-search {
+  font-weight: 700;
+  box-shadow: var(--shadow-sm);
+
+  &:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+  }
+}
+
+.chip-btn {
+  &:hover {
+    transform: translateY(-1px);
+  }
+
+  &.active {
+    box-shadow: 0 0 0 2px var(--accent-soft);
+  }
+}
+
 /* --- Header --- */
 .vh-header {
   display: flex;
