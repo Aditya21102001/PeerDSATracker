@@ -164,7 +164,7 @@ export class ChatService {
       // non-JSON body
     }
     return response.status === 503
-      ? 'The assistant is unavailable right now. Try again shortly.'
-      : 'Something went wrong reaching the assistant.';
+      ? 'The assistant is experiencing high traffic. Please retry in a moment.'
+      : 'Could not reach the assistant. Please check your connection and retry.';
   }
 }

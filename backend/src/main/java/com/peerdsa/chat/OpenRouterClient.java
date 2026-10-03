@@ -88,19 +88,19 @@ public class OpenRouterClient {
                     HttpStatus.SERVICE_UNAVAILABLE, "Chat is not configured on this server.");
         }
 
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(props.baseUrl() + "/chat/completions"))
-                .timeout(props.readTimeout())
-                .header("Authorization", "Bearer " + props.apiKey())
-                .header("Content-Type", "application/json")
-                // OpenRouter uses these for app attribution on its dashboard; both are optional.
-                .header("HTTP-Referer", props.referer())
-                .header("X-Title", props.title())
-                .POST(HttpRequest.BodyPublishers.ofString(requestBody(messages)))
-                .build();
-
         for (int attempt = 1; ; attempt++) {
             try {
+                HttpRequest request = HttpRequest.newBuilder()
+                        .uri(URI.create(props.baseUrl() + "/chat/completions"))
+                        .timeout(props.readTimeout())
+                        .header("Authorization", "Bearer " + props.apiKey())
+                        .header("Content-Type", "application/json")
+                        // OpenRouter uses these for app attribution on its dashboard; both are optional.
+                        .header("HTTP-Referer", props.referer())
+                        .header("X-Title", props.title())
+                        .POST(HttpRequest.BodyPublishers.ofString(requestBody(messages, attempt - 1)))
+                        .build();
+
                 HttpResponse<java.io.InputStream> response =
                         httpClient.send(request, HttpResponse.BodyHandlers.ofInputStream());
 
@@ -186,6 +186,9 @@ public class OpenRouterClient {
     private static final List<String> DEFAULT_FREE_FALLBACKS = List.of(
             "qwen/qwen3.8-27b:free",
             "google/gemma-4-31b-it:free",
+            "google/gemma-4-26b-a4b-it:free",
+            "liquid/lfm-2.5-2.6b:free",
+            "nvidia/nemotron-3.5-lightning:free",
             "cohere/north-mini-code:free",
             "openrouter/free");
 
@@ -214,13 +217,19 @@ public class OpenRouterClient {
     }
 
     String requestBody(List<Turn> messages) {
+        return requestBody(messages, 0);
+    }
+
+    String requestBody(List<Turn> messages, int attemptIndex) {
         ObjectNode root = mapper.createObjectNode();
         List<String> models = resolveModels();
-        root.put("model", models.get(0));
+        int primaryIndex = models.isEmpty() ? 0 : (attemptIndex % models.size());
+        root.put("model", models.get(primaryIndex));
         if (models.size() > 1) {
             ArrayNode modelsArr = root.putArray("models");
-            for (String m : models) {
-                modelsArr.add(m);
+            for (int i = 0; i < models.size(); i++) {
+                int idx = (primaryIndex + i) % models.size();
+                modelsArr.add(models.get(idx));
             }
         }
         root.put("stream", true);

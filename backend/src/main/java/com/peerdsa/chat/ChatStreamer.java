@@ -30,14 +30,16 @@ public class ChatStreamer {
 
     private final ChatService chatService;
     private final OpenRouterClient openRouter;
+    private final DsaKnowledgeFallback fallbackTutor;
     private final ObjectMapper mapper;
     private final long emitterTimeoutMillis;
     private final ExecutorService executor;
 
-    public ChatStreamer(ChatService chatService, OpenRouterClient openRouter, ObjectMapper mapper,
-            OpenRouterProperties props) {
+    public ChatStreamer(ChatService chatService, OpenRouterClient openRouter, DsaKnowledgeFallback fallbackTutor,
+            ObjectMapper mapper, OpenRouterProperties props) {
         this.chatService = chatService;
         this.openRouter = openRouter;
+        this.fallbackTutor = fallbackTutor;
         this.mapper = mapper;
         // Outlast the upstream read budget so the client is never cut off before OpenRouter is.
         this.emitterTimeoutMillis = props.readTimeout().toMillis() + 30_000;
@@ -62,12 +64,35 @@ public class ChatStreamer {
     }
 
     private void runStream(SseEmitter emitter, ChatService.Prepared prepared) {
+        java.util.concurrent.atomic.AtomicBoolean hasStreamedTokens = new java.util.concurrent.atomic.AtomicBoolean(false);
         try {
-            String reply = openRouter.streamReply(
-                    openRouter.withSystemPrompt(prepared.turns()),
-                    token -> send(emitter, "token", mapper.writeValueAsString(token)));
+            String reply;
+            if (openRouter.isConfigured()) {
+                try {
+                    reply = openRouter.streamReply(
+                            openRouter.withSystemPrompt(prepared.turns()),
+                            token -> {
+                                hasStreamedTokens.set(true);
+                                send(emitter, "token", mapper.writeValueAsString(token));
+                            });
+                } catch (ResponseStatusException e) {
+                    if (hasStreamedTokens.get()) {
+                        // Some tokens were already delivered to user; preserve partial response
+                        throw e;
+                    }
+                    log.info("Upstream assistant unavailable ({}); engaging smart local DSA fallback tutor", e.getReason());
+                    reply = fallbackTutor.streamReply(
+                            prepared.turns(),
+                            token -> send(emitter, "token", mapper.writeValueAsString(token)));
+                }
+            } else {
+                log.info("Chat unconfigured; engaging smart local DSA fallback tutor");
+                reply = fallbackTutor.streamReply(
+                        prepared.turns(),
+                        token -> send(emitter, "token", mapper.writeValueAsString(token)));
+            }
 
-            if (!reply.isBlank()) {
+            if (reply != null && !reply.isBlank()) {
                 chatService.appendAssistant(prepared.conversationId(), reply);
             }
             send(emitter, "done", "{\"conversationId\":" + prepared.conversationId() + "}");

@@ -86,6 +86,12 @@ import { Spinner } from '../spinner';
                 <div class="hello">
                   <p>Hi! Ask me about a problem, an algorithm, or Big-O.</p>
                   <p class="faint">I give hints first — say “just show me” for a full solution.</p>
+                  <div class="quick-prompts">
+                    <button type="button" class="prompt-chip" (click)="askPrompt('Explain Two Sum optimal approach')">💡 Two Sum</button>
+                    <button type="button" class="prompt-chip" (click)="askPrompt('Sliding window pattern template')">⚡ Sliding Window</button>
+                    <button type="button" class="prompt-chip" (click)="askPrompt('How does Dijkstra algorithm work?')">🗺️ Dijkstra</button>
+                    <button type="button" class="prompt-chip" (click)="askPrompt('Dynamic programming 5-step framework')">🧩 DP Framework</button>
+                  </div>
                 </div>
               }
             }
@@ -102,7 +108,14 @@ import { Spinner } from '../spinner';
           }
 
           @if (error(); as e) {
-            <p class="error" role="alert">{{ e }}</p>
+            <div class="chat-error-banner" role="alert">
+              <span class="error-text">⚠️ {{ e }}</span>
+              @if (lastSentPrompt()) {
+                <button type="button" class="retry-pill" (click)="retryLastPrompt()" [disabled]="sending()">
+                  ↻ Retry
+                </button>
+              }
+            </div>
           }
         </div>
 
@@ -151,6 +164,7 @@ export class ChatWidget {
   protected readonly listLoading = signal(false);
   protected readonly threadLoading = signal(false);
   protected readonly draft = signal('');
+  protected readonly lastSentPrompt = signal<string>('');
 
   /** Client-side ids for optimistic messages, kept negative so they never collide with server ids. */
   private tempId = -1;
@@ -221,6 +235,7 @@ export class ChatWidget {
     this.messages.set([]);
     this.streaming.set('');
     this.error.set(null);
+    this.lastSentPrompt.set('');
     this.historyOpen.set(false);
   }
 
@@ -272,6 +287,25 @@ export class ChatWidget {
     }
   }
 
+  protected askPrompt(prompt: string): void {
+    if (this.sending()) {
+      return;
+    }
+    this.draft.set(prompt);
+    this.submit(new Event('submit'));
+  }
+
+  protected retryLastPrompt(): void {
+    const prompt = this.lastSentPrompt();
+    if (!prompt || this.sending()) {
+      return;
+    }
+    this.error.set(null);
+    this.streaming.set('');
+    this.sending.set(true);
+    void this.run(prompt);
+  }
+
   protected submit(event: Event): void {
     event.preventDefault();
     const content = this.draft().trim();
@@ -279,6 +313,7 @@ export class ChatWidget {
       return;
     }
 
+    this.lastSentPrompt.set(content);
     this.draft.set('');
     this.error.set(null);
     this.pushMessage('user', content);

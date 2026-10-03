@@ -211,7 +211,7 @@ app:
     # The free list rotates, hence an env var. The live list is public and needs no key:
     # GET https://openrouter.ai/api/v1/models and keep ids ending in ":free" or "openrouter/free".
     # The README has a ready-made one-liner under "OPENROUTER_MODEL goes stale on its own".
-    model: "${OPENROUTER_MODEL:qwen/qwen3.8-27b:free,google/gemma-4-31b-it:free,cohere/north-mini-code:free,openrouter/free}"
+    model: "${OPENROUTER_MODEL:google/gemma-4-26b-a4b-it:free,google/gemma-4-31b-it:free,qwen/qwen3.8-27b:free,liquid/lfm-2.5-2.6b:free,nvidia/nemotron-3.5-lightning:free,openrouter/free}"
     system-prompt: "${OPENROUTER_SYSTEM_PROMPT:You are Grind Buddy, a concise coding-interview tutor inside a DSA progress tracker. Help with data structures, algorithms, complexity analysis, and debugging. Prefer hints and step-by-step reasoning over dumping full solutions unless explicitly asked. Use short paragraphs and fenced code blocks. If a question is unrelated to programming or studying, gently steer back.}"
     # Most-recent messages replayed as context. Caps the token bill on a long thread.
     max-history: ${OPENROUTER_MAX_HISTORY:20}

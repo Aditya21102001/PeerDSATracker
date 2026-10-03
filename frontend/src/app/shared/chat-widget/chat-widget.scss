@@ -193,6 +193,32 @@ header {
       font-size: var(--fs-xs);
       color: var(--text-faint);
     }
+
+    .quick-prompts {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: var(--sp-2);
+      margin-top: var(--sp-3);
+    }
+
+    .prompt-chip {
+      background: var(--surface-2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 9999px;
+      padding: 0.3rem 0.7rem;
+      font-size: var(--fs-xs);
+      cursor: pointer;
+      transition: all var(--t-fast) var(--ease);
+
+      &:hover {
+        background: var(--accent);
+        color: var(--on-accent);
+        border-color: var(--accent);
+        transform: translateY(-1px);
+      }
+    }
   }
 }
 
@@ -250,6 +276,48 @@ header {
 @keyframes blink {
   50% {
     opacity: 0;
+  }
+}
+
+.chat-error-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  background: color-mix(in srgb, var(--danger, #ef4444) 12%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--danger, #ef4444) 30%, transparent);
+  border-radius: var(--r-md);
+  padding: var(--sp-2) var(--sp-3);
+  font-size: var(--fs-xs);
+  color: var(--text);
+
+  .error-text {
+    flex: 1;
+    line-height: 1.3;
+    color: var(--danger, #ef4444);
+    font-weight: 500;
+  }
+
+  .retry-pill {
+    flex: none;
+    background: var(--danger, #ef4444);
+    color: #fff;
+    border: none;
+    border-radius: var(--r-sm);
+    padding: 0.2rem 0.55rem;
+    font-size: var(--fs-xs);
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity var(--t-fast) var(--ease);
+
+    &:hover:not(:disabled) {
+      opacity: 0.9;
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
   }
 }
 
