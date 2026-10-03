@@ -62,6 +62,7 @@ import { Spinner } from '../../shared/spinner';
                 @if (p.youtubeUrl) {
                   <a [href]="p.youtubeUrl" target="_blank" rel="noopener">Video ↗</a>
                 }
+                <a [routerLink]="['/videos']" [queryParams]="{ q: p.title }" title="Search & watch video tutorial in Video Hub">Video Hub</a>
                 <a [routerLink]="['/notes', problemId()]">Note</a>
               </div>
             </div>

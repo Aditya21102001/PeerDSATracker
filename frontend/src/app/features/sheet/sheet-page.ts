@@ -151,6 +151,10 @@ const STATUSES: readonly ProblemStatus[] = ['SOLVED', 'ATTEMPTED', 'REVISIT'];
                 Code
               </a>
 
+              <a class="note" [routerLink]="['/videos']" [queryParams]="{ q: p.title }" [attr.aria-label]="'Video tutorial for ' + p.title">
+                Video
+              </a>
+
               @if (p.leetcodeUrl) {
                 <a [href]="p.leetcodeUrl" target="_blank" rel="noopener">LeetCode</a>
               } @else {

@@ -1,7 +1,7 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, ElementRef, ViewChild, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { AuthStore } from '../../core/services/auth.store';
 import { VideoHubService } from '../../core/services/video-hub.service';
 import { Playlist, PlaylistItem, VideoSearchResult } from '../../core/models/video.models';
@@ -42,7 +42,66 @@ import { Spinner } from '../../shared/spinner';
         </nav>
       </header>
 
-      <!-- Active Embedded Player & Interactive Notes Section -->
+      <!-- 1. PROMINENT TOP SEARCH & DISCOVERY BAR -->
+      <section class="search-section" aria-label="Search YouTube Videos" id="search-section">
+        <div class="search-bar-wrap card">
+          <div class="search-header-row">
+            <span class="search-title-label">🔍 YouTube Video Search &amp; Embed</span>
+            <span class="search-badge">Live YouTube API + oEmbed</span>
+          </div>
+
+          <form class="search-form" (submit)="onSearchSubmit($event)">
+            <span class="search-icon" aria-hidden="true">🔍</span>
+            <input
+              type="text"
+              class="search-input"
+              placeholder="Search YouTube videos (e.g. Striver Two Sum, DP Grid, System Design, or paste YouTube link/video ID...)"
+              [(ngModel)]="searchQuery"
+              name="query"
+              aria-label="Search YouTube videos"
+              #searchInput
+            />
+            @if (searchQuery.trim()) {
+              <button type="button" class="btn-clear" (click)="clearSearch()" aria-label="Clear search">✕</button>
+            }
+            <button type="submit" class="btn btn-primary btn-search" [disabled]="service.isSearching()">
+              @if (service.isSearching()) {
+                <app-spinner inline [size]="16" label="Searching" />
+              } @else {
+                Search
+              }
+            </button>
+          </form>
+
+          <!-- Direct Link Recognition Banner -->
+          @if (detectedDirectVideoId(); as directId) {
+            <div class="direct-link-banner">
+              <span class="banner-icon">⚡</span>
+              <span class="banner-text">Direct YouTube video recognized: <strong>{{ directId }}</strong></span>
+              <button type="button" class="btn btn-xs btn-accent" (click)="playDirectVideo(directId)">
+                ▶ Play Video Now
+              </button>
+            </div>
+          }
+
+          <!-- Quick Topic Filter Pills -->
+          <div class="filter-pills" role="group" aria-label="Quick topic filters">
+            <span class="pill-label">Suggested:</span>
+            @for (chip of quickChips; track chip.label) {
+              <button
+                type="button"
+                class="chip-btn"
+                [class.active]="selectedChip() === chip.label"
+                (click)="applyChip(chip)"
+              >
+                {{ chip.label }}
+              </button>
+            }
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. ACTIVE EMBEDDED PLAYER & INTERACTIVE NOTES -->
       @if (service.currentVideo(); as video) {
         <section class="player-section card" aria-label="Embedded Video Player">
           <div class="player-container">
@@ -128,6 +187,15 @@ import { Spinner } from '../../shared/spinner';
                   + Add to Playlist
                 </button>
 
+                <button
+                  type="button"
+                  class="btn btn-sm btn-ghost"
+                  (click)="focusSearchInput()"
+                  title="Search for another video"
+                >
+                  🔍 Search Another
+                </button>
+
                 <a
                   [href]="'https://www.youtube.com/watch?v=' + video.videoId"
                   target="_blank"
@@ -186,8 +254,17 @@ import { Spinner } from '../../shared/spinner';
               <!-- Playlist Queue Tab -->
               @if (activeTab() === 'queue' && service.activePlaylist(); as pl) {
                 <div class="queue-panel">
+                  <div class="queue-search-row">
+                    <input
+                      type="text"
+                      class="queue-search-input"
+                      placeholder="Filter videos in this playlist..."
+                      [(ngModel)]="queueFilterText"
+                    />
+                  </div>
+
                   <div class="queue-list">
-                    @for (item of pl.items; track item.videoId; let idx = $index) {
+                    @for (item of filteredQueue(); track item.videoId; let idx = $index) {
                       <div
                         class="queue-item"
                         [class.active]="item.videoId === video.videoId"
@@ -227,6 +304,8 @@ import { Spinner } from '../../shared/spinner';
                           </button>
                         </div>
                       </div>
+                    } @empty {
+                      <p class="queue-empty">No videos match filter "{{ queueFilterText }}".</p>
                     }
                   </div>
                 </div>
@@ -236,49 +315,7 @@ import { Spinner } from '../../shared/spinner';
         </section>
       }
 
-      <!-- Search & Discovery Section -->
-      <section class="search-section" aria-label="Search YouTube">
-        <div class="search-bar-wrap card">
-          <form class="search-form" (submit)="onSearchSubmit($event)">
-            <span class="search-icon" aria-hidden="true">🔍</span>
-            <input
-              type="text"
-              class="search-input"
-              placeholder="Search YouTube (e.g., Striver Two Sum, System Design TinyURL, Java Virtual Threads, or paste YouTube link...)"
-              [(ngModel)]="searchQuery"
-              name="query"
-              aria-label="Search YouTube videos"
-            />
-            @if (searchQuery.trim()) {
-              <button type="button" class="btn-clear" (click)="clearSearch()" aria-label="Clear search">✕</button>
-            }
-            <button type="submit" class="btn btn-primary btn-search" [disabled]="service.isSearching()">
-              @if (service.isSearching()) {
-                <app-spinner inline [size]="16" label="Searching" />
-              } @else {
-                Search
-              }
-            </button>
-          </form>
-
-          <!-- Quick Topic Filter Pills -->
-          <div class="filter-pills" role="group" aria-label="Quick topic filters">
-            <span class="pill-label">Suggested:</span>
-            @for (chip of quickChips; track chip.query) {
-              <button
-                type="button"
-                class="chip-btn"
-                [class.active]="selectedChip() === chip.label"
-                (click)="applyChip(chip)"
-              >
-                {{ chip.label }}
-              </button>
-            }
-          </div>
-        </div>
-      </section>
-
-      <!-- Search Results Grid -->
+      <!-- 3. SEARCH RESULTS GRID -->
       <section class="results-section" aria-label="Video Results">
         <div class="section-title-row">
           <h2>
@@ -357,20 +394,28 @@ import { Spinner } from '../../shared/spinner';
         }
       </section>
 
-      <!-- My Playlists Management Section -->
+      <!-- 4. MY PLAYLISTS MANAGEMENT SECTION -->
       <section class="playlists-section" aria-label="My Curated Playlists">
         <div class="section-title-row">
           <div>
             <h2>My Playlists</h2>
             <p class="section-sub">Organize your learning into focused study queues.</p>
           </div>
-          <button type="button" class="btn btn-sm btn-accent" (click)="openCreatePlaylistModal()">
-            + Create Playlist
-          </button>
+          <div class="section-actions">
+            <input
+              type="text"
+              class="playlist-filter-input"
+              placeholder="Filter playlists..."
+              [(ngModel)]="playlistFilterText"
+            />
+            <button type="button" class="btn btn-sm btn-accent" (click)="openCreatePlaylistModal()">
+              + Create Playlist
+            </button>
+          </div>
         </div>
 
         <div class="playlists-grid">
-          @for (pl of service.playlists(); track pl.id) {
+          @for (pl of filteredPlaylists(); track pl.id) {
             <article class="playlist-card card">
               <div class="pl-header">
                 <div class="pl-info">
@@ -413,6 +458,10 @@ import { Spinner } from '../../shared/spinner';
                 </button>
               </div>
             </article>
+          } @empty {
+            <div class="empty-state card">
+              <p>No playlists found.</p>
+            </div>
           }
         </div>
       </section>
@@ -540,14 +589,46 @@ export class VideoHubPage {
   protected readonly service = inject(VideoHubService);
   protected readonly auth = inject(AuthStore);
   private readonly sanitizer = inject(DomSanitizer);
+  private readonly route = inject(ActivatedRoute);
+
+  @ViewChild('searchInput') private searchInputRef?: ElementRef<HTMLInputElement>;
 
   protected searchQuery = '';
+  protected queueFilterText = '';
+  protected playlistFilterText = '';
   protected activeTab = signal<'notes' | 'queue'>('notes');
   protected selectedChip = signal<string>('All');
   protected playlistModalVideo = signal<VideoSearchResult | PlaylistItem | null>(null);
   protected showCreatePlaylistModal = signal<boolean>(false);
   protected newPlaylistNameInModal = '';
   protected createPlaylistForm = { name: '', description: '' };
+
+  protected readonly detectedDirectVideoId = computed<string | null>(() => {
+    return this.service.extractYouTubeId(this.searchQuery);
+  });
+
+  protected readonly filteredQueue = computed(() => {
+    const queue = this.service.playlistQueue();
+    const filter = this.queueFilterText.trim().toLowerCase();
+    if (!filter) return queue;
+    return queue.filter(
+      (item) =>
+        item.title.toLowerCase().includes(filter) ||
+        item.channelTitle.toLowerCase().includes(filter) ||
+        (item.notes && item.notes.toLowerCase().includes(filter)),
+    );
+  });
+
+  protected readonly filteredPlaylists = computed(() => {
+    const list = this.service.playlists();
+    const filter = this.playlistFilterText.trim().toLowerCase();
+    if (!filter) return list;
+    return list.filter(
+      (p) =>
+        p.name.toLowerCase().includes(filter) ||
+        (p.description && p.description.toLowerCase().includes(filter)),
+    );
+  });
 
   protected readonly searchTitle = computed(() => {
     if (this.selectedChip() !== 'All') {
@@ -577,10 +658,18 @@ export class VideoHubPage {
   ];
 
   constructor() {
-    // If no search results yet, load curated recommendations
-    if (this.service.searchResults().length === 0) {
-      this.service.loadCuratedVideos();
-    }
+    this.route.queryParams.subscribe((params) => {
+      const v = params['v'];
+      const q = params['q'];
+      if (v) {
+        this.service.selectVideoById(v);
+      } else if (q) {
+        this.searchQuery = q;
+        this.service.searchVideos(q);
+      } else if (this.service.searchResults().length === 0) {
+        this.service.loadCuratedVideos();
+      }
+    });
   }
 
   protected onSearchSubmit(e: Event) {
@@ -606,9 +695,13 @@ export class VideoHubPage {
     }
   }
 
+  protected playDirectVideo(directId: string) {
+    this.service.selectVideoById(directId);
+    document.querySelector('.player-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
   protected playVideo(video: VideoSearchResult | PlaylistItem) {
     this.service.selectVideo(video);
-    // Smooth scroll to top player
     document.querySelector('.player-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
@@ -616,6 +709,14 @@ export class VideoHubPage {
     this.service.playEntirePlaylist(pl);
     this.activeTab.set('queue');
     document.querySelector('.player-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  protected focusSearchInput() {
+    const el = this.searchInputRef?.nativeElement;
+    if (el) {
+      el.focus();
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
   }
 
   protected insertTimestamp() {

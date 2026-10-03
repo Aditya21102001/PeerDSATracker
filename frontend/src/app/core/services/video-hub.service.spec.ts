@@ -132,4 +132,28 @@ describe('VideoHubService', () => {
     service.toggleAutoplayNext();
     expect(service.autoplayNext()).toBe(false);
   });
+
+  it('correctly extracts 11-char YouTube ID from links and raw IDs', () => {
+    expect(service.extractYouTubeId('UXDSeD9mN-k')).toBe('UXDSeD9mN-k');
+    expect(service.extractYouTubeId('https://www.youtube.com/watch?v=UXDSeD9mN-k')).toBe('UXDSeD9mN-k');
+    expect(service.extractYouTubeId('https://youtu.be/UXDSeD9mN-k?t=10')).toBe('UXDSeD9mN-k');
+    expect(service.extractYouTubeId('https://www.youtube.com/embed/UXDSeD9mN-k')).toBe('UXDSeD9mN-k');
+    expect(service.extractYouTubeId('https://www.youtube.com/shorts/UXDSeD9mN-k')).toBe('UXDSeD9mN-k');
+    expect(service.extractYouTubeId('striver dynamic programming')).toBeNull();
+  });
+
+  it('selects video by ID and fetches oEmbed metadata fallback', () => {
+    service.selectVideoById('dQw4w9WgXcQ');
+    expect(service.currentVideo()?.videoId).toBe('dQw4w9WgXcQ');
+
+    const req = httpTesting.expectOne('https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=dQw4w9WgXcQ&format=json');
+    req.flush({
+      title: 'Never Gonna Give You Up',
+      author_name: 'Rick Astley',
+      thumbnail_url: 'https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg',
+    });
+
+    expect(service.currentVideo()?.title).toBe('Never Gonna Give You Up');
+    expect(service.currentVideo()?.channelTitle).toBe('Rick Astley');
+  });
 });
