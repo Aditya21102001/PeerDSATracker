@@ -12,6 +12,7 @@ import {
   TestCaseView,
 } from '../../core/models/api.models';
 import { CodeService } from '../../core/services/code.service';
+import { NavigationHistoryService } from '../../core/services/navigation-history.service';
 import { ProblemCatalogService, ProblemSpec } from '../../core/services/problem-catalog.service';
 import { CodeMirror } from '../../shared/code-mirror/code-mirror';
 import { Spinner } from '../../shared/spinner';
@@ -33,8 +34,17 @@ import { Spinner } from '../../shared/spinner';
   template: `
     <main id="main-content" tabindex="-1" class="code">
       <header>
-        <a routerLink="/sheet">← Sheet</a>
+        <button
+          id="code-header-back-btn"
+          type="button"
+          class="btn-code-back"
+          (click)="goBack()"
+          aria-label="Go back to previous page"
+        >
+          ← {{ backLabel() }}
+        </button>
         <nav>
+          <a routerLink="/sheet">Sheet</a>
           <a routerLink="/dashboard">Dashboard</a>
         </nav>
       </header>
@@ -404,6 +414,15 @@ export class CodeEditor {
 
   private readonly code = inject(CodeService);
   private readonly catalog = inject(ProblemCatalogService);
+  protected readonly nav = inject(NavigationHistoryService);
+
+  protected backLabel(): string {
+    return this.nav.previousPageLabel('Sheet');
+  }
+
+  protected goBack(): void {
+    this.nav.back('/sheet');
+  }
 
   protected readonly problem = signal<Problem | null>(null);
   protected readonly problemSpec = computed(() => {

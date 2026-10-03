@@ -1,12 +1,13 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import DOMPurify from 'dompurify';
 import { marked } from 'marked';
 import { forkJoin } from 'rxjs';
 import { BlogPost, BlogPostRequest, BlogPostStatus } from '../../core/models/blog.models';
 import { BlogService } from '../../core/services/blog.service';
+import { NavigationHistoryService } from '../../core/services/navigation-history.service';
 import { Spinner } from '../../shared/spinner';
 
 // Ensure external links in markdown open safely in a new tab without leaving the app
@@ -42,7 +43,14 @@ interface SubjectGroup {
       <header>
         <div>
           <div class="breadcrumb">
-            <a routerLink="/dashboard">Dashboard</a>
+            <button
+              type="button"
+              class="nav-back-pill"
+              (click)="nav.back('/dashboard')"
+              aria-label="Go back"
+            >
+              ← Back to {{ nav.previousPageLabel('Dashboard') }}
+            </button>
             <span>/</span>
             <span>Study Articles</span>
           </div>
@@ -172,7 +180,7 @@ interface SubjectGroup {
         <!-- Article Reader View -->
         <article class="reader">
           <div class="reader-topline">
-            <button type="button" class="btn btn-quiet" (click)="selectArticle(null)">← Back to all subjects</button>
+            <button type="button" class="nav-back-pill" (click)="selectArticle(null)">← Back to all subjects</button>
             <div class="reader-meta-pills">
               <span class="read-time">{{ readTime(article.content) }}</span>
               @if (article.mine) {
@@ -302,9 +310,14 @@ interface SubjectGroup {
   `,
   styleUrl: './blog-page.scss',
 })
-export class BlogPage {
+export class BlogPage implements OnInit {
   private readonly blogs = inject(BlogService);
   private readonly sanitizer = inject(DomSanitizer);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  protected readonly nav = inject(NavigationHistoryService);
+
+  private pendingArticleId: string | null = null;
 
   protected readonly posts = signal<BlogPost[]>([]);
   protected readonly loading = signal(true);
@@ -440,14 +453,37 @@ export class BlogPage {
     this.load();
   }
 
+  ngOnInit(): void {
+    this.route.queryParams.subscribe((params) => {
+      const articleId = params['article'];
+      if (articleId) {
+        this.pendingArticleId = articleId;
+        const found = this.posts().find((p) => p.id === articleId);
+        if (found) {
+          this.selected.set(found);
+        }
+      } else {
+        this.pendingArticleId = null;
+        this.selected.set(null);
+      }
+    });
+  }
+
   protected selectDomain(domain: string): void {
     this.selectedDomain.set(domain);
     this.subject = '';
     this.selectArticle(null);
   }
 
-  protected selectArticle(post: BlogPost | null): void {
+  protected selectArticle(post: BlogPost | null, updateUrl = true): void {
     this.selected.set(post);
+    if (updateUrl) {
+      this.router.navigate([], {
+        relativeTo: this.route,
+        queryParams: { article: post ? post.id : null },
+        queryParamsHandling: 'merge',
+      });
+    }
     if (post && typeof window !== 'undefined') {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -484,7 +520,7 @@ export class BlogPage {
       tags: post.tags.join(', '),
       status: post.status,
     };
-    this.selected.set(null);
+    this.selectArticle(null);
     this.error.set(null);
     this.editorTab.set('write');
     this.editorOpen.set(true);
@@ -533,7 +569,7 @@ export class BlogPage {
     this.blogs.delete(post.id).subscribe({
       next: () => {
         this.posts.update((items) => items.filter((item) => item.id !== post.id));
-        this.selected.set(null);
+        this.selectArticle(null);
       },
       error: () => this.error.set('Could not delete this article. Please try again.'),
     });
@@ -556,12 +592,12 @@ export class BlogPage {
 
   protected filterBySubject(subj: string): void {
     this.subject = subj;
-    this.selected.set(null);
+    this.selectArticle(null);
   }
 
   protected filterByTag(tag: string): void {
     this.query = tag;
-    this.selected.set(null);
+    this.selectArticle(null);
   }
 
   protected clearAllFilters(): void {
@@ -638,13 +674,18 @@ export class BlogPage {
       next: ({ published, mine }) => {
         const byId = new Map(published.map((post) => [post.id, post]));
         mine.forEach((post) => byId.set(post.id, post));
-        this.posts.set(
-          [...byId.values()].sort((a, b) => {
-            const timeA = a.publishedAt || a.updatedAt || '';
-            const timeB = b.publishedAt || b.updatedAt || '';
-            return timeB.localeCompare(timeA);
-          }),
-        );
+        const allPosts = [...byId.values()].sort((a, b) => {
+          const timeA = a.publishedAt || a.updatedAt || '';
+          const timeB = b.publishedAt || b.updatedAt || '';
+          return timeB.localeCompare(timeA);
+        });
+        this.posts.set(allPosts);
+        if (this.pendingArticleId) {
+          const found = allPosts.find((p) => p.id === this.pendingArticleId);
+          if (found) {
+            this.selected.set(found);
+          }
+        }
         this.loading.set(false);
       },
       error: () => {

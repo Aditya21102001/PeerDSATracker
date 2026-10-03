@@ -5,6 +5,7 @@ import { Subject, debounceTime, distinctUntilChanged, merge, switchMap, tap } fr
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { PeerView } from '../../core/models/api.models';
 import { MessagingService } from '../../core/services/messaging.service';
+import { NavigationHistoryService } from '../../core/services/navigation-history.service';
 import { PeerService } from '../../core/services/peer.service';
 import { Spinner } from '../../shared/spinner';
 
@@ -24,6 +25,14 @@ type Tab = 'search' | 'following' | 'followers';
       <header>
         <h1>Peers</h1>
         <nav>
+          <button
+            type="button"
+            class="nav-back-pill"
+            (click)="nav.back('/dashboard')"
+            aria-label="Go back"
+          >
+            ← Back to {{ nav.previousPageLabel('Dashboard') }}
+          </button>
           <a routerLink="/dashboard">Dashboard</a>
           <a routerLink="/sheet">Sheet</a>
           <a routerLink="/hire">Hire</a>
@@ -97,6 +106,7 @@ export class PeersPage {
   private readonly peers = inject(PeerService);
   private readonly messaging = inject(MessagingService);
   private readonly router = inject(Router);
+  protected readonly nav = inject(NavigationHistoryService);
 
   protected readonly tabs: Tab[] = ['search', 'following', 'followers'];
   protected readonly tab = signal<Tab>('search');

@@ -2,6 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Observable, forkJoin } from 'rxjs';
 import { RevisionItem } from '../../core/models/api.models';
+import { NavigationHistoryService } from '../../core/services/navigation-history.service';
 import { NotesService } from '../../core/services/notes.service';
 import { Spinner } from '../../shared/spinner';
 
@@ -22,6 +23,14 @@ import { Spinner } from '../../shared/spinner';
       <header>
         <h1>Revision queue</h1>
         <nav>
+          <button
+            type="button"
+            class="nav-back-pill"
+            (click)="nav.back('/dashboard')"
+            aria-label="Go back"
+          >
+            ← Back to {{ nav.previousPageLabel('Dashboard') }}
+          </button>
           <a routerLink="/dashboard">Dashboard</a>
           <a routerLink="/sheet">Sheet</a>
           <a routerLink="/hire">Hire</a>
@@ -88,6 +97,7 @@ import { Spinner } from '../../shared/spinner';
 })
 export class RevisionPage {
   private readonly api = inject(NotesService);
+  protected readonly nav = inject(NavigationHistoryService);
 
   protected readonly due = signal<RevisionItem[]>([]);
   protected readonly upcoming = signal<RevisionItem[]>([]);

@@ -1,6 +1,7 @@
 import { Component, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { NoteSummary } from '../../core/models/api.models';
+import { NavigationHistoryService } from '../../core/services/navigation-history.service';
 import { NotesService } from '../../core/services/notes.service';
 import { Spinner } from '../../shared/spinner';
 
@@ -16,6 +17,14 @@ import { Spinner } from '../../shared/spinner';
       <header>
         <h1>Notes</h1>
         <nav>
+          <button
+            type="button"
+            class="nav-back-pill"
+            (click)="nav.back('/dashboard')"
+            aria-label="Go back"
+          >
+            ← Back to {{ nav.previousPageLabel('Dashboard') }}
+          </button>
           <a routerLink="/dashboard">Dashboard</a>
           <a routerLink="/sheet">Sheet</a>
           <a routerLink="/blog">Articles</a>
@@ -50,6 +59,7 @@ import { Spinner } from '../../shared/spinner';
 })
 export class NotesPage {
   private readonly notesApi = inject(NotesService);
+  protected readonly nav = inject(NavigationHistoryService);
 
   protected readonly notes = signal<NoteSummary[]>([]);
   protected readonly total = signal(0);

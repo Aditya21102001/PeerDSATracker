@@ -12,6 +12,15 @@
       </p>
     </div>
     <nav class="proctor-nav">
+      <button
+        id="proctor-nav-back-btn"
+        type="button"
+        class="nav-back-pill"
+        (click)="goBack()"
+        aria-label="Go back"
+      >
+        ← {{ activeView() === 'rules' ? ('Back to ' + nav.previousPageLabel('Dashboard')) : 'Back to Rules' }}
+      </button>
       <a routerLink="/dashboard">Dashboard</a>
       <a routerLink="/sheet">Sheet</a>
       <a routerLink="/hire">Hire</a>

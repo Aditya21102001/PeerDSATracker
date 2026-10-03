@@ -2,6 +2,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { LeaderboardRow } from '../../core/models/api.models';
 import { AuthStore } from '../../core/services/auth.store';
+import { NavigationHistoryService } from '../../core/services/navigation-history.service';
 import { PeerService } from '../../core/services/peer.service';
 import { Spinner } from '../../shared/spinner';
 
@@ -21,6 +22,14 @@ type Scope = 'global' | 'peers';
       <header>
         <h1>Leaderboard</h1>
         <nav>
+          <button
+            type="button"
+            class="nav-back-pill"
+            (click)="nav.back('/dashboard')"
+            aria-label="Go back"
+          >
+            ← Back to {{ nav.previousPageLabel('Dashboard') }}
+          </button>
           <a routerLink="/dashboard">Dashboard</a>
           <a routerLink="/sheet">Sheet</a>
           <a routerLink="/blog">Articles</a>
@@ -104,6 +113,7 @@ type Scope = 'global' | 'peers';
 export class LeaderboardPage {
   private readonly peers = inject(PeerService);
   private readonly auth = inject(AuthStore);
+  protected readonly nav = inject(NavigationHistoryService);
 
   protected readonly scope = signal<Scope>('global');
   protected readonly rows = signal<LeaderboardRow[]>([]);

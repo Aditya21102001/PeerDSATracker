@@ -1,6 +1,7 @@
 import { Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { AuthStore } from '../../core/services/auth.store';
+import { NavigationHistoryService } from '../../core/services/navigation-history.service';
 import { StudyGuidesService } from '../../core/services/study-guides.service';
 
 /**
@@ -23,13 +24,20 @@ import { StudyGuidesService } from '../../core/services/study-guides.service';
           </p>
         </div>
         <nav class="sg-nav">
+          <button
+            type="button"
+            class="nav-back-pill"
+            (click)="nav.back(auth.isAuthenticated() ? '/dashboard' : '/')"
+            aria-label="Go back"
+          >
+            ← Back to {{ nav.previousPageLabel(auth.isAuthenticated() ? 'Dashboard' : 'Home') }}
+          </button>
           <a routerLink="/videos">📺 Video Hub</a>
           @if (auth.isAuthenticated()) {
             <a routerLink="/dashboard">Dashboard</a>
             <a routerLink="/sheet">Sheet</a>
             <a routerLink="/hire">Hire</a>
           } @else {
-            <a routerLink="/">← Home</a>
             <a routerLink="/guide">How it works</a>
             <a routerLink="/signin">Sign in</a>
             <a routerLink="/signup" class="btn-signup">Start Free</a>
@@ -62,5 +70,6 @@ import { StudyGuidesService } from '../../core/services/study-guides.service';
 export class StudyGuidesPage {
   private readonly svc = inject(StudyGuidesService);
   protected readonly auth = inject(AuthStore);
+  protected readonly nav = inject(NavigationHistoryService);
   protected readonly guides = this.svc.getAll();
 }

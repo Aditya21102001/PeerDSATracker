@@ -11,6 +11,7 @@ import {
   SaveCandidateProfileRequest,
 } from '../../core/models/hire.models';
 import { HireService } from '../../core/services/hire.service';
+import { NavigationHistoryService } from '../../core/services/navigation-history.service';
 
 const SAMPLE_JAVA_RESUME = `Aditya Yadav
 Senior Java Full Stack Engineer
@@ -93,6 +94,7 @@ Current CTC: ₹13 LPA | Expected CTC: ₹24 LPA | Notice Period: 45 days | Pref
 })
 export class HirePage implements OnInit {
   private readonly hire = inject(HireService);
+  protected readonly nav = inject(NavigationHistoryService);
 
   // Active view tab
   protected readonly activeTab = signal<'jobs' | 'profile' | 'applications'>('jobs');

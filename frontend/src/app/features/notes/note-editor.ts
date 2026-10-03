@@ -1,8 +1,9 @@
 import { Component, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { NotesService } from '../../core/services/notes.service';
 import { Problem } from '../../core/models/api.models';
+import { NavigationHistoryService } from '../../core/services/navigation-history.service';
+import { NotesService } from '../../core/services/notes.service';
 
 /**
  * Editor for the single note attached to a problem. Routed as notes/:problemId, with problemId
@@ -15,7 +16,15 @@ import { Problem } from '../../core/models/api.models';
   template: `
     <main id="main-content" tabindex="-1" class="editor">
       <header>
-        <a routerLink="/notes">← All notes</a>
+        <button
+          type="button"
+          class="nav-back-pill"
+          (click)="nav.back('/notes')"
+          aria-label="Go back"
+        >
+          ← Back to {{ nav.previousPageLabel('All notes') }}
+        </button>
+        <a routerLink="/notes">All notes</a>
         <a [routerLink]="['/code', problemId()]">Code</a>
         <a routerLink="/sheet">Sheet</a>
       </header>
@@ -58,6 +67,7 @@ export class NoteEditor {
   readonly problemId = input.required<string>();
 
   private readonly notes = inject(NotesService);
+  protected readonly nav = inject(NavigationHistoryService);
 
   protected content = '';
   protected readonly problem = signal<Problem | null>(null);

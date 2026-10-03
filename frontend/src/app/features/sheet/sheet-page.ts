@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { Difficulty, Problem, ProblemStatus, StatusFilter } from '../../core/models/api.models';
 import { AuthStore } from '../../core/services/auth.store';
+import { NavigationHistoryService } from '../../core/services/navigation-history.service';
 import { ProgressStore } from '../../core/services/progress.store';
 import { Spinner } from '../../shared/spinner';
 
@@ -36,6 +37,14 @@ const STATUSES: readonly ProblemStatus[] = ['SOLVED', 'ATTEMPTED', 'REVISIT'];
           </p>
         </div>
         <nav>
+          <button
+            type="button"
+            class="nav-back-pill"
+            (click)="nav.back('/dashboard')"
+            aria-label="Go back"
+          >
+            ← Back to {{ nav.previousPageLabel('Dashboard') }}
+          </button>
           <a routerLink="/dashboard">Dashboard</a>
           <a routerLink="/videos">Videos</a>
           <a routerLink="/hire">Hire</a>
@@ -173,6 +182,7 @@ const STATUSES: readonly ProblemStatus[] = ['SOLVED', 'ATTEMPTED', 'REVISIT'];
 export class SheetPage {
   protected readonly store = inject(ProgressStore);
   private readonly auth = inject(AuthStore);
+  protected readonly nav = inject(NavigationHistoryService);
 
   protected readonly statuses = STATUSES;
 

@@ -1,8 +1,9 @@
 import { Component, ElementRef, ViewChild, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthStore } from '../../core/services/auth.store';
+import { NavigationHistoryService } from '../../core/services/navigation-history.service';
 import { VideoHubService } from '../../core/services/video-hub.service';
 import { Playlist, PlaylistItem, VideoSearchResult } from '../../core/models/video.models';
 import { Spinner } from '../../shared/spinner';
@@ -28,6 +29,15 @@ import { Spinner } from '../../shared/spinner';
           </p>
         </div>
         <nav class="vh-nav" id="vh-top-nav" aria-label="Video Hub Navigation">
+          <button
+            id="vh-nav-back-btn"
+            type="button"
+            class="vh-nav-back-pill"
+            (click)="handleHeaderBack()"
+            aria-label="Go back to previous page"
+          >
+            ← {{ viewMode() === 'watch' ? 'Back to Results' : ('Back to ' + nav.previousPageLabel('Dashboard')) }}
+          </button>
           @if (auth.isAuthenticated()) {
             <a id="vh-nav-link-dashboard" routerLink="/dashboard">Dashboard</a>
             <a id="vh-nav-link-sheet" routerLink="/sheet">Sheet</a>
@@ -994,8 +1004,10 @@ import { Spinner } from '../../shared/spinner';
 export class VideoHubPage {
   protected readonly service = inject(VideoHubService);
   protected readonly auth = inject(AuthStore);
+  protected readonly nav = inject(NavigationHistoryService);
   private readonly sanitizer = inject(DomSanitizer);
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
 
   @ViewChild('searchInput') private searchInputRef?: ElementRef<HTMLInputElement>;
 
@@ -1083,17 +1095,26 @@ export class VideoHubPage {
         this.service.selectVideoById(v);
         this.viewMode.set('watch');
         this.dismissMiniplayer.set(false);
-      } else if (q) {
-        this.searchQuery = q;
-        this.viewMode.set('results');
-        this.service.searchVideos(q);
       } else {
-        this.viewMode.set('results');
-        if (this.service.searchResults().length === 0) {
+        if (this.viewMode() === 'watch') {
+          this.viewMode.set('results');
+        }
+        if (q) {
+          this.searchQuery = q;
+          this.service.searchVideos(q);
+        } else if (this.service.searchResults().length === 0) {
           this.service.loadCuratedVideos();
         }
       }
     });
+  }
+
+  protected handleHeaderBack(): void {
+    if (this.viewMode() === 'watch') {
+      this.backToResults();
+    } else {
+      this.nav.back('/dashboard');
+    }
   }
 
   protected onSearchSubmit(e: Event) {
@@ -1127,6 +1148,11 @@ export class VideoHubPage {
     this.service.selectVideoById(directId);
     this.viewMode.set('watch');
     this.dismissMiniplayer.set(false);
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { v: directId },
+      queryParamsHandling: 'merge',
+    });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
@@ -1134,6 +1160,11 @@ export class VideoHubPage {
     this.service.selectVideo(video, playlistId);
     this.viewMode.set('watch');
     this.dismissMiniplayer.set(false);
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { v: video.videoId },
+      queryParamsHandling: 'merge',
+    });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
@@ -1142,12 +1173,22 @@ export class VideoHubPage {
     if (top) {
       this.viewMode.set('watch');
       this.dismissMiniplayer.set(false);
+      this.router.navigate([], {
+        relativeTo: this.route,
+        queryParams: { v: top.videoId },
+        queryParamsHandling: 'merge',
+      });
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   }
 
   protected backToResults() {
     this.viewMode.set('results');
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { v: null },
+      queryParamsHandling: 'merge',
+    });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 

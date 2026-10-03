@@ -10,8 +10,9 @@ import {
   signal,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import {
+  CodingProblemResult,
   ProctoringViolation,
   SubmitTestRequest,
   TestCodingProblem,
@@ -20,6 +21,7 @@ import {
   TestSession,
 } from '../../core/models/interview.models';
 import { InterviewService } from '../../core/services/interview.service';
+import { NavigationHistoryService } from '../../core/services/navigation-history.service';
 import { Spinner } from '../../shared/spinner';
 
 @Component({
@@ -31,6 +33,9 @@ import { Spinner } from '../../shared/spinner';
 })
 export class ProctoredTestPage implements OnInit, OnDestroy {
   private readonly interviewService = inject(InterviewService);
+  protected readonly nav = inject(NavigationHistoryService);
+  private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
 
   @ViewChild('webcamVideo') webcamVideoRef!: ElementRef<HTMLVideoElement>;
   @ViewChild('proctorCanvas') proctorCanvasRef!: ElementRef<HTMLCanvasElement>;
@@ -104,7 +109,22 @@ export class ProctoredTestPage implements OnInit, OnDestroy {
   });
 
   ngOnInit(): void {
-    // Event listeners will be attached when test starts
+    this.route.queryParams.subscribe((params) => {
+      const view = params['view'];
+      if (view === 'history') {
+        this.openHistory(false);
+      } else if (!view && this.activeView() !== 'test') {
+        this.activeView.set('rules');
+      }
+    });
+  }
+
+  protected goBack(): void {
+    if (this.activeView() === 'rules') {
+      this.nav.back('/dashboard');
+    } else {
+      this.resetToRules();
+    }
   }
 
   ngOnDestroy(): void {
@@ -441,8 +461,15 @@ export class ProctoredTestPage implements OnInit, OnDestroy {
 
   // ------------------------------------------------------------- History & Navigation
 
-  protected openHistory(): void {
+  protected openHistory(updateUrl = true): void {
     this.activeView.set('history');
+    if (updateUrl) {
+      this.router.navigate([], {
+        relativeTo: this.route,
+        queryParams: { view: 'history' },
+        queryParamsHandling: 'merge',
+      });
+    }
     this.loadingHistory.set(true);
     this.interviewService.listTests().subscribe({
       next: (list) => {
@@ -464,6 +491,11 @@ export class ProctoredTestPage implements OnInit, OnDestroy {
     this.currentSession.set(null);
     this.testResult.set(null);
     this.activeView.set('rules');
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { view: null },
+      queryParamsHandling: 'merge',
+    });
   }
 
   protected getVerdictBadgeClass(verdict: string): string {

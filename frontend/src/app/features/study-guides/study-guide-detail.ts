@@ -1,6 +1,7 @@
 import { Component, computed, inject, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { AuthStore } from '../../core/services/auth.store';
+import { NavigationHistoryService } from '../../core/services/navigation-history.service';
 import {
   GuideTopic,
   StudyGuidesService,
@@ -20,7 +21,14 @@ import {
       <main id="main-content" tabindex="-1" class="sgd-page">
         <header class="sgd-header">
           <div class="sgd-breadcrumb">
-            <a routerLink="/study-guides">← Study Guides</a>
+            <button
+              type="button"
+              class="nav-back-pill"
+              (click)="nav.back('/study-guides')"
+              aria-label="Go back"
+            >
+              ← Back to {{ nav.previousPageLabel('Study Guides') }}
+            </button>
             <span class="sep">/</span>
             <span [style.color]="g.color">{{ g.icon }} {{ g.title }}</span>
           </div>
@@ -176,6 +184,7 @@ export class StudyGuideDetail {
 
   private readonly svc = inject(StudyGuidesService);
   protected readonly auth = inject(AuthStore);
+  protected readonly nav = inject(NavigationHistoryService);
 
   protected readonly guide = computed(() => this.svc.getById(this.guideId()));
   protected readonly activeTopic = signal<GuideTopic | null>(null);

@@ -1,7 +1,7 @@
 import { CommonModule, DatePipe } from '@angular/common';
 import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import {
   InterviewLevel,
   InterviewSession,
@@ -10,6 +10,7 @@ import {
   StartInterviewRequest,
 } from '../../core/models/interview.models';
 import { InterviewService } from '../../core/services/interview.service';
+import { NavigationHistoryService } from '../../core/services/navigation-history.service';
 import { Spinner } from '../../shared/spinner';
 
 @Component({
@@ -21,6 +22,9 @@ import { Spinner } from '../../shared/spinner';
 })
 export class InterviewPage implements OnInit, OnDestroy {
   private readonly interviewService = inject(InterviewService);
+  protected readonly nav = inject(NavigationHistoryService);
+  private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
 
   // View state: 'setup' | 'live' | 'scorecard' | 'history'
   protected readonly activeView = signal<'setup' | 'live' | 'scorecard' | 'history'>('setup');
@@ -116,6 +120,22 @@ export class InterviewPage implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.initSpeechRecognition();
+    this.route.queryParams.subscribe((params) => {
+      const view = params['view'];
+      if (view === 'history') {
+        this.openHistory(false);
+      } else if (!view && this.activeView() !== 'live') {
+        this.activeView.set('setup');
+      }
+    });
+  }
+
+  protected goBack(): void {
+    if (this.activeView() === 'setup') {
+      this.nav.back('/dashboard');
+    } else {
+      this.restart();
+    }
   }
 
   ngOnDestroy(): void {
@@ -334,11 +354,23 @@ export class InterviewPage implements OnInit, OnDestroy {
     this.candidateAnswer.set('');
     this.latestEvaluation.set(null);
     this.activeView.set('setup');
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { view: null },
+      queryParamsHandling: 'merge',
+    });
   }
 
-  protected openHistory(): void {
+  protected openHistory(updateUrl = true): void {
     this.stopSpeaking();
     this.activeView.set('history');
+    if (updateUrl) {
+      this.router.navigate([], {
+        relativeTo: this.route,
+        queryParams: { view: 'history' },
+        queryParamsHandling: 'merge',
+      });
+    }
     this.loadingHistory.set(true);
     this.interviewService.listInterviews().subscribe({
       next: (list) => {

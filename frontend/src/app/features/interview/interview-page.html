@@ -12,6 +12,15 @@
       </p>
     </div>
     <nav class="interview-nav">
+      <button
+        id="interview-nav-back-btn"
+        type="button"
+        class="nav-back-pill"
+        (click)="goBack()"
+        aria-label="Go back"
+      >
+        ← {{ activeView() === 'setup' ? ('Back to ' + nav.previousPageLabel('Dashboard')) : 'Back to Setup' }}
+      </button>
       <a routerLink="/dashboard">Dashboard</a>
       <a routerLink="/sheet">Sheet</a>
       <a routerLink="/hire">Hire</a>
