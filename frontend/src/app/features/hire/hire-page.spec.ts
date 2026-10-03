@@ -297,5 +297,66 @@ describe('HirePage — Naukri-style Career Portal & 1-Click Auto Apply', () => {
     (component as any).loadSampleResume('angular');
     expect((component as any).resumeRawText()).toContain('Neha Verma');
   });
+
+  it('should resolve targeted requisition URLs for companies with generic career URLs', () => {
+    const jpmcJob: JobOpening = {
+      id: 3,
+      title: 'Full Stack Developer (Java + Angular)',
+      company: 'JPMorgan Chase & Co.',
+      companyLogoUrl: '',
+      location: 'Bengaluru',
+      workplaceType: 'HYBRID',
+      jobType: 'FULL_TIME',
+      experienceMin: 2,
+      experienceMax: 5,
+      salaryRange: '₹18 - 28 LPA',
+      requiredSkills: 'Java, Angular',
+      description: 'Trading portal modernization',
+      externalApplyUrl: 'https://careers.jpmorgan.com',
+      postedAt: '2026-10-01T10:00:00Z',
+      matchScore: 85,
+      matchingSkills: ['Java', 'Angular'],
+      missingSkills: [],
+      isApplied: false,
+      applicationStatus: null,
+      appliedAt: null,
+    };
+
+    const targetUrl = (component as any).getDirectJobOpeningUrl(jpmcJob);
+    expect(targetUrl).toContain('careers.jpmorgan.com');
+    expect(targetUrl).toContain('search-results?keywords=');
+
+    const linkedInUrl = (component as any).getLinkedInJobSearchUrl(jpmcJob);
+    expect(linkedInUrl).toContain('linkedin.com/jobs/search/?keywords=');
+    expect(linkedInUrl).toContain('JPMorgan');
+  });
+
+  it('should preserve already-deep requisition URLs directly', () => {
+    const amazonJob: JobOpening = {
+      id: 1,
+      title: 'Software Development Engineer II',
+      company: 'Amazon',
+      companyLogoUrl: '',
+      location: 'Bengaluru',
+      workplaceType: 'HYBRID',
+      jobType: 'FULL_TIME',
+      experienceMin: 3,
+      experienceMax: 6,
+      salaryRange: '₹35 - 50 LPA',
+      requiredSkills: 'Java, AWS',
+      description: 'Cloud services',
+      externalApplyUrl: 'https://www.amazon.jobs/en/search?base_query=Software+Development+Engineer&loc_query=India',
+      postedAt: '2026-10-01T10:00:00Z',
+      matchScore: 90,
+      matchingSkills: ['Java'],
+      missingSkills: [],
+      isApplied: false,
+      applicationStatus: null,
+      appliedAt: null,
+    };
+
+    const targetUrl = (component as any).getDirectJobOpeningUrl(amazonJob);
+    expect(targetUrl).toBe('https://www.amazon.jobs/en/search?base_query=Software+Development+Engineer&loc_query=India');
+  });
 });
 

@@ -290,6 +290,17 @@
               </button>
 
               <div class="footer-actions">
+                <a
+                  [href]="getDirectJobOpeningUrl(job)"
+                  target="_blank"
+                  rel="noopener"
+                  class="btn-portal-link"
+                  [title]="'Open official opening search for ' + job.title + ' at ' + job.company"
+                  (click)="$event.stopPropagation()"
+                >
+                  Opening ↗
+                </a>
+
                 @if (job.isApplied) {
                   <span class="applied-badge">
                     ✓ Applied ({{ job.applicationStatus || 'APPLIED' }})
@@ -829,23 +840,41 @@
         </div>
 
         <footer class="modal-footer">
-          @if (modalJob.externalApplyUrl) {
-            <a [href]="modalJob.externalApplyUrl" target="_blank" rel="noopener" class="btn btn-ghost">
-              Official Company Career Page ↗
-            </a>
-          }
-
-          @if (modalJob.isApplied) {
-            <span class="applied-badge">✓ Already Applied ({{ modalJob.applicationStatus }})</span>
-          } @else {
-            <button
-              type="button"
-              class="btn-apply-one"
-              (click)="applyToJob(modalJob); closeJobModal()"
+          <div class="modal-external-links">
+            <a
+              [href]="getDirectJobOpeningUrl(modalJob)"
+              target="_blank"
+              rel="noopener"
+              class="btn btn-ghost btn-deep-link"
+              [title]="'Open official ' + modalJob.company + ' opening requisition / search'"
             >
-              ⚡ 1-Click Apply Now
-            </button>
-          }
+              🏢 Official Job Opening Requisition ↗
+            </a>
+
+            <a
+              [href]="getLinkedInJobSearchUrl(modalJob)"
+              target="_blank"
+              rel="noopener"
+              class="btn btn-ghost btn-linkedin"
+              [title]="'Search live ' + modalJob.company + ' ' + modalJob.title + ' roles on LinkedIn'"
+            >
+              💼 Live LinkedIn Openings ↗
+            </a>
+          </div>
+
+          <div class="modal-cta-actions">
+            @if (modalJob.isApplied) {
+              <span class="applied-badge">✓ Tracked in Pipeline ({{ modalJob.applicationStatus || 'APPLIED' }})</span>
+            } @else {
+              <button
+                type="button"
+                class="btn-apply-one"
+                (click)="applyToJob(modalJob); closeJobModal()"
+              >
+                ⚡ 1-Click Track & Apply
+              </button>
+            }
+          </div>
         </footer>
       </div>
     </div>

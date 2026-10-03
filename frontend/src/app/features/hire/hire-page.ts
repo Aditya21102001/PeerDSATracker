@@ -568,6 +568,74 @@ export class HirePage implements OnInit {
     this.selectedJobModal.set(null);
   }
 
+  /**
+   * Resolves the direct, targeted requisition or opening search URL for a job.
+   * If externalApplyUrl already has query parameters/deep search path, it uses it directly.
+   * Otherwise, maps known companies to their direct requisition search endpoint,
+   * falling back to a targeted search.
+   */
+  protected getDirectJobOpeningUrl(job: JobOpening | null | undefined): string {
+    if (!job) return 'https://www.linkedin.com/jobs/';
+
+    const url = (job.externalApplyUrl || '').trim();
+    // If the URL already targets an opening query or requisition page, use it directly
+    if (url && (url.includes('?') || url.includes('#/careers?') || url.includes('/requisitions') || url.includes('/search'))) {
+      return url;
+    }
+
+    const company = job.company.toLowerCase();
+    const encodedTitle = encodeURIComponent(job.title);
+
+    if (company.includes('jpmorgan') || company.includes('jp morgan') || company.includes('jpmc')) {
+      return `https://careers.jpmorgan.com/global/en/search-results?keywords=${encodedTitle}`;
+    }
+    if (company.includes('amazon')) {
+      return `https://www.amazon.jobs/en/search?base_query=${encodedTitle}&loc_query=India`;
+    }
+    if (company.includes('swiggy')) {
+      return `https://careers.swiggy.com/#/careers?query=${encodedTitle}`;
+    }
+    if (company.includes('phonepe')) {
+      return `https://www.phonepe.com/careers/job-openings/?search=${encodedTitle}`;
+    }
+    if (company.includes('oracle')) {
+      return `https://careers.oracle.com/jobs/#en/sites/jobsearch/requisitions?keyword=${encodedTitle}`;
+    }
+    if (company.includes('microsoft')) {
+      return `https://jobs.careers.microsoft.com/global/en/search?q=${encodedTitle}&lc=India`;
+    }
+    if (company.includes('google')) {
+      return `https://www.google.com/about/careers/applications/jobs/results/?q=${encodedTitle}&location=India`;
+    }
+    if (company.includes('morgan stanley')) {
+      return `https://www.morganstanley.com/careers/career-opportunities-search?keyword=${encodedTitle}`;
+    }
+    if (company.includes('accenture')) {
+      return `https://www.accenture.com/in-en/careers/jobsearch?jk=${encodedTitle}`;
+    }
+    if (company.includes('tcs') || company.includes('tata consultancy')) {
+      return `https://ibegin.tcs.com/iBegin/jobs/search`;
+    }
+    if (company.includes('razorpay')) {
+      return `https://razorpay.com/jobs/#openings`;
+    }
+    if (company.includes('zomato')) {
+      return `https://www.zomato.com/careers`;
+    }
+
+    if (url) return url;
+    return `https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(job.company + ' ' + job.title)}&location=India`;
+  }
+
+  /**
+   * Generates a live LinkedIn Jobs search query URL for real-time listings of this exact role at this company.
+   */
+  protected getLinkedInJobSearchUrl(job: JobOpening | null | undefined): string {
+    if (!job) return 'https://www.linkedin.com/jobs/';
+    const query = encodeURIComponent(`${job.company} ${job.title}`);
+    return `https://www.linkedin.com/jobs/search/?keywords=${query}&location=India`;
+  }
+
   // Toast feedback
   protected showToast(message: string, type: 'success' | 'error' | 'info' = 'info'): void {
     this.notification.set({ message, type });

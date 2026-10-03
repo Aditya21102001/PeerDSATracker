@@ -717,6 +717,35 @@
   border-top: 1px solid var(--border-subtle);
 }
 
+.footer-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.btn-portal-link {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-decoration: none;
+  padding: 0.35rem 0.6rem;
+  border-radius: var(--radius-md, 8px);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-raised);
+  transition: all var(--t-fast) var(--ease);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  white-space: nowrap;
+
+  &:hover {
+    color: var(--accent);
+    border-color: rgba(99, 102, 241, 0.4);
+    background: rgba(99, 102, 241, 0.08);
+    transform: translateY(-1px);
+  }
+}
+
 .btn-text-details {
   background: transparent;
   border: none;
@@ -1743,6 +1772,59 @@
   justify-content: space-between;
   gap: var(--sp-3);
   flex-wrap: wrap;
+}
+
+.modal-external-links {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+
+.btn-deep-link {
+  font-weight: 600;
+  border-color: rgba(99, 102, 241, 0.4);
+  color: var(--accent);
+  text-decoration: none;
+  font-size: 0.8rem;
+  padding: 0.45rem 0.85rem;
+  border-radius: var(--radius-md, 8px);
+  transition: all var(--t-fast) var(--ease);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+
+  &:hover {
+    background: rgba(99, 102, 241, 0.1);
+    border-color: var(--accent);
+    transform: translateY(-1px);
+  }
+}
+
+.btn-linkedin {
+  font-weight: 500;
+  border-color: rgba(14, 118, 168, 0.4);
+  color: #38bdf8;
+  text-decoration: none;
+  font-size: 0.8rem;
+  padding: 0.45rem 0.85rem;
+  border-radius: var(--radius-md, 8px);
+  transition: all var(--t-fast) var(--ease);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+
+  &:hover {
+    background: rgba(14, 118, 168, 0.12);
+    border-color: #38bdf8;
+    transform: translateY(-1px);
+  }
+}
+
+.modal-cta-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
 }
 
 // ------------------------------------------------------------- Common States
