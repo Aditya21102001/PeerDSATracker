@@ -2,11 +2,11 @@
 
 Everything you need to understand this codebase, in the order you should read it.
 
-If you have never seen this project before, read [01-architecture.md](01-architecture.md) first
-and do not skip it. Everything else assumes you know why there are three services.
+If you are a newcomer or fresher, start with **[08-fresher-onboarding-guide.md](08-fresher-onboarding-guide.md)** for a friendly, step-by-step walkthrough of the entire system, local setup, and core features!
 
 | # | Document | What it answers |
 |---|---|---|
+| 08 | **[Fresher Onboarding Guide](08-fresher-onboarding-guide.md)** | **Start here!** Friendly step-by-step onboarding for newcomers and junior developers. |
 | 01 | [Architecture](01-architecture.md) | What are the three services, why three, and how does one request travel through them? |
 | 02 | [Data model](02-data-model.md) | What tables exist, how do they relate, and which invariants must never break? |
 | 03 | [Backend tour](03-backend.md) | What lives in each Java package, and where do I put new code? |

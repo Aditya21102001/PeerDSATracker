@@ -281,7 +281,14 @@ export class HirePage implements OnInit {
     }
   }
 
-  // 1-Click Apply to a single job
+  /**
+   * 1-Click Apply to a single job:
+   * Issues an authenticated POST to /api/hire/jobs/{jobId}/apply.
+   * This records the application in PostgreSQL, recalculates your match score,
+   * updates the local state, and adds the job to your in-app ATS pipeline (Applications tab).
+   * Note: External corporate portals (Workday/Greenhouse/Taleo) do not accept third-party bot submissions,
+   * so the details modal also provides a direct link to the company's official careers URL.
+   */
   protected applyToJob(job: JobOpening): void {
     if (job.isApplied) return;
     this.applyingJobId.set(job.id);
@@ -303,7 +310,11 @@ export class HirePage implements OnInit {
     });
   }
 
-  // Naukri-style 1-Click "Apply to All Matching"
+  /**
+   * Naukri-grade 1-Click "Apply to All Matching":
+   * Filters all unapplied jobs with match score >= 70% and batches them into the applicant pipeline
+   * in a single atomic database transaction on the backend.
+   */
   protected applyToAllMatching(): void {
     const eligible = this.eligibleMatchingJobs();
     if (eligible.length === 0) {

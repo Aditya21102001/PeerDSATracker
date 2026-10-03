@@ -354,6 +354,19 @@ public class HireService {
         return results;
     }
 
+    /**
+     * Executes a 1-Click Application for a candidate to a specific job opening.
+     *
+     * <p><b>How this works:</b>
+     * <ul>
+     *   <li>Calculates a dynamic ATS match score based on candidate skills, experience, and PeerDSA solve count.</li>
+     *   <li>Persists an application record in the PostgreSQL {@code job_applications} table linked to the candidate.</li>
+     *   <li>Tracks status in the in-app ATS pipeline ({@code APPLIED} &rarr; {@code UNDER_REVIEW} &rarr; {@code SHORTLISTED} &rarr; etc.).</li>
+     *   <li><b>Note on external portals:</b> Third-party corporate systems (e.g. Amazon, Swiggy) do not offer open APIs
+     *       for third-party submission bots. The job entity retains {@code externalApplyUrl} so candidates can also
+     *       access the official corporate portal directly from the details modal.</li>
+     * </ul>
+     */
     @Transactional
     public JobApplicationDto apply(Long userId, Long jobId) {
         User user = users.findById(userId).orElseThrow(
@@ -375,6 +388,12 @@ public class HireService {
         return toDto(app);
     }
 
+    /**
+     * Naukri-grade 1-Click "Apply to All Matching" bulk applicator.
+     *
+     * <p>Scans all active openings, evaluates candidate compatibility, filters out previously applied roles,
+     * and atomically batches all qualifying applications (default &ge; 70% match) into the database in one operation.
+     */
     @Transactional
     public ApplyAllResult applyAllMatching(Long userId, Integer minScoreThreshold) {
         int threshold = (minScoreThreshold != null && minScoreThreshold >= 40 && minScoreThreshold <= 100)
@@ -430,6 +449,15 @@ public class HireService {
     // ----------------------------------------------------------- match scoring engine
 
     private record MatchAnalysis(int score, List<String> matchingSkills, List<String> missingSkills) {}
+
+    /**
+     * Calculates candidate-job compatibility using a three-tier weighted formula:
+     * <ol>
+     *   <li><b>Skills Overlap (60% weight):</b> Normalized token match between profile skills and job required skills.</li>
+     *   <li><b>Experience Overlap (25% weight):</b> Compares candidate YOE against the role's min/max expectations.</li>
+     *   <li><b>Platform Solve Bonus (15% weight):</b> Rewards candidates actively solving Striver DSA problems on PeerDSATracker.</li>
+     * </ol>
+     */
 
     private MatchAnalysis computeMatch(CandidateProfile profile, User user, JobOpening job) {
         List<String> requiredSkills = splitSkills(job.getRequiredSkills());

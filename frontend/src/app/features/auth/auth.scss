@@ -117,12 +117,20 @@ button[type='submit'] {
   font-size: var(--fs-sm);
 }
 
-/* "Continue with Google". An <a>, not a <button>: it is a full-page navigation off the SPA. */
+/* "Continue with Google" / "Sign up with Google". An <a>, not a <button>: it is a full-page navigation off the SPA. */
 .provider {
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
   width: 100%;
   text-align: center;
   text-decoration: none;
+  font-weight: 500;
+
+  .google-icon {
+    flex: none;
+  }
 }
 
 /*

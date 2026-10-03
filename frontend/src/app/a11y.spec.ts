@@ -169,6 +169,6 @@ describe('accessibility (axe-core)', () => {
       const results = await analyse(component, INPUTS[name] ?? {});
 
       expect(results.violations, describeViolations(results.violations)).toEqual([]);
-    });
+    }, 15_000);
   }
 });

@@ -1,18 +1,21 @@
 # PeerDSATracker
 
-A gamified peer DSA progress tracker: work through the Striver A2Z sheet, keep a daily streak,
-compare progress with peers on a leaderboard, keep notes with a spaced-repetition revision queue,
-and write and run your solutions in an in-app editor.
+A comprehensive, gamified software engineering interview preparation platform:
+- **474 Striver A2Z Problems**: Complete syllabus tracking across 18 topics from basics to advanced DP and graphs.
+- **Spaced-Repetition Revision Deck**: Review tricky patterns on a proven interval ladder (1, 3, 7, 16, 35, 90 days).
+- **Multi-Engine Code Editor**: Write and run Java, C++, Python, JavaScript, and Go against automated test cases.
+- **AI Mock Technical Interviews**: Real-time voice-interactive mock technical interviews across 5 tracks with instant coaching.
+- **Anti-Cheat Proctored Assessments**: Timed assessments with tab-switch detection, violation tracking, and integrity scoring.
+- **Video Hub & Playlists**: Embedded YouTube player with synchronized, timestamped study notes.
+- **Naukri-Grade Career Matchmaker**: Resume parser and ATS job match scoring based on skills, experience, and DSA solves.
+- **Peer Community**: Study circles, leaderboard rankings, and direct peer messaging.
 
 ## Documentation
 
-New to the codebase? Start with **[docs/](docs/)**, which explains the architecture and every
-feature from scratch — [architecture](docs/01-architecture.md), [data model](docs/02-data-model.md),
-[backend](docs/03-backend.md), [frontend](docs/04-frontend.md), [analytics](docs/05-analytics.md),
-[API reference](docs/06-api-reference.md), [glossary](docs/07-glossary.md).
+- **Are you a fresher, intern, or new contributor?** Start with **[docs/08-fresher-onboarding-guide.md](docs/08-fresher-onboarding-guide.md)** — a friendly, step-by-step introduction designed to get you up and running immediately.
+- Want deep architectural details? Read the **[docs/](docs/)** folder — [architecture](docs/01-architecture.md), [data model](docs/02-data-model.md), [backend tour](docs/03-backend.md), [frontend tour](docs/04-frontend.md), [analytics](docs/05-analytics.md), [API reference](docs/06-api-reference.md), [glossary](docs/07-glossary.md).
 
-This README is the *operational* document: setup, environment, deployment, and the gotchas that
-will bite you. The two do not repeat each other.
+This README is the *operational* document: setup, environment, deployment, and the gotchas that will bite you. The two do not repeat each other.
 
 ## Stack
 
