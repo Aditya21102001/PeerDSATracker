@@ -12,7 +12,6 @@ import {
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import {
-  CodingProblemResult,
   ProctoringViolation,
   SubmitTestRequest,
   TestCodingProblem,

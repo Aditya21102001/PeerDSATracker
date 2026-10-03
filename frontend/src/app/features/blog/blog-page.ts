@@ -316,8 +316,7 @@ export class BlogPage implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   protected readonly nav = inject(NavigationHistoryService);
-
-  private pendingArticleId: string | null = null;
+  private pendingArticleId: number | null = null;
 
   protected readonly posts = signal<BlogPost[]>([]);
   protected readonly loading = signal(true);
@@ -455,12 +454,15 @@ export class BlogPage implements OnInit {
 
   ngOnInit(): void {
     this.route.queryParams.subscribe((params) => {
-      const articleId = params['article'];
-      if (articleId) {
-        this.pendingArticleId = articleId;
-        const found = this.posts().find((p) => p.id === articleId);
-        if (found) {
-          this.selected.set(found);
+      const articleParam = params['article'];
+      if (articleParam) {
+        const parsedId = Number(articleParam);
+        if (!Number.isNaN(parsedId)) {
+          this.pendingArticleId = parsedId;
+          const found = this.posts().find((p) => p.id === parsedId);
+          if (found) {
+            this.selected.set(found);
+          }
         }
       } else {
         this.pendingArticleId = null;
