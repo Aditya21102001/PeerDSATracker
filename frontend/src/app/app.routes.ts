@@ -129,15 +129,14 @@ export const routes: Routes = [
     loadComponent: () => import('./features/profile/profile-page').then((m) => m.ProfilePage),
   },
   {
+    // Public study guides: comprehensive notes on DSA, Java, Spring Boot, Angular. Accessible without auth.
     path: 'study-guides',
-    canActivate: [authGuard],
     loadComponent: () =>
       import('./features/study-guides/study-guides-page').then((m) => m.StudyGuidesPage),
   },
   {
     // guideId is bound to StudyGuideDetail input via withComponentInputBinding()
     path: 'study-guides/:guideId',
-    canActivate: [authGuard],
     loadComponent: () =>
       import('./features/study-guides/study-guide-detail').then((m) => m.StudyGuideDetail),
   },
@@ -156,5 +155,5 @@ export const routes: Routes = [
     canActivate: [authGuard],
     loadComponent: () => import('./features/proctor/proctored-test-page').then((m) => m.ProctoredTestPage),
   },
-  { path: '**', redirectTo: 'dashboard' },
+  { path: '**', redirectTo: '' },
 ];

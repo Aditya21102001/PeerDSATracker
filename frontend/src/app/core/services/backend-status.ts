@@ -3,6 +3,7 @@ import { Service, computed, inject, signal } from '@angular/core';
 import { Observable, Subscription, catchError, exhaustMap, of, tap, timeout, timer } from 'rxjs';
 import { isOffline } from '../http/backend-unavailable';
 import { Meta } from '../models/api.models';
+import { environment } from '../../../environments/environment';
 
 /**
  * `unknown`     nothing has answered yet this session.
@@ -62,6 +63,8 @@ export class BackendStatus {
   /** What is deployed, once something has answered. Null until then. */
   readonly meta = this.info.asReadonly();
   readonly current = this.state.asReadonly();
+  readonly isReady = computed(() => this.state() === 'ready');
+  readonly isWarming = computed(() => this.state() === 'warming');
 
   /** Show the notice: the backend is not answering and it is worth telling somebody. */
   readonly troubled = computed(() => this.state() !== 'ready' && this.state() !== 'unknown');
@@ -79,6 +82,15 @@ export class BackendStatus {
    * Must never block bootstrap -- a backend that is down should still render a usable page.
    */
   probe(): void {
+    if (environment.apiOrigin && typeof fetch !== 'undefined') {
+      try {
+        fetch(`${environment.apiOrigin}/actuator/health`, { mode: 'no-cors' }).catch(() => {});
+        fetch(`${environment.apiOrigin}/api/meta`, { mode: 'no-cors' }).catch(() => {});
+      } catch {
+        /* Ignore environments without fetch */
+      }
+    }
+
     this.fetchMeta().subscribe((meta) => {
       if (!meta) {
         this.reportUnavailable();

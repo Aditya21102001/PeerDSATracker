@@ -1,5 +1,6 @@
 import { Component, computed, inject, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { AuthStore } from '../../core/services/auth.store';
 import {
   GuideTopic,
   StudyGuidesService,
@@ -24,8 +25,13 @@ import {
             <span [style.color]="g.color">{{ g.icon }} {{ g.title }}</span>
           </div>
           <nav class="sgd-nav">
-            <a routerLink="/dashboard">Dashboard</a>
-            <a routerLink="/sheet">Sheet</a>
+            @if (auth.isAuthenticated()) {
+              <a routerLink="/dashboard">Dashboard</a>
+              <a routerLink="/sheet">Sheet</a>
+            } @else {
+              <a routerLink="/">Home</a>
+              <a routerLink="/signin">Sign in</a>
+            }
           </nav>
         </header>
 
@@ -169,6 +175,7 @@ export class StudyGuideDetail {
   readonly guideId = input.required<string>();
 
   private readonly svc = inject(StudyGuidesService);
+  protected readonly auth = inject(AuthStore);
 
   protected readonly guide = computed(() => this.svc.getById(this.guideId()));
   protected readonly activeTopic = signal<GuideTopic | null>(null);

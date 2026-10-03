@@ -30,7 +30,6 @@ import org.springframework.web.bind.annotation.RestController;
  * to answer instantly into the slowest in the application.
  */
 @RestController
-@RequestMapping("/api/meta")
 public class MetaController {
 
     /**
@@ -58,7 +57,7 @@ public class MetaController {
         this.commit = commit;
     }
 
-    @GetMapping
+    @GetMapping({"/api/meta", "/api/health", "/api/ping"})
     public Meta meta() {
         return new Meta(
                 build != null ? build.getVersion() : "dev",

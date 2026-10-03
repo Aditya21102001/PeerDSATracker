@@ -13,7 +13,7 @@ export const authGuard: CanActivateFn = (_route, state) => {
   if (auth.isAuthenticated()) {
     return true;
   }
-  return router.createUrlTree(['/signin'], { queryParams: { redirect: state.url } });
+  return router.createUrlTree(['/'], { queryParams: { redirect: state.url, authRequired: '1' } });
 };
 
 /** Keeps signed-in users off /signin and /signup. */

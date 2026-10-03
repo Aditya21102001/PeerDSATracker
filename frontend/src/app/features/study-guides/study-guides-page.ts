@@ -1,5 +1,6 @@
 import { Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { AuthStore } from '../../core/services/auth.store';
 import { StudyGuidesService } from '../../core/services/study-guides.service';
 
 /**
@@ -22,9 +23,16 @@ import { StudyGuidesService } from '../../core/services/study-guides.service';
           </p>
         </div>
         <nav class="sg-nav">
-          <a routerLink="/dashboard">Dashboard</a>
-          <a routerLink="/sheet">Sheet</a>
-          <a routerLink="/hire">Hire</a>
+          @if (auth.isAuthenticated()) {
+            <a routerLink="/dashboard">Dashboard</a>
+            <a routerLink="/sheet">Sheet</a>
+            <a routerLink="/hire">Hire</a>
+          } @else {
+            <a routerLink="/">← Home</a>
+            <a routerLink="/guide">How it works</a>
+            <a routerLink="/signin">Sign in</a>
+            <a routerLink="/signup" class="btn-signup">Start Free</a>
+          }
         </nav>
       </header>
 
@@ -52,5 +60,6 @@ import { StudyGuidesService } from '../../core/services/study-guides.service';
 })
 export class StudyGuidesPage {
   private readonly svc = inject(StudyGuidesService);
+  protected readonly auth = inject(AuthStore);
   protected readonly guides = this.svc.getAll();
 }

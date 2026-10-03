@@ -58,6 +58,18 @@
       color: var(--text);
     }
   }
+
+  .btn-signup {
+    padding: 0.35rem 0.85rem;
+    border-radius: var(--radius-sm);
+    background: var(--accent);
+    color: #fff !important;
+    font-weight: 600 !important;
+
+    &:hover {
+      opacity: 0.9;
+    }
+  }
 }
 
 /* Guide cards grid */
