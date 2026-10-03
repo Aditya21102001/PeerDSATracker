@@ -23,6 +23,7 @@ import { StudyGuidesService } from '../../core/services/study-guides.service';
           </p>
         </div>
         <nav class="sg-nav">
+          <a routerLink="/videos">📺 Video Hub</a>
           @if (auth.isAuthenticated()) {
             <a routerLink="/dashboard">Dashboard</a>
             <a routerLink="/sheet">Sheet</a>

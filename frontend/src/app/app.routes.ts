@@ -155,5 +155,11 @@ export const routes: Routes = [
     canActivate: [authGuard],
     loadComponent: () => import('./features/proctor/proctored-test-page').then((m) => m.ProctoredTestPage),
   },
+  {
+    // Video Hub & Playlists: search YouTube, build custom playlists, and watch embedded video with notes.
+    // Accessible to both guests and signed-in users.
+    path: 'videos',
+    loadComponent: () => import('./features/videos/video-hub-page').then((m) => m.VideoHubPage),
+  },
   { path: '**', redirectTo: '' },
 ];

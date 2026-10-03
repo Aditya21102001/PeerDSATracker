@@ -41,6 +41,9 @@ interface RoadmapStep {
           <a routerLink="/study-guides" class="nav-link highlighted">
             <span class="nav-icon">📚</span> Study Guides
           </a>
+          <a routerLink="/videos" class="nav-link highlighted">
+            <span class="nav-icon">📺</span> Video Hub
+          </a>
           <a href="#roadmap" class="nav-link">🗺️ 474 Roadmap</a>
           <a href="#ai-engine" class="nav-link">🤖 AI Interview</a>
           <a href="#career" class="nav-link">💼 Career Portal</a>
@@ -104,8 +107,11 @@ interface RoadmapStep {
             <a [routerLink]="['/signup']" [queryParams]="authQueryParams()" class="btn-hero-primary">
               🚀 Start Grinding — It's 100% Free
             </a>
+            <a routerLink="/videos" class="btn-hero-secondary">
+              📺 Embedded Video Hub (Free)
+            </a>
             <a routerLink="/study-guides" class="btn-hero-secondary">
-              📚 Browse Free Study Guides (No Login)
+              📚 Browse Study Guides
             </a>
             <a href="#roadmap" class="btn-hero-tertiary">
               🗺️ Explore 474 Problems
@@ -115,6 +121,7 @@ interface RoadmapStep {
           <div class="hero-reassurance">
             <span>✓ No credit card required</span>
             <span>✓ Instant access</span>
+            <span>✓ YouTube Video Hub &amp; Playlists</span>
             <span>✓ 4 Deep Study Guides</span>
             <span>✓ AI-Powered Test Simulator</span>
           </div>

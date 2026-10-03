@@ -50,6 +50,7 @@ import { Spinner } from '../../shared/spinner';
           <a routerLink="/notes">Notes</a>
           <a routerLink="/blog">Articles</a>
           <a routerLink="/study-guides">Study Guides</a>
+          <a routerLink="/videos">Videos</a>
           <a routerLink="/hire">Hire</a>
           <a routerLink="/interview">AI Interview</a>
           <a routerLink="/proctor">AI Test</a>
