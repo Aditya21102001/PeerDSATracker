@@ -30,6 +30,14 @@
       } catch (_) {
         /* private mode: fall through to the OS preference */
       }
+      // Immediately wake up the backend container on Render behind the scenes
+      try {
+        if (typeof fetch !== 'undefined') {
+          fetch('https://peerdsatracker.onrender.com/actuator/health', { mode: 'no-cors', cache: 'no-store' }).catch(function(){});
+          fetch('https://peerdsatracker.onrender.com/api/meta', { mode: 'no-cors', cache: 'no-store' }).catch(function(){});
+          fetch('/api/meta', { cache: 'no-store' }).catch(function(){});
+        }
+      } catch (_) {}
     })();
   </script>
 
@@ -156,9 +164,8 @@
     <div class="boot" role="status" aria-live="polite">
       <span class="boot-ring" aria-hidden="true"></span>
       <p class="boot-cold">
-        <strong>Waking the server up</strong>
-        The backend sleeps after 15 minutes idle to stay on a free plan. Starting it usually takes a
-        minute or two. Please do not reload -- that starts the wait over.
+        <strong>PeerDSATracker</strong>
+        <span>Preparing your interactive study workspace…</span>
       </p>
     </div>
   </app-root>

@@ -1,5 +1,6 @@
-import { Component, inject } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import { Component, computed, inject, signal } from '@angular/core';
+import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
+import { filter } from 'rxjs';
 import { AuthStore } from './core/services/auth.store';
 import { AppFooter } from './shared/app-footer';
 import { ChatWidget } from './shared/chat-widget/chat-widget';
@@ -7,7 +8,6 @@ import { ColdStartNotice } from './shared/cold-start-notice';
 import { MobileNav } from './shared/mobile-nav/mobile-nav';
 import { ThemeToggle } from './shared/theme-toggle';
 import { TourOverlay } from './shared/tour-overlay';
-
 import { VideoTourModal } from './shared/video-tour-modal/video-tour-modal';
 
 @Component({
@@ -24,4 +24,32 @@ import { VideoTourModal } from './shared/video-tour-modal/video-tour-modal';
  */
 export class App {
   protected readonly auth = inject(AuthStore);
+  private readonly router = inject(Router);
+
+  private readonly currentUrl = signal<string>(this.router.url);
+
+  constructor() {
+    this.router.events
+      .pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
+      .subscribe((event) => {
+        this.currentUrl.set(event.urlAfterRedirects || event.url);
+      });
+  }
+
+  /**
+   * Hide the fixed cold-start notice on public landing and exploration pages so visitors can
+   * browse problem sets, study guides, and video hub freely without distraction while the
+   * backend warms up silently behind the scenes.
+   */
+  protected readonly isPublicExploration = computed(() => {
+    const raw = this.currentUrl();
+    const clean = raw.split('?')[0].split('#')[0];
+    return (
+      clean === '' ||
+      clean === '/' ||
+      clean.startsWith('/study-guides') ||
+      clean.startsWith('/videos') ||
+      clean === '/guide'
+    );
+  });
 }

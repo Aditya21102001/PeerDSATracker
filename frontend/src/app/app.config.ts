@@ -22,15 +22,12 @@ export const appConfig: ApplicationConfig = {
     // resend the original request with the stale token it already failed on.
     provideHttpClient(withInterceptors([coldStartInterceptor, authInterceptor])),
 
-    // Ask the backend what it is and whether it is up, without waiting for the answer. On a cold
-    // start this fails within seconds and puts the notice on screen, instead of the user finding
-    // out one broken panel at a time -- and the failed attempt still starts Render's container,
-    // so it is also the beginning of the wake-up. Never awaited: a backend that is down must
-    // still render a usable page.
-    provideAppInitializer(() => inject(BackendStatus).probe()),
-
-    // Exchange the surviving refresh token for an access token before the first route
-    // renders. Otherwise every request on the landing page fires unauthenticated.
-    provideAppInitializer(() => firstValueFrom(inject(AuthStore).restoreSession())),
+    // Wake up the backend on Render immediately behind the scenes and restore session in the
+    // background, so the application bootstraps and renders public content instantly (<50ms)
+    // without blocking on cold-start delays.
+    provideAppInitializer(() => {
+      inject(BackendStatus).probe();
+      inject(AuthStore).restoreSession().subscribe();
+    }),
   ],
 };

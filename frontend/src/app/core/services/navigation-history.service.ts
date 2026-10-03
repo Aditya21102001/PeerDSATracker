@@ -80,7 +80,7 @@ export class NavigationHistoryService {
   back(fallbackUrl?: string): void {
     const fallback = fallbackUrl || (this.auth.isAuthenticated() ? '/dashboard' : '/');
 
-    if (this.historyStack.length > 1 && typeof window !== 'undefined' && window.history.length > 1) {
+    if (this.historyStack.length > 1) {
       this.historyStack.pop(); // pop current
       this.location.back();
     } else {

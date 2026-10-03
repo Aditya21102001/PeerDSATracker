@@ -1,5 +1,6 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import { AuthStore } from '../../core/services/auth.store';
 import { BackendStatus } from '../../core/services/backend-status';
 
 interface RoadmapStep {
@@ -62,8 +63,12 @@ interface RoadmapStep {
             }
           </div>
 
-          <a [routerLink]="['/signin']" [queryParams]="authQueryParams()" class="btn-signin">Sign in</a>
-          <a [routerLink]="['/signup']" [queryParams]="authQueryParams()" class="btn-cta">Start Free 🚀</a>
+          @if (auth.isAuthenticated()) {
+            <a routerLink="/dashboard" class="btn-cta">Dashboard ⚡</a>
+          } @else {
+            <a [routerLink]="['/signin']" [queryParams]="authQueryParams()" class="btn-signin">Sign in</a>
+            <a [routerLink]="['/signup']" [queryParams]="authQueryParams()" class="btn-cta">Start Free 🚀</a>
+          }
         </div>
       </header>
 
@@ -104,14 +109,20 @@ interface RoadmapStep {
           </p>
 
           <div class="hero-cta-group">
-            <a [routerLink]="['/signup']" [queryParams]="authQueryParams()" class="btn-hero-primary">
-              🚀 Start Grinding — It's 100% Free
+            @if (auth.isAuthenticated()) {
+              <a routerLink="/dashboard" class="btn-hero-primary">
+                ⚡ Go to My Dashboard
+              </a>
+            } @else {
+              <a [routerLink]="['/signup']" [queryParams]="authQueryParams()" class="btn-hero-primary">
+                🚀 Start Grinding — It's 100% Free
+              </a>
+            }
+            <a routerLink="/study-guides" class="btn-hero-secondary">
+              📚 Free Study Guides
             </a>
             <a routerLink="/videos" class="btn-hero-secondary">
               📺 Embedded Video Hub (Free)
-            </a>
-            <a routerLink="/study-guides" class="btn-hero-secondary">
-              📚 Browse Study Guides
             </a>
             <a href="#roadmap" class="btn-hero-tertiary">
               🗺️ Explore 474 Problems
@@ -470,6 +481,7 @@ interface RoadmapStep {
 export class WelcomePage {
   private readonly route = inject(ActivatedRoute);
   protected readonly backend = inject(BackendStatus);
+  protected readonly auth = inject(AuthStore);
 
   /** Whether the visitor was redirected here because auth is required */
   protected readonly authRequired = computed(() => {

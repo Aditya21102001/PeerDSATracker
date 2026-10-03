@@ -25,11 +25,10 @@ const resetRoutes: Routes = environment.resetEnabled
 // carries only the shell plus whichever route the user landed on.
 export const routes: Routes = [
   {
-    // Public landing page. guestGuard bounces signed-in users straight to /dashboard, so a
-    // returning user never sees the marketing page.
+    // Public landing page: accessible immediately to guests and signed-in visitors alike.
+    // Allows instant exploration without auth while the backend warms up silently in the background.
     path: '',
     pathMatch: 'full',
-    canActivate: [guestGuard],
     loadComponent: () => import('./features/welcome/welcome-page').then((m) => m.WelcomePage),
   },
   {

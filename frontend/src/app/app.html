@@ -15,8 +15,11 @@
 <!--
   Says "the backend is asleep, not broken" while a cold start runs. Outside the router outlet so a
   spin-down that happens mid-session is reported on whichever page the user is already on.
+  Suppressed on public landing / exploration pages so visitors can browse freely without cold-start banners.
 -->
-<app-cold-start-notice />
+@if (!isPublicExploration()) {
+  <app-cold-start-notice />
+}
 
 <router-outlet />
 
