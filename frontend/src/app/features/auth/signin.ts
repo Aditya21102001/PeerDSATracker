@@ -68,7 +68,7 @@ import { LastSignInService } from '../../core/services/last-sign-in.service';
           <p class="error" role="alert">{{ error() }}</p>
         }
 
-        <button type="submit" class="btn" [disabled]="busy()">
+        <button type="submit" class="btn" [disabled]="busy()" aria-label="Sign in">
           {{ busy() ? 'Signing in…' : 'Sign in' }}
         </button>
       </form>
