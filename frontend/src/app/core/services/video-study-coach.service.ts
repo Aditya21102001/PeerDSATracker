@@ -44,11 +44,15 @@ export class VideoStudyCoachService {
   // --- Camera Presence Guard (Opt-in) ---
   readonly cameraActive = signal<boolean>(false);
   readonly faceDetected = signal<boolean>(true);
+  // Detected gesture signal: 'none' | 'WAVE' | 'NOD'
+  readonly detectedGesture = signal<'none' | 'WAVE' | 'NOD'>('none');
   private mediaStream: MediaStream | null = null;
   private hiddenVideo: HTMLVideoElement | null = null;
   private hiddenCanvas: HTMLCanvasElement | null = null;
   private nativeFaceDetector: any = null;
   private prevFrameData: Uint8ClampedArray | null = null;
+  private motionlessFrames = 0; // consecutive frames with zero meaningful motion
+  private gestureFrameBuffer: number[] = []; // ring buffer of inter-frame motion values for gesture classification
   private presenceCheckInterval: any = null;
   private absenceCheckCount = 0;
 
@@ -328,6 +332,9 @@ export class VideoStudyCoachService {
 
   pauseVideo(reason: PauseReason = 'USER_PAUSE'): void {
     this.sendIFrameCommand('pauseVideo');
+    // Burst-fire to handle YouTube iframe API latency / partial load states
+    setTimeout(() => this.sendIFrameCommand('pauseVideo'), 80);
+    setTimeout(() => this.sendIFrameCommand('pauseVideo'), 280);
     this.handlePauseDetected(reason);
   }
 
@@ -345,13 +352,13 @@ export class VideoStudyCoachService {
   private sendIFrameCommand(func: string, args: any[] = []): void {
     if (!this.iframeElement?.contentWindow) return;
     try {
-      // Dispatches both empty-array and empty-string variants to guarantee support across YouTube iframe versions
+      // Send both arg-forms: empty string (older YT players) and empty array (newer)
       this.iframeElement.contentWindow.postMessage(
         JSON.stringify({ event: 'command', func, args: args.length > 0 ? args : '' }),
         '*'
       );
       this.iframeElement.contentWindow.postMessage(
-        JSON.stringify({ event: 'command', func, args }),
+        JSON.stringify({ event: 'command', func, args: args.length > 0 ? args : [] }),
         '*'
       );
     } catch (e) {
@@ -642,7 +649,7 @@ export class VideoStudyCoachService {
     this.showToast('Resuming playback. Stay focused!', 'success', '▶');
   }
 
-  // --- Smart Client-Side Camera Presence Guard (Opt-in) ---
+  // --- Smart Client-Side Camera Presence Guard (Opt-in, gesture-aware) ---
 
   async startCameraPresence(): Promise<boolean> {
     try {
@@ -652,32 +659,39 @@ export class VideoStudyCoachService {
       }
 
       this.mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: { width: 320, height: 240 },
+        video: { width: { ideal: 320 }, height: { ideal: 240 }, facingMode: 'user' },
         audio: false,
       });
 
       this.hiddenVideo = document.createElement('video');
-      this.hiddenVideo.width = 320;
-      this.hiddenVideo.height = 240;
       this.hiddenVideo.autoplay = true;
       this.hiddenVideo.muted = true;
       this.hiddenVideo.playsInline = true;
       this.hiddenVideo.setAttribute('playsinline', '');
       this.hiddenVideo.setAttribute('muted', '');
-      this.hiddenVideo.style.position = 'fixed';
-      this.hiddenVideo.style.top = '-9999px';
-      this.hiddenVideo.style.left = '-9999px';
-      this.hiddenVideo.style.width = '1px';
-      this.hiddenVideo.style.height = '1px';
-      this.hiddenVideo.style.opacity = '0';
-      this.hiddenVideo.style.pointerEvents = 'none';
+      // Keep off-screen but ATTACHED to DOM so browsers release frames
+      this.hiddenVideo.style.cssText =
+        'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;opacity:0;pointer-events:none;';
 
       if (typeof document !== 'undefined' && document.body) {
         document.body.appendChild(this.hiddenVideo);
       }
 
       this.hiddenVideo.srcObject = this.mediaStream;
-      await this.hiddenVideo.play();
+
+      // Wait for camera stream to actually produce frames before starting (avoids videoWidth === 0)
+      await new Promise<void>((resolve, reject) => {
+        const timeout = setTimeout(() => reject(new Error('Camera stream timeout')), 8000);
+        const check = () => {
+          if (this.hiddenVideo && this.hiddenVideo.videoWidth > 0 && this.hiddenVideo.readyState >= 2) {
+            clearTimeout(timeout);
+            resolve();
+          } else {
+            setTimeout(check, 100);
+          }
+        };
+        this.hiddenVideo!.play().then(check).catch(reject);
+      });
 
       this.hiddenCanvas = document.createElement('canvas');
       this.hiddenCanvas.width = 160;
@@ -686,9 +700,14 @@ export class VideoStudyCoachService {
       this.cameraActive.set(true);
       this.faceDetected.set(true);
       this.absenceCheckCount = 0;
+      this.motionlessFrames = 0;
+      this.gestureFrameBuffer = [];
       this.prevFrameData = null;
 
-      // Start presence check loop (every 1.5s for fast and responsive detection)
+      // Warmup: capture two baseline frames before triggering presence logic
+      await this.warmupCameraFrames();
+
+      // Presence check every 1.5s — fast enough for gesture detection
       this.presenceCheckInterval = setInterval(() => this.checkCameraPresence(), 1500);
 
       this.showToast('Smart Presence Guard active. Video will pause if you step away!', 'success', '📷');
@@ -699,6 +718,24 @@ export class VideoStudyCoachService {
       this.updateSettings({ enableCameraPresence: false });
       this.showToast('Camera permission denied. Tab auto-pause is still active.', 'warning', '📷');
       return false;
+    }
+  }
+
+  /** Capture 2 baseline frames to seed prevFrameData before live detection starts */
+  private async warmupCameraFrames(): Promise<void> {
+    for (let i = 0; i < 2; i++) {
+      await new Promise<void>((r) => setTimeout(r, 200));
+      if (!this.hiddenVideo || !this.hiddenCanvas) break;
+      const ctx = this.hiddenCanvas.getContext('2d', { willReadFrequently: true });
+      if (!ctx || this.hiddenVideo.videoWidth === 0) break;
+      ctx.drawImage(this.hiddenVideo, 0, 0, this.hiddenCanvas.width, this.hiddenCanvas.height);
+      const frame = ctx.getImageData(0, 0, this.hiddenCanvas.width, this.hiddenCanvas.height);
+      const data = frame.data;
+      const lumaArr = new Uint8ClampedArray(this.hiddenCanvas.width * this.hiddenCanvas.height);
+      for (let j = 0; j < data.length; j += 4) {
+        lumaArr[j / 4] = Math.round(0.299 * data[j] + 0.587 * data[j + 1] + 0.114 * data[j + 2]);
+      }
+      this.prevFrameData = lumaArr;
     }
   }
 
@@ -721,9 +758,12 @@ export class VideoStudyCoachService {
     this.hiddenCanvas = null;
     this.prevFrameData = null;
     this.nativeFaceDetector = null;
+    this.motionlessFrames = 0;
+    this.gestureFrameBuffer = [];
     this.cameraActive.set(false);
     this.faceDetected.set(true);
     this.absenceCheckCount = 0;
+    this.detectedGesture.set('none');
   }
 
   toggleCameraPresence(): void {
@@ -745,69 +785,83 @@ export class VideoStudyCoachService {
 
     ctx.drawImage(this.hiddenVideo, 0, 0, this.hiddenCanvas.width, this.hiddenCanvas.height);
 
-    // Tier 1: Hardware-accelerated browser native FaceDetector API (Chromium / Shape Detection API)
+    // --- Tier 1: Chrome/Edge native FaceDetector API (GPU-accelerated) ---
     if (typeof (window as any).FaceDetector === 'function') {
       try {
         if (!this.nativeFaceDetector) {
           this.nativeFaceDetector = new (window as any).FaceDetector({ fastMode: true, maxDetectedFaces: 1 });
         }
-        const faces = await this.nativeFaceDetector.detect(this.hiddenCanvas);
-        const faceFound = Array.isArray(faces) && faces.length > 0;
-        this.handlePresenceDecision(faceFound);
+        const faces: any[] = await this.nativeFaceDetector.detect(this.hiddenCanvas);
+        this.handlePresenceDecision(Array.isArray(faces) && faces.length > 0, 0);
         return;
       } catch {
-        // Fall through to pixel-level computer vision
+        this.nativeFaceDetector = null; // reset and fall through
       }
     }
 
-    // Tier 2: Real-time Computer Vision Pixel Pipeline (Zero external dependencies)
+    // --- Tier 2: Pure canvas computer vision pipeline ---
     try {
-      const width = this.hiddenCanvas.width;
-      const height = this.hiddenCanvas.height;
-      const frame = ctx.getImageData(0, 0, width, height);
+      const W = this.hiddenCanvas.width;
+      const H = this.hiddenCanvas.height;
+      const frame = ctx.getImageData(0, 0, W, H);
       const data = frame.data;
 
-      // Region of Interest: Upper-central portrait zone where a desk-facing user sits
-      const xMin = Math.floor(width * 0.18);
-      const xMax = Math.floor(width * 0.82);
-      const yMin = Math.floor(height * 0.08);
-      const yMax = Math.floor(height * 0.82);
-
-      let roiPixels = 0;
-      let skinPixels = 0;
-      let motionPixels = 0;
+      const currentLuma = new Uint8ClampedArray(W * H);
       let totalLuma = 0;
+      let skinPixels = 0;
+      let roiPixels = 0;
+      let motionSum = 0;
+      let motionPixels = 0;
 
-      const currentLuma = new Uint8ClampedArray(width * height);
+      // ROI: central upper portrait zone (where a seated person's head/shoulders appear)
+      const xMin = Math.floor(W * 0.1);
+      const xMax = Math.floor(W * 0.9);
+      const yMin = Math.floor(H * 0.05);
+      const yMax = Math.floor(H * 0.88);
 
-      for (let y = 0; y < height; y++) {
-        for (let x = 0; x < width; x++) {
-          const pIdx = y * width + x;
+      for (let y = 0; y < H; y++) {
+        for (let x = 0; x < W; x++) {
+          const pIdx = y * W + x;
           const i = pIdx * 4;
           const r = data[i];
           const g = data[i + 1];
           const b = data[i + 2];
-          const luma = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+          const luma = (0.299 * r + 0.587 * g + 0.114 * b) | 0;
           currentLuma[pIdx] = luma;
           totalLuma += luma;
 
           if (x >= xMin && x <= xMax && y >= yMin && y <= yMax) {
             roiPixels++;
 
-            // YCbCr skin chrominance cluster test
+            // --- Multi-model skin detection ---
+
+            // Model A: YCbCr chrominance (illumination-invariant, works across ethnicities)
             const cb = 128 - 0.168736 * r - 0.331264 * g + 0.5 * b;
             const cr = 128 + 0.5 * r - 0.418688 * g - 0.081312 * b;
+            const ycbcrSkin = cb >= 77 && cb <= 127 && cr >= 133 && cr <= 173;
 
-            // Invariant human skin chromaticity boundaries across all human ethnicities
-            if (cb >= 77 && cb <= 127 && cr >= 133 && cr <= 173 && r > g && g > b && luma > 18) {
+            // Model B: HSV approximation (handles very light/very dark skin tones)
+            const maxRGB = Math.max(r, g, b);
+            const minRGB = Math.min(r, g, b);
+            const s = maxRGB > 0 ? (maxRGB - minRGB) / maxRGB : 0;
+            const hsvSkin = r > 60 && g > 40 && b > 20 && maxRGB > minRGB + 15 &&
+              Math.abs(r - g) > 15 && r > g && r > b && s > 0.15 && s < 0.9 && luma > 20;
+
+            // Model C: Simple RGB ratio (fast, broad catch-all)
+            const rgbSkin = r > 95 && g > 40 && b > 20 && r > g + 15 && r > b + 15 && luma > 25;
+
+            // Vote: 2-of-3 models must agree, OR YCbCr alone with enough brightness
+            const skinVotes = (ycbcrSkin ? 1 : 0) + (hsvSkin ? 1 : 0) + (rgbSkin ? 1 : 0);
+            if (skinVotes >= 2 || (ycbcrSkin && luma > 30)) {
               skinPixels++;
             }
 
-            // Temporal inter-frame motion delta
+            // Temporal optical-flow motion analysis
             if (this.prevFrameData) {
               const delta = Math.abs(luma - this.prevFrameData[pIdx]);
-              if (delta > 6) {
+              if (delta > 5) {
                 motionPixels++;
+                motionSum += delta;
               }
             }
           }
@@ -816,38 +870,77 @@ export class VideoStudyCoachService {
 
       this.prevFrameData = currentLuma;
 
-      const avgLuma = totalLuma / (width * height);
+      const avgLuma = totalLuma / (W * H);
       const skinRatio = roiPixels > 0 ? skinPixels / roiPixels : 0;
       const motionRatio = roiPixels > 0 ? motionPixels / roiPixels : 0;
+      const avgMotionDelta = motionPixels > 0 ? motionSum / motionPixels : 0;
 
-      // Covered camera or pitch black room
-      if (avgLuma < 10) {
-        this.handlePresenceDecision(false);
+      // Blocked camera (pitch-black)
+      if (avgLuma < 8) {
+        this.handlePresenceDecision(false, motionRatio);
         return;
       }
 
-      // Live person criteria:
-      // Substantial skin tone in portrait zone (>2.5%) OR subtle posture/micro-motion (>1.2%) with skin presence (>0.8%)
-      const isPresent = skinRatio >= 0.025 || (skinRatio >= 0.008 && motionRatio >= 0.012);
-      this.handlePresenceDecision(isPresent);
-    } catch (e) {
-      // Keep presence state on canvas read error
+      // --- Presence decision ---
+      // Person present if: meaningful skin pixels (>1%) OR significant motion even with low skin
+      //   (handles poor lighting, back-lit subjects, dark clothing, partial faces)
+      const skinPresent = skinRatio >= 0.01;
+      const motionPresent = motionRatio >= 0.015 && avgMotionDelta > 8;
+      const isPresent = skinPresent || motionPresent;
+
+      // Static room detection: increment motionless counter when essentially zero movement
+      if (motionRatio < 0.004) {
+        this.motionlessFrames++;
+      } else {
+        this.motionlessFrames = 0;
+      }
+
+      // Override: if >=6 consecutive motionless frames (~9s) AND no skin → definitely absent
+      const staticRoomAbsent = this.motionlessFrames >= 6 && !skinPresent;
+
+      this.handlePresenceDecision(isPresent && !staticRoomAbsent, motionRatio);
+    } catch {
+      // Keep current presence state on canvas error — do not falsely trigger pause
     }
   }
 
-  private handlePresenceDecision(isPresent: boolean): void {
+  private handlePresenceDecision(isPresent: boolean, motionRatio: number): void {
+    // --- Gesture classification (only when user is present) ---
+    if (isPresent) {
+      this.gestureFrameBuffer.push(motionRatio);
+      if (this.gestureFrameBuffer.length > 6) this.gestureFrameBuffer.shift();
+
+      if (this.gestureFrameBuffer.length >= 4) {
+        const avg = this.gestureFrameBuffer.reduce((a, b) => a + b, 0) / this.gestureFrameBuffer.length;
+        const last = this.gestureFrameBuffer[this.gestureFrameBuffer.length - 1];
+        // WAVE: sudden spike then drop (large motion burst > 15%)
+        if (last > 0.15 && avg < 0.08) {
+          this.detectedGesture.set('WAVE');
+          setTimeout(() => this.detectedGesture.set('none'), 2000);
+        }
+        // NOD: moderate rhythmic motion (3-7% range sustained)
+        else if (avg >= 0.03 && avg <= 0.07 &&
+          this.gestureFrameBuffer.filter((v) => v >= 0.025 && v <= 0.08).length >= 3) {
+          this.detectedGesture.set('NOD');
+          setTimeout(() => this.detectedGesture.set('none'), 2000);
+        }
+      }
+    }
+
+    // --- Presence state machine ---
     if (!isPresent) {
       this.absenceCheckCount++;
-      // If absent for 2 consecutive checks (~3 seconds)
+      // Require 2 consecutive absence confirmations (~3s) to debounce transients
       if (this.absenceCheckCount >= 2) {
         this.faceDetected.set(false);
-        if (!this.isAway() && (this.isPlaying() || !this.isPaused() || !!this.currentVideoId())) {
+        if (!this.isAway() && !!this.currentVideoId()) {
           this.triggerAwayPause('AWAY_PRESENCE_LOST');
         }
       }
     } else {
       const wasAbsent = !this.faceDetected();
       this.absenceCheckCount = 0;
+      this.motionlessFrames = 0;
       this.faceDetected.set(true);
 
       if (wasAbsent && this.isAway() && this.awayReason() === 'AWAY_PRESENCE_LOST') {
