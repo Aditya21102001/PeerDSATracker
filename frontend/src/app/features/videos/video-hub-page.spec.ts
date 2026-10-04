@@ -147,4 +147,51 @@ describe('VideoHubPage with VideoStudyCoach', () => {
     expect((component as any).service.currentNotes()).toContain('Checkpoint Takeaway');
     expect((component as any).service.currentNotes()).toContain('Always check edge cases.');
   });
+
+  it('inserts quick recall concept anchors directly into notes when paused', () => {
+    (component as any).viewMode.set('watch');
+    fixture.detectChanges();
+
+    (component as any).quickInsertNote('⚠️ Edge Case: empty array');
+    fixture.detectChanges();
+
+    expect((component as any).service.currentNotes()).toContain('⚠️ Edge Case: empty array');
+    expect((component as any).activeTab()).toBe('notes');
+    expect(coach.activePauseCount()).toBeGreaterThan(0);
+  });
+
+  it('toggles gesture guide drawer in camera PiP', () => {
+    expect((component as any).showGestureGuide()).toBe(false);
+    (component as any).toggleGestureGuide();
+    expect((component as any).showGestureGuide()).toBe(true);
+    (component as any).toggleGestureGuide();
+    expect((component as any).showGestureGuide()).toBe(false);
+  });
+
+  it('renders personalized gesture motivation card when latestMotivation is set', () => {
+    (component as any).viewMode.set('watch');
+    coach.latestMotivation.set({
+      id: 'mot-1',
+      gesture: 'NOD',
+      gestureCategory: 'HEAD',
+      title: 'Concept Internalized, Aditya!',
+      message: 'Great intuition on Dynamic Programming!',
+      icon: '🧠',
+      boostText: '+5% Active Recall',
+      timestamp: Date.now(),
+    });
+    fixture.detectChanges();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    const banner = compiled.querySelector('#vh-motivation-banner');
+    expect(banner).toBeTruthy();
+    expect(banner?.textContent).toContain('Concept Internalized');
+    expect(banner?.textContent).toContain('HEAD GESTURE');
+
+    const dismissBtn = compiled.querySelector('#vh-btn-dismiss-motivation') as HTMLButtonElement;
+    expect(dismissBtn).toBeTruthy();
+    dismissBtn.click();
+    fixture.detectChanges();
+    expect(coach.latestMotivation()).toBeNull();
+  });
 });

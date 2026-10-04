@@ -38,7 +38,7 @@ Coach -> CV: loadOpenCv() [async background]
 Coach -> Hub: stream linked to live PiP monitor
 note over Hub: PiP displays live video, tracking box,\nand ensures Chromium never throttles frames
 
-== Presence Monitoring Loop (every 1.2s) ==
+== Presence Monitoring Loop (every 1.0s) ==
 loop Continuous Study Monitoring
   Coach -> CV: analyzeFrame(hiddenCanvas)
   alt FaceDetector / OpenCV available
@@ -48,39 +48,58 @@ loop Continuous Study Monitoring
   end
   CV --> Coach: { isPresent, faceBox, gesture, motionIntensity }
 
-  == Case 1: User Steps Away From Desk ==
-  alt isPresent == false (consecutive checks >= 2)
+  == Case 1: User Steps Away From Desk (2-3s Continuous Absence) ==
+  alt isPresent == false (continuous absence ticks >= 3, i.e. 2.5-3.0s)
     Coach -> Coach: triggerAwayPause('AWAY_PRESENCE_LOST')
     Coach -> Player: pauseVideo() [direct + burst postMessage]
     Coach -> Hub: display Away Overlay + playChime()
     note over Hub: Video paused automatically.\nSpot preserved!
   end
 
-  == Case 2: User Returns to Camera ==
-  alt isPresent == true (was previously away)
-    Coach -> Coach: handleReturnFromAway()
+  == Case 2: User Returns to Camera (1.5-2.0s Confirmed + 3s Rewind) ==
+  alt isPresent == true (continuous return ticks >= 2)
+    Coach -> Coach: rewindSeconds(3)
+    Coach -> Player: seekTo(time - 3s)
     Coach -> Player: playVideo() [direct + postMessage]
-    Coach -> Hub: dismiss Away Overlay & show "Welcome back" toast
-    note over User: Playback resumes automatically!\nZero clicks needed.
+    Coach -> Hub: dismiss Away Overlay & show "3s Rewound" toast
+    note over User: Playback resumes automatically with 3s rewind!\nZero clicks needed.
   end
 
-  == Case 3: User Performs Hand Gesture ==
+  == Case 3: User Performs Hand or Head Gesture (Personalized Motivation) ==
   alt gesture detected ('WAVE' | 'PALM' | 'NOD')
-    Coach -> Coach: handleGestureAction(gesture)
-    alt gesture == 'WAVE'
-      Coach -> Player: toggle play/pause
-      Coach -> Hub: show animated 👋 Wave notification
-    else gesture == 'PALM'
-      Coach -> Player: pauseVideo()
-      Coach -> Hub: show animated ✋ Palm notification
-    else gesture == 'NOD'
-      Coach -> Coach: boost Active Learning Index (+5%)
+    Coach -> Hub: display glowing 1.5s countdown banner with [Cancel ✕]
+    alt user cancels gesture
+      User -> Hub: Click [Cancel ✕]
+      Hub -> Coach: cancelPendingGesture()
+    else 1.5s timer elapses confirmed
+      Coach -> Coach: generatePersonalizedMotivation(gesture)
+      note over Coach: Contextualized with User Name,\nCurrent DSA Topic, Streak, and Solved Stats
+      Coach -> Coach: executeGestureAction(gesture)
+      Coach -> Hub: display Floating Motivation Card & update Motivation Feed
+      alt gesture == 'WAVE' (Hand Gesture)
+        Coach -> Player: toggle play/pause
+        Coach -> Hub: show 👋 Hand Wave motivation toast
+      else gesture == 'PALM' (Hand Gesture)
+        Coach -> Player: pauseVideo()
+        Coach -> Hub: show ✋ Mindful Reflection motivation toast
+      else gesture == 'NOD' (Head Gesture)
+        Coach -> Coach: boost Active Learning Index (+5%)
+        Coach -> Hub: show 🧠 Concept Internalized motivation toast
+      end
     end
+  end
+
+  == Case 4: Video Paused -> Active DSA Recall Anchors ==
+  alt isPaused == true
+    Hub -> Hub: display Active DSA Recall Bar\n[⚠️ Edge Case] [📊 Complexity] [🧠 Invariant] [💻 Base Case]
+    User -> Hub: Click concept anchor chip
+    Hub -> Coach: notifyNoteRecorded()
+    Hub -> Hub: append timestamped snippet to Notes
   end
 end
 
 == Teardown ==
 Hub -> Coach: detachPlayer()
-Coach -> Coach: stopCameraPresence() (release tracks, cleanup canvas)
+Coach -> Coach: stopCameraPresence() (release tracks, cancel timers, cleanup canvas)
 
 @enduml

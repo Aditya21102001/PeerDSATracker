@@ -2861,32 +2861,412 @@ textarea,
   }
 
   .pip-footer {
-    padding: 0.3rem 0.5rem;
-    background: rgba(0, 0, 0, 0.25);
+    padding: 0.3rem 0.4rem;
+    background: rgba(0, 0, 0, 0.35);
     display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
     justify-content: center;
   }
 
   .pip-toggle-btn {
-    width: 100%;
-    padding: 0.2rem 0.4rem;
-    font-size: 0.68rem;
+    flex: 1 1 calc(33.333% - 0.25rem);
+    min-width: 50px;
+    padding: 0.25rem 0.35rem;
+    font-size: 0.65rem;
     font-weight: 700;
     border-radius: 4px;
     border: 1px solid rgba(255, 255, 255, 0.12);
     background: rgba(255, 255, 255, 0.06);
-    color: rgba(255, 255, 255, 0.8);
+    color: rgba(255, 255, 255, 0.85);
     cursor: pointer;
+    white-space: nowrap;
+    text-align: center;
+    transition: all var(--t-fast) var(--ease);
 
     &.active {
-      background: rgba(99, 102, 241, 0.25);
+      background: rgba(99, 102, 241, 0.3);
       border-color: #818cf8;
-      color: #a5b4fc;
+      color: #c7d2fe;
     }
 
     &:hover {
-      border-color: rgba(255, 255, 255, 0.3);
+      border-color: rgba(255, 255, 255, 0.35);
+      background: rgba(255, 255, 255, 0.12);
     }
+  }
+
+  .pip-guide-drawer {
+    position: absolute;
+    inset: 0;
+    background: rgba(10, 15, 29, 0.95);
+    backdrop-filter: blur(8px);
+    z-index: 15;
+    padding: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    color: #fff;
+    font-size: 0.7rem;
+
+    .guide-title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-weight: 700;
+      color: #a5b4fc;
+      font-size: 0.72rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      padding-bottom: 0.25rem;
+
+      .btn-guide-close {
+        background: transparent;
+        border: none;
+        color: #94a3b8;
+        cursor: pointer;
+        font-size: 0.75rem;
+        padding: 0 0.2rem;
+        &:hover { color: #fff; }
+      }
+    }
+
+    .guide-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.35rem;
+      font-size: 0.68rem;
+
+      span { font-weight: 600; color: #f1f5f9; }
+      small { color: #94a3b8; }
+    }
+  }
+}
+
+/* --- Personalized Gesture Motivation Floating Banner --- */
+.gesture-motivation-banner {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  right: 1rem;
+  max-width: 32rem;
+  z-index: 26;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: rgba(15, 23, 42, 0.96);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(129, 140, 248, 0.6);
+  border-radius: var(--r-lg, 12px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5), 0 0 24px rgba(99, 102, 241, 0.25);
+  color: #fff;
+  animation: slide-down 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+
+  .mot-badge-ring {
+    flex-shrink: 0;
+    width: 2.4rem;
+    height: 2.4rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    background: rgba(99, 102, 241, 0.2);
+    border: 1.5px solid #818cf8;
+    box-shadow: 0 0 12px rgba(99, 102, 241, 0.4);
+
+    &.head {
+      background: rgba(168, 85, 247, 0.2);
+      border-color: #c084fc;
+      box-shadow: 0 0 12px rgba(168, 85, 247, 0.4);
+    }
+
+    &.hand {
+      background: rgba(14, 165, 233, 0.2);
+      border-color: #38bdf8;
+      box-shadow: 0 0 12px rgba(14, 165, 233, 0.4);
+    }
+  }
+
+  .mot-body {
+    flex: 1;
+    min-width: 0;
+
+    .mot-top-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.2rem;
+      flex-wrap: wrap;
+
+      .mot-category-tag {
+        font-size: 0.68rem;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+        color: #a5b4fc;
+        text-transform: uppercase;
+      }
+
+      .mot-boost-tag {
+        font-size: 0.65rem;
+        font-weight: 700;
+        padding: 0.1rem 0.4rem;
+        border-radius: 999px;
+        background: rgba(16, 185, 129, 0.2);
+        border: 1px solid #10b981;
+        color: #6ee7b7;
+      }
+    }
+
+    .mot-title {
+      display: block;
+      font-size: 0.88rem;
+      font-weight: 800;
+      color: #fff;
+      margin-bottom: 0.2rem;
+      line-height: 1.25;
+    }
+
+    .mot-text {
+      font-size: 0.8rem;
+      color: #cbd5e1;
+      line-height: 1.4;
+      margin: 0;
+    }
+  }
+
+  .btn-mot-dismiss {
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    font-size: 0.85rem;
+    cursor: pointer;
+    padding: 0.2rem;
+    line-height: 1;
+    transition: color 0.15s ease;
+
+    &:hover {
+      color: #fff;
+    }
+  }
+}
+
+/* --- Gesture History Section in Coach Tab --- */
+.gesture-history-card {
+  padding: 1.25rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg, 12px);
+  margin-top: 1rem;
+
+  .gh-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.35rem;
+
+    h4 {
+      font-size: 1rem;
+      font-weight: 800;
+      color: var(--text);
+      margin: 0;
+    }
+
+    .gh-count {
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 0.2rem 0.55rem;
+      border-radius: 999px;
+      background: var(--surface-2);
+      border: 1px solid var(--border-control);
+      color: var(--text-muted);
+    }
+  }
+
+  .gh-sub {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    margin: 0 0 1rem;
+  }
+
+  .gh-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+
+  .gh-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.65rem 0.85rem;
+    background: var(--surface-2);
+    border: 1px solid var(--border-control);
+    border-radius: var(--r-md, 8px);
+    transition: border-color 0.15s ease;
+
+    &.head {
+      border-left: 3px solid #a855f7;
+    }
+
+    &.hand {
+      border-left: 3px solid #38bdf8;
+    }
+
+    .gh-icon {
+      font-size: 1.25rem;
+      line-height: 1;
+      padding-top: 0.1rem;
+    }
+
+    .gh-info {
+      flex: 1;
+      min-width: 0;
+
+      .gh-title-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.5rem;
+        margin-bottom: 0.2rem;
+
+        strong {
+          font-size: 0.82rem;
+          color: var(--text);
+        }
+
+        .gh-category-pill {
+          font-size: 0.65rem;
+          font-weight: 700;
+          color: var(--text-muted);
+        }
+      }
+
+      .gh-msg {
+        font-size: 0.78rem;
+        color: var(--text-muted);
+        margin: 0;
+        line-height: 1.4;
+      }
+    }
+  }
+}
+
+/* --- Pending Gesture Action Floating Banner --- */
+.pending-gesture-banner {
+  position: absolute;
+  top: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 25;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.9rem;
+  background: rgba(15, 23, 42, 0.94);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid #818cf8;
+  border-radius: 999px;
+  color: #fff;
+  font-size: 0.82rem;
+  box-shadow: 0 10px 30px rgba(99, 102, 241, 0.45);
+
+  .pending-gesture-icon {
+    font-size: 1.1rem;
+    animation: pip-pulse 1.2s infinite ease-in-out;
+  }
+
+  .pending-gesture-text {
+    strong {
+      color: #a5b4fc;
+    }
+  }
+
+  .btn-cancel-gesture {
+    margin-left: 0.25rem;
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 999px;
+    color: #fca5a5;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 0.2rem 0.55rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+
+    &:hover {
+      background: rgba(239, 68, 68, 0.3);
+      border-color: #ef4444;
+      color: #fff;
+    }
+  }
+}
+
+/* --- Active DSA Recall & Concept Anchor Bar --- */
+.active-recall-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding: 0.65rem 1rem;
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.95));
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  border-radius: var(--r-md, 8px);
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+
+  .recall-label {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.82rem;
+    color: var(--text, #fff);
+
+    .recall-icon {
+      font-size: 1rem;
+    }
+
+    strong {
+      color: #818cf8;
+    }
+  }
+
+  .recall-quick-buttons {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+
+    .recall-chip {
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0.25rem 0.6rem;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 999px;
+      color: var(--text-muted, #cbd5e1);
+      cursor: pointer;
+      transition: all 0.15s ease;
+
+      &:hover {
+        background: rgba(99, 102, 241, 0.2);
+        border-color: #818cf8;
+        color: #fff;
+        transform: translateY(-1px);
+      }
+    }
+  }
+
+  .recall-resume-btn {
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 0.35rem 0.75rem;
+    border-radius: var(--r-sm, 6px);
   }
 }
 

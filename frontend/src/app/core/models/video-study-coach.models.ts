@@ -38,6 +38,17 @@ export type UserGestureType =
   | 'NOD'
   | 'V_SIGN';
 
+export interface GestureMotivation {
+  id: string;
+  gesture: UserGestureType;
+  gestureCategory: 'HAND' | 'HEAD' | 'AFFIRMATION';
+  title: string;
+  message: string;
+  icon: string;
+  boostText?: string;
+  timestamp: number;
+}
+
 export interface FaceBox {
   x: number;
   y: number;

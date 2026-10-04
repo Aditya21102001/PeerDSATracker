@@ -292,13 +292,17 @@ The `/videos` route embeds curated and searchable YouTube video tutorials alongs
   - **Tier 1 (GPU)**: Native browser `FaceDetector` API when supported.
   - **Tier 2 (OpenCV.js)**: Dynamically loads `opencv.js` in background to perform YCrCb color segmentation, contour analysis, and convex hull defect calculation.
   - **Tier 3 (Spatial Grid & Temporal Flow)**: 6x6 spatial cell density analysis to eliminate false positives from background furniture/warm walls, combined with optical-flow motion delta tracking.
-- **Auto-Pause on Away**: If the user steps away from the camera, absence is debounced across 2 ticks (~2.4s) and triggers `triggerAwayPause('AWAY_PRESENCE_LOST')`. The video pauses and the spot is saved.
-- **Auto-Resume on Return**: The moment the user steps back into camera frame, presence is re-acquired and playback resumes automatically with zero clicks required.
-- **Gesture Control**:
-  - `WAVE`: Hand wave toggles playback (pauses when playing, auto-resumes when away or paused).
-  - `PALM`: Raised open palm pauses video.
-  - `NOD` / `THUMBS_UP`: Confirms checkpoint and boosts Active Learning Index retention.
-- **Visible PiP Sentinel**: An interactive, glassmorphic Picture-in-Picture camera monitor on the watch page ensures video frames are actively decoded by the browser compositor and never throttled.
+- **Continuous Away Threshold (2–3s)**: If the user steps away from the camera, absence must be verified across 3 consecutive 1-second ticks (2.5–3.0s continuous absence) before triggering `triggerAwayPause('AWAY_PRESENCE_LOST')`. Momentary glances, blinks, or note-taking never trigger false pauses.
+- **Continuous Return & 3s Auto-Rewind**: Requires 2 consecutive checks (1.5–2.0s) of continuous presence before auto-resuming playback. Automatically seeks back 3 seconds (`autoRewindOnReturn`) so the learner never misses what was being spoken right before they stepped away.
+- **Hand & Head Gesture Recognition with Personalized Motivations**:
+  - `NOD` (Head Gesture): Computer vision tracks rhythmic vertical face displacement (dip and recovery). Triggers a concept comprehension checkpoint with inspiring personalized feedback (e.g. *"Concept Internalized, [Name]! You're locking in the invariant for [Topic]! That's how true interview intuition is built."*) and boosts Active Recall by +5%.
+  - `PALM` (Hand Gesture): Open palm pauses playback for mindful reflection (e.g. *"Mindful Reflection, [Name]! Elite problem-solvers pause before coding to formulate edge cases. Great discipline pausing on [Topic]!"*).
+  - `WAVE` (Hand Gesture): Hand wave toggles playback with momentum restoration or structured chunking cheers (e.g. *"Ready to Conquer, [Name]! Full focus mode engaged. Let's finish mastering [Topic]!"*).
+  - `THUMBS_UP` (Affirmation): Celebrates consistency, referencing current problem streaks and solved counts from `AuthStore`.
+  - **Floating Motivation HUD Card & Feed**: Celebrates recognized gestures with an animated glassmorphic card on the player and maintains a session history log in the Coaching tab.
+  - **1.5s Visual Countdown & Cancel**: A glowing banner appears on-screen with a 1.5s confirmation countdown and a one-click `[Cancel ✕]` button, preventing accidental movements from interrupting playback.
+- **Active DSA Recall Anchors Bar**: When paused, one-click anchor chips (`⚠️ Edge Case`, `📊 Complexity`, `🧠 Invariant`, `💻 Base Case`) automatically append timestamped snippets into the user's notes and boost retention scores.
+- **Visible PiP Sentinel**: An interactive, glassmorphic Picture-in-Picture camera monitor on the watch page ensures video frames are actively decoded by the browser compositor and provides toggles for gestures, auto-rewind, and a quick gesture guide.
 
 ## Adding a page
 

@@ -201,161 +201,310 @@ import { TopicQuizModal } from '../../shared/topic-quiz-modal/topic-quiz-modal';
                     (load)="onIframeLoad()"
                   ></iframe>
 
-                  <!-- Interactive Camera Focus & Gesture Sentinel PiP Widget -->
-                  @if (coach.cameraActive()) {
-                    <div
-                      id="vh-camera-pip-widget"
-                      class="camera-pip-widget"
-                      [class.minimized]="pipMinimized()"
-                      role="region"
-                      aria-label="Smart Camera Focus & Gesture Sentinel"
-                    >
-                      <div class="pip-header">
-                        <div class="pip-status-indicator">
-                          <span class="pip-pulse-dot" [class.away]="!coach.faceDetected()"></span>
-                          <span class="pip-status-text">
-                            {{ coach.faceDetected() ? 'Present' : 'Away' }}
-                          </span>
+                    <!-- Pending Deliberate Gesture Confirmation Banner -->
+                    @if (coach.pendingGestureAction(); as pending) {
+                      <div class="pending-gesture-banner animate-slide-down" id="vh-pending-gesture-banner" role="status">
+                        <span class="pending-gesture-icon">{{ pending.gesture === 'WAVE' ? '👋' : (pending.gesture === 'PALM' ? '✋' : '👍') }}</span>
+                        <span class="pending-gesture-text">
+                          {{ pending.gesture }} recognized — <strong>{{ pending.action === 'pause' ? 'Pausing in 1.5s' : 'Resuming in 1.5s' }}</strong>...
+                        </span>
+                        <button
+                          id="vh-btn-cancel-gesture"
+                          type="button"
+                          class="btn-cancel-gesture"
+                          (click)="coach.cancelPendingGesture()"
+                          title="Cancel gesture action"
+                          aria-label="Cancel gesture action"
+                        >
+                          Cancel ✕
+                        </button>
+                      </div>
+                    }
+
+                    <!-- Personalized Gesture Motivation Floating HUD Card -->
+                    @if (coach.latestMotivation(); as mot) {
+                      <div class="gesture-motivation-banner animate-pop" id="vh-motivation-banner" role="status" aria-live="polite">
+                        <div class="mot-badge-ring" [class.head]="mot.gestureCategory === 'HEAD'" [class.hand]="mot.gestureCategory === 'HAND'">
+                          <span>{{ mot.icon }}</span>
                         </div>
-                        @if (coach.isOpenCvActive()) {
-                          <span class="pip-cv-badge" title="OpenCV Computer Vision Acceleration active">OpenCV</span>
+                        <div class="mot-body">
+                          <div class="mot-top-row">
+                            <span class="mot-category-tag">
+                              {{ mot.gestureCategory === 'HEAD' ? '🧠 HEAD GESTURE' : (mot.gestureCategory === 'HAND' ? '✋ HAND GESTURE' : '🌟 AFFIRMATION') }}
+                            </span>
+                            @if (mot.boostText) {
+                              <span class="mot-boost-tag">{{ mot.boostText }}</span>
+                            }
+                          </div>
+                          <strong class="mot-title">{{ mot.title }}</strong>
+                          <p class="mot-text">{{ mot.message }}</p>
+                        </div>
+                        <button
+                          id="vh-btn-dismiss-motivation"
+                          type="button"
+                          class="btn-mot-dismiss"
+                          (click)="coach.dismissLatestMotivation()"
+                          title="Dismiss motivation"
+                          aria-label="Dismiss motivation"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    }
+
+                    <!-- Interactive Camera Focus & Gesture Sentinel PiP Widget -->
+                    @if (coach.cameraActive()) {
+                      <div
+                        id="vh-camera-pip-widget"
+                        class="camera-pip-widget"
+                        [class.minimized]="pipMinimized()"
+                        role="region"
+                        aria-label="Smart Camera Focus & Gesture Sentinel"
+                      >
+                        <div class="pip-header">
+                          <div class="pip-status-indicator">
+                            <span class="pip-pulse-dot" [class.away]="!coach.faceDetected()"></span>
+                            <span class="pip-status-text">
+                              {{ coach.faceDetected() ? 'Present' : 'Away' }}
+                            </span>
+                          </div>
+                          @if (coach.isOpenCvActive()) {
+                            <span class="pip-cv-badge" title="OpenCV Computer Vision Acceleration active">OpenCV</span>
+                          }
+                          <div class="pip-controls">
+                            <button
+                              id="vh-pip-minimize-btn"
+                              type="button"
+                              class="pip-ctrl-btn"
+                              (click)="togglePipMinimized()"
+                              [title]="pipMinimized() ? 'Expand Camera PiP' : 'Minimize Camera PiP'"
+                              [attr.aria-label]="pipMinimized() ? 'Expand camera' : 'Minimize camera'"
+                            >
+                              {{ pipMinimized() ? '□' : '—' }}
+                            </button>
+                            <button
+                              id="vh-pip-close-btn"
+                              type="button"
+                              class="pip-ctrl-btn"
+                              (click)="coach.toggleCameraPresence()"
+                              title="Turn off Camera Guard"
+                              aria-label="Close camera guard"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        </div>
+
+                        @if (!pipMinimized()) {
+                          <div class="pip-video-wrap">
+                            <video
+                              #pipVideoElement
+                              class="pip-video-feed"
+                              autoplay
+                              muted
+                              playsinline
+                              [srcObject]="coach.mediaStreamSignal()"
+                            ></video>
+
+                            <!-- Face Tracking Bounding Box Overlay -->
+                            @if (coach.currentFaceBox(); as box) {
+                              <div
+                                class="pip-face-box"
+                                [style.left.%]="(box.x / 160) * 100"
+                                [style.top.%]="(box.y / 120) * 100"
+                                [style.width.%]="(box.width / 160) * 100"
+                                [style.height.%]="(box.height / 120) * 100"
+                              ></div>
+                            }
+
+                            <!-- Detected Gesture Overlay Badge -->
+                            @if (coach.detectedGesture() !== 'none') {
+                              <div class="pip-gesture-overlay animate-pop">
+                                @switch (coach.detectedGesture()) {
+                                  @case ('WAVE') {
+                                    <span class="gesture-icon">👋</span>
+                                    <span class="gesture-label">Wave</span>
+                                  }
+                                  @case ('PALM') {
+                                    <span class="gesture-icon">✋</span>
+                                    <span class="gesture-label">Palm</span>
+                                  }
+                                  @case ('NOD') {
+                                    <span class="gesture-icon">👍</span>
+                                    <span class="gesture-label">Nod</span>
+                                  }
+                                  @default {
+                                    <span class="gesture-icon">✨</span>
+                                    <span class="gesture-label">Gesture</span>
+                                  }
+                                }
+                              </div>
+                            }
+
+                            <!-- Gesture Cheat Sheet Guide Drawer -->
+                            @if (showGestureGuide()) {
+                              <div class="pip-guide-drawer animate-pop" id="vh-pip-guide-drawer">
+                                <div class="guide-title-row">
+                                  <strong>✋ Gesture Shortcuts</strong>
+                                  <button type="button" class="btn-guide-close" (click)="toggleGestureGuide()" aria-label="Close guide">✕</button>
+                                </div>
+                                <div class="guide-row"><span>👋 Wave</span><small>Play / Pause (1.5s)</small></div>
+                                <div class="guide-row"><span>✋ Palm</span><small>Pause Video</small></div>
+                                <div class="guide-row"><span>👍 Nod/Thumb</span><small>Got it / Resume</small></div>
+                              </div>
+                            }
+                          </div>
+
+                          <div class="pip-footer">
+                            <button
+                              id="vh-pip-gesture-toggle"
+                              type="button"
+                              class="pip-toggle-btn"
+                              [class.active]="coach.isGestureControlActive()"
+                              (click)="coach.toggleGestureControl()"
+                              title="Toggle Hand Wave & Gesture controls"
+                            >
+                              {{ coach.isGestureControlActive() ? '✋ Gestures ON' : '✋ Gestures OFF' }}
+                            </button>
+                            <button
+                              id="vh-pip-rewind-toggle"
+                              type="button"
+                              class="pip-toggle-btn"
+                              [class.active]="coach.autoRewindOnReturn()"
+                              (click)="coach.toggleAutoRewindOnReturn()"
+                              title="Auto-rewind 3s when returning from away"
+                            >
+                              {{ coach.autoRewindOnReturn() ? '⏪ 3s Rewind' : '⏪ No Rewind' }}
+                            </button>
+                            <button
+                              id="vh-pip-guide-toggle"
+                              type="button"
+                              class="pip-toggle-btn"
+                              (click)="toggleGestureGuide()"
+                              title="View Gesture Shortcuts Guide"
+                            >
+                              ❓ Guide
+                            </button>
+                          </div>
                         }
-                        <div class="pip-controls">
-                          <button
-                            id="vh-pip-minimize-btn"
-                            type="button"
-                            class="pip-ctrl-btn"
-                            (click)="togglePipMinimized()"
-                            [title]="pipMinimized() ? 'Expand Camera PiP' : 'Minimize Camera PiP'"
-                            [attr.aria-label]="pipMinimized() ? 'Expand camera' : 'Minimize camera'"
-                          >
-                            {{ pipMinimized() ? '□' : '—' }}
-                          </button>
-                          <button
-                            id="vh-pip-close-btn"
-                            type="button"
-                            class="pip-ctrl-btn"
-                            (click)="coach.toggleCameraPresence()"
-                            title="Turn off Camera Guard"
-                            aria-label="Close camera guard"
-                          >
-                            ✕
-                          </button>
+                      </div>
+                    }
+
+                    <!-- Auto-Pause Away Overlay (When user switches tabs, blurs, or leaves screen) -->
+                    @if (coach.isAway()) {
+                      <div id="vh-away-overlay" class="away-overlay" role="alert" aria-live="assertive">
+                        <div class="away-card card" id="vh-away-card">
+                          <div class="away-icon-ring">
+                            <span class="away-icon">⏸️</span>
+                          </div>
+                          <h3 id="vh-away-title">Video Auto-Paused: You Were Away</h3>
+                          <p id="vh-away-desc" class="away-desc">
+                            @if (coach.awayReason() === 'AWAY_PRESENCE_LOST') {
+                              You stepped away from your desk. Video paused automatically!
+                              <span class="away-auto-hint">✨ Return in front of your camera or wave 👋 to resume automatically {{ coach.autoRewindOnReturn() ? '(with 3s rewind)' : '' }}.</span>
+                            } @else {
+                              You switched tabs or minimized the study window. Focus protected.
+                            }
+                          </p>
+                          <div class="away-stats-row">
+                            <span class="away-stat-pill">
+                              ⏱️ Continuous Watch: <strong>{{ coach.formattedContinuousWatch() }}</strong>
+                            </span>
+                            <span class="away-stat-pill">
+                              🌟 Retention Score: <strong>{{ coach.activeLearningIndex() }}/100</strong>
+                            </span>
+                          </div>
+                          <div class="away-actions-row">
+                            <button
+                              id="vh-away-resume-btn"
+                              type="button"
+                              class="btn btn-primary btn-resume"
+                              (click)="coach.resumeFromAway()"
+                              aria-label="Resume video"
+                            >
+                              ▶ Resume Watching (Space)
+                            </button>
+                            <button
+                              id="vh-away-notes-btn"
+                              type="button"
+                              class="btn btn-ghost"
+                              (click)="openNotesFromAway()"
+                              aria-label="Take note while paused"
+                            >
+                              📝 Note while Paused
+                            </button>
+                            <button
+                              id="vh-away-break-btn"
+                              type="button"
+                              class="btn btn-ghost"
+                              (click)="coach.startBreakTimer(300)"
+                              aria-label="Take 5-minute break"
+                            >
+                              ☕ 5-Min Rest
+                            </button>
+                          </div>
+                          <small class="away-hint">💡 Tip: Press <kbd>Space</kbd> or wave 👋 anytime to resume playback.</small>
                         </div>
                       </div>
+                    }
+                  </div>
 
-                      @if (!pipMinimized()) {
-                        <div class="pip-video-wrap">
-                          <video
-                            #pipVideoElement
-                            class="pip-video-feed"
-                            autoplay
-                            muted
-                            playsinline
-                            [srcObject]="coach.mediaStreamSignal()"
-                          ></video>
-
-                          <!-- Face Tracking Bounding Box Overlay -->
-                          @if (coach.currentFaceBox(); as box) {
-                            <div
-                              class="pip-face-box"
-                              [style.left.%]="(box.x / 160) * 100"
-                              [style.top.%]="(box.y / 120) * 100"
-                              [style.width.%]="(box.width / 160) * 100"
-                              [style.height.%]="(box.height / 120) * 100"
-                            ></div>
-                          }
-
-                          <!-- Detected Gesture Overlay Badge -->
-                          @if (coach.detectedGesture() !== 'none') {
-                            <div class="pip-gesture-overlay animate-pop">
-                              @switch (coach.detectedGesture()) {
-                                @case ('WAVE') {
-                                  <span class="gesture-icon">👋</span>
-                                  <span class="gesture-label">Wave</span>
-                                }
-                                @case ('PALM') {
-                                  <span class="gesture-icon">✋</span>
-                                  <span class="gesture-label">Palm</span>
-                                }
-                                @case ('NOD') {
-                                  <span class="gesture-icon">👍</span>
-                                  <span class="gesture-label">Nod</span>
-                                }
-                                @default {
-                                  <span class="gesture-icon">✨</span>
-                                  <span class="gesture-label">Gesture</span>
-                                }
-                              }
-                            </div>
-                          }
-                        </div>
-
-                        <div class="pip-footer">
-                          <button
-                            id="vh-pip-gesture-toggle"
-                            type="button"
-                            class="pip-toggle-btn"
-                            [class.active]="coach.isGestureControlActive()"
-                            (click)="coach.toggleGestureControl()"
-                            title="Toggle Hand Wave & Gesture controls"
-                          >
-                            {{ coach.isGestureControlActive() ? '✋ Gestures ON' : '✋ Gestures OFF' }}
-                          </button>
-                        </div>
-                      }
-                    </div>
-                  }
-
-                  <!-- Auto-Pause Away Overlay (When user switches tabs, blurs, or leaves screen) -->
-                  @if (coach.isAway()) {
-                    <div id="vh-away-overlay" class="away-overlay" role="alert" aria-live="assertive">
-                      <div class="away-card card" id="vh-away-card">
-                        <div class="away-icon-ring">
-                          <span class="away-icon">⏸️</span>
-                        </div>
-                        <h3 id="vh-away-title">Video Auto-Paused: You Were Away</h3>
-                        <p id="vh-away-desc" class="away-desc">
-                          @if (coach.awayReason() === 'AWAY_PRESENCE_LOST') {
-                            You stepped away from your desk. Video paused automatically!
-                            <span class="away-auto-hint">✨ Return in front of your camera or wave your hand 👋 to resume automatically.</span>
-                          } @else {
-                            You switched tabs or minimized the study window. Focus protected.
-                          }
-                        </p>
-                        <div class="away-stats-row">
-                          <span class="away-stat-pill">
-                            ⏱️ Continuous Watch: <strong>{{ coach.formattedContinuousWatch() }}</strong>
-                          </span>
-                          <span class="away-stat-pill">
-                            🌟 Retention Score: <strong>{{ coach.activeLearningIndex() }}/100</strong>
-                          </span>
-                        </div>
-                        <div class="away-actions-row">
-                          <button
-                            id="vh-away-resume-btn"
-                            type="button"
-                            class="btn btn-primary btn-resume"
-                            (click)="coach.resumeFromAway()"
-                            aria-label="Resume video"
-                          >
-                            ▶ Resume Watching (Space)
-                          </button>
-                          <button
-                            id="vh-away-notes-btn"
-                            type="button"
-                            class="btn btn-ghost"
-                            (click)="openNotesFromAway()"
-                            aria-label="Take note while paused"
-                          >
-                            📝 Note while Paused
-                          </button>
-                        </div>
-                        <small class="away-hint">💡 Tip: Press <kbd>Space</kbd> or wave 👋 anytime to resume playback.</small>
+                  <!-- Active DSA Recall & Concept Anchor Bar (Visible when paused) -->
+                  @if (coach.isPaused()) {
+                    <div class="active-recall-bar card animate-fade-in" id="vh-active-recall-bar" role="region" aria-label="Active DSA Recall Quick Anchors">
+                      <div class="recall-label">
+                        <span class="recall-icon">💡</span>
+                        <span><strong>Active Pause:</strong> Capture intuition before resuming</span>
                       </div>
+                      <div class="recall-quick-buttons">
+                        <button
+                          id="vh-recall-edge-case-btn"
+                          type="button"
+                          class="btn btn-xs recall-chip"
+                          (click)="quickInsertNote('⚠️ Edge Case: ')"
+                          title="Insert Edge Case anchor into notes"
+                        >
+                          ⚠️ Edge Case
+                        </button>
+                        <button
+                          id="vh-recall-complexity-btn"
+                          type="button"
+                          class="btn btn-xs recall-chip"
+                          (click)="quickInsertNote('📊 Time: O(), Space: O(): ')"
+                          title="Insert Time & Space complexity anchor"
+                        >
+                          📊 Complexity
+                        </button>
+                        <button
+                          id="vh-recall-invariant-btn"
+                          type="button"
+                          class="btn btn-xs recall-chip"
+                          (click)="quickInsertNote('🧠 Invariant: ')"
+                          title="Insert loop or state invariant"
+                        >
+                          🧠 Invariant
+                        </button>
+                        <button
+                          id="vh-recall-base-case-btn"
+                          type="button"
+                          class="btn btn-xs recall-chip"
+                          (click)="quickInsertNote('💻 Base Case: ')"
+                          title="Insert recursive or base case snippet"
+                        >
+                          💻 Base Case
+                        </button>
+                      </div>
+                      <button
+                        id="vh-recall-resume-btn"
+                        type="button"
+                        class="btn btn-xs btn-primary recall-resume-btn"
+                        (click)="coach.playVideo()"
+                        title="Resume playback"
+                      >
+                        ▶ Resume (Space)
+                      </button>
                     </div>
                   }
-                </div>
 
                 <!-- Live Study Habits & Focus HUD Bar -->
                 <div class="study-hud-bar card" id="vh-study-hud-bar" role="region" aria-label="Live Study Habits Monitor">
@@ -900,6 +1049,35 @@ import { TopicQuizModal } from '../../shared/topic-quiz-modal/topic-quiz-modal';
                           }
                         </div>
                       </div>
+
+                      <!-- Personalized Hand & Head Gesture Momentum Feed -->
+                      @if (coach.gestureMotivationHistory().length > 0) {
+                        <div class="gesture-history-card card" id="vh-gesture-history-card">
+                          <div class="gh-header">
+                            <div>
+                              <h4>🧠 Hand &amp; Head Gesture Momentum</h4>
+                              <p class="gh-sub">Personalized motivations triggered by your real-time hand and head gestures.</p>
+                            </div>
+                            <span class="gh-count">{{ coach.gestureMotivationHistory().length }} registered</span>
+                          </div>
+                          <div class="gh-list">
+                            @for (item of coach.gestureMotivationHistory(); track item.id) {
+                              <div class="gh-item" [class.head]="item.gestureCategory === 'HEAD'" [class.hand]="item.gestureCategory === 'HAND'">
+                                <span class="gh-icon">{{ item.icon }}</span>
+                                <div class="gh-info">
+                                  <div class="gh-title-row">
+                                    <strong>{{ item.title }}</strong>
+                                    <span class="gh-category-pill">
+                                      {{ item.gestureCategory === 'HEAD' ? '🧠 Head Nod' : (item.gesture === 'PALM' ? '✋ Open Palm' : (item.gesture === 'WAVE' ? '👋 Hand Wave' : '👍 Affirmation')) }}
+                                    </span>
+                                  </div>
+                                  <p class="gh-msg">{{ item.message }}</p>
+                                </div>
+                              </div>
+                            }
+                          </div>
+                        </div>
+                      }
 
                       <!-- Auto-Pause Away Guard & Privacy Settings -->
                       <div class="away-settings-card card" id="vh-away-settings-card">
@@ -1580,9 +1758,14 @@ export class VideoHubPage implements AfterViewInit, OnDestroy {
   protected resultsLayout = signal<'list' | 'grid'>('list');
   protected dismissMiniplayer = signal<boolean>(false);
   protected pipMinimized = signal<boolean>(false);
+  protected showGestureGuide = signal<boolean>(false);
 
   protected togglePipMinimized(): void {
     this.pipMinimized.update((v) => !v);
+  }
+
+  protected toggleGestureGuide(): void {
+    this.showGestureGuide.update((v) => !v);
   }
 
   protected searchQuery = '';
@@ -1877,6 +2060,16 @@ export class VideoHubPage implements AfterViewInit, OnDestroy {
   protected onNotesChanged(val: string): void {
     this.service.updateCurrentVideoNotes(val);
     this.coach.notifyNoteRecorded();
+  }
+
+  protected quickInsertNote(label: string): void {
+    const existing = this.service.currentNotes();
+    const timeStr = this.formatSeconds(this.coach.totalWatchSeconds());
+    const snippet = `\n⏱️ [${timeStr}] ${label}`;
+    this.service.updateCurrentVideoNotes(existing ? existing + snippet : snippet.trim());
+    this.activeTab.set('notes');
+    this.coach.notifyNoteRecorded();
+    this.coach.showToast(`Saved "${label.trim()}" to video notes!`, 'success', '📝');
   }
 
   protected openNotesFromAway(): void {

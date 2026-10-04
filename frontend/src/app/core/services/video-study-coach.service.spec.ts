@@ -128,21 +128,30 @@ describe('VideoStudyCoachService', () => {
     expect(service.isPlaying()).toBe(true);
     expect(service.isAway()).toBe(false);
 
-    // 1st absence check - debouncing: not triggered yet
+    // 1st absence check (1s) - debouncing: not triggered yet
     (service as any).handlePresenceDecision(false);
     expect(service.faceDetected()).toBe(true);
     expect(service.isAway()).toBe(false);
 
-    // 2nd consecutive absence check - confirms user is away from camera
+    // 2nd absence check (2s) - continuous debounce: still not paused yet (requires 2-3s continuous)
+    (service as any).handlePresenceDecision(false);
+    expect(service.faceDetected()).toBe(true);
+    expect(service.isAway()).toBe(false);
+
+    // 3rd consecutive absence check (3s) - confirms user is away from camera
     (service as any).handlePresenceDecision(false);
     expect(service.faceDetected()).toBe(false);
     expect(service.isAway()).toBe(true);
     expect(service.awayReason()).toBe('AWAY_PRESENCE_LOST');
     expect(service.isPlaying()).toBe(false);
 
-    // User returns in front of camera -> MUST AUTO-RESUME automatically!
+    // User returns in front of camera: 1st check - confirms face, starts 1-2s confirmation window
     (service as any).handlePresenceDecision(true);
     expect(service.faceDetected()).toBe(true);
+    expect(service.isAway()).toBe(true); // Still verifying return
+
+    // 2nd consecutive return check - confirms deliberate return, AUTO-RESUMES!
+    (service as any).handlePresenceDecision(true);
     expect(service.isAway()).toBe(false);
     expect(service.awayReason()).toBeNull();
     expect(service.isPlaying()).toBe(true);
@@ -153,14 +162,14 @@ describe('VideoStudyCoachService', () => {
     service.setVideoMetadata('vid-gesture-1', 'Dynamic Programming');
     expect(service.isPlaying()).toBe(true);
 
-    // Wave hand while playing -> triggers pause
-    service.handleGestureAction('WAVE');
+    // Wave hand while playing with immediate=true -> triggers pause
+    service.handleGestureAction('WAVE', true);
     expect(service.detectedGesture()).toBe('WAVE');
     expect(service.isPlaying()).toBe(false);
     expect(service.isPaused()).toBe(true);
 
-    // Wave hand while paused -> triggers resume
-    service.handleGestureAction('WAVE');
+    // Wave hand while paused with immediate=true -> triggers resume
+    service.handleGestureAction('WAVE', true);
     expect(service.isPlaying()).toBe(true);
     expect(service.isPaused()).toBe(false);
   });
@@ -170,7 +179,7 @@ describe('VideoStudyCoachService', () => {
     service.setVideoMetadata('vid-gesture-2', 'Graph BFS');
     expect(service.isPlaying()).toBe(true);
 
-    service.handleGestureAction('PALM');
+    service.handleGestureAction('PALM', true);
     expect(service.detectedGesture()).toBe('PALM');
     expect(service.isPlaying()).toBe(false);
     expect(service.isPaused()).toBe(true);
@@ -180,8 +189,63 @@ describe('VideoStudyCoachService', () => {
     service.triggerAwayPause('AWAY_PRESENCE_LOST');
     expect(service.isAway()).toBe(true);
 
-    service.handleGestureAction('NOD');
+    service.handleGestureAction('NOD', true);
     expect(service.isAway()).toBe(false);
     expect(service.isPlaying()).toBe(true);
+  });
+
+  it('provides a 1.5s deliberate confirmation window for gestures with cancellation support', () => {
+    (service as any).handlePlayDetected();
+    service.setVideoMetadata('vid-gesture-3', 'Tries');
+    expect(service.isPlaying()).toBe(true);
+
+    // Gesture with standard 1.5s confirmation window
+    service.handleGestureAction('WAVE', false);
+    expect(service.detectedGesture()).toBe('WAVE');
+    expect(service.pendingGestureAction()).not.toBeNull();
+    expect(service.pendingGestureAction()?.action).toBe('pause');
+    // Not paused immediately during confirmation window
+    expect(service.isPlaying()).toBe(true);
+
+    // User can cancel if accidental
+    service.cancelPendingGesture();
+    expect(service.pendingGestureAction()).toBeNull();
+    expect(service.isPlaying()).toBe(true);
+  });
+
+  it('generates personalized motivations for hand gestures (wave, palm)', () => {
+    service.setVideoMetadata('test-vid-1', 'Striver Two Sum Problem');
+    const waveMot = service.generatePersonalizedMotivation('WAVE', 'resume');
+    expect(waveMot.gestureCategory).toBe('HAND');
+    expect(waveMot.title).toContain('Ready to Conquer');
+    expect(waveMot.message).toContain('Two Sum');
+
+    const palmMot = service.generatePersonalizedMotivation('PALM', 'pause');
+    expect(palmMot.gestureCategory).toBe('HAND');
+    expect(palmMot.title).toContain('Mindful Reflection');
+    expect(palmMot.message).toContain('Two Sum');
+  });
+
+  it('generates personalized motivations for head gestures (nod)', () => {
+    service.setVideoMetadata('test-vid-2', 'Dynamic Programming Grid');
+    const nodMot = service.generatePersonalizedMotivation('NOD', 'checkpoint');
+    expect(nodMot.gestureCategory).toBe('HEAD');
+    expect(nodMot.title).toContain('Concept Internalized');
+    expect(nodMot.message).toContain('Dynamic Programming');
+    expect(nodMot.boostText).toContain('+5% Active Recall');
+  });
+
+  it('stores latest motivation and updates gesture history when gesture executes', () => {
+    (service as any).handlePlayDetected();
+    service.setVideoMetadata('test-vid-3', 'Binary Search Invariant');
+    service.handleGestureAction('NOD', true);
+
+    expect(service.latestMotivation()).not.toBeNull();
+    expect(service.latestMotivation()?.gesture).toBe('NOD');
+    expect(service.latestMotivation()?.gestureCategory).toBe('HEAD');
+    expect(service.gestureMotivationHistory().length).toBeGreaterThan(0);
+
+    service.dismissLatestMotivation();
+    expect(service.latestMotivation()).toBeNull();
   });
 });

@@ -10,6 +10,7 @@ export class OpenCvGestureService {
   private openCvInstance: any = null;
   private prevLumaBuffer: Uint8ClampedArray | null = null;
   private waveMotionHistory: number[] = [];
+  private headYHistory: number[] = [];
   private lastGestureTimestamp = 0;
 
   constructor() {
@@ -352,9 +353,11 @@ export class OpenCvGestureService {
         width: Math.max(20, maxX - minX),
         height: Math.max(20, maxY - minY),
       };
+      this.headYHistory.push(faceBox.y + faceBox.height / 2);
+      if (this.headYHistory.length > 8) this.headYHistory.shift();
     }
 
-    // GESTURE CLASSIFICATION:
+    // GESTURE CLASSIFICATION (Calibrated for high deliberate intent, zero accidental triggers)
     let detectedGesture: UserGestureType = 'none';
     const now = Date.now();
 
@@ -362,23 +365,31 @@ export class OpenCvGestureService {
       this.waveMotionHistory.push(motionRatio);
       if (this.waveMotionHistory.length > 8) this.waveMotionHistory.shift();
 
-      if (now - this.lastGestureTimestamp > 1600 && this.waveMotionHistory.length >= 4) {
+      // Enforce 3.0s cooldown between gestures to prevent rapid repeated triggering
+      if (now - this.lastGestureTimestamp > 3000 && this.waveMotionHistory.length >= 4) {
         const last = this.waveMotionHistory[this.waveMotionHistory.length - 1];
         const prev = this.waveMotionHistory[this.waveMotionHistory.length - 2];
+        const prev2 = this.waveMotionHistory[this.waveMotionHistory.length - 3];
         const avg = this.waveMotionHistory.reduce((a, b) => a + b, 0) / this.waveMotionHistory.length;
 
-        // WAVE: Rapid horizontal hand oscillation producing alternating motion spike > 12%
-        if ((last > 0.11 || (last > 0.08 && prev > 0.08)) && avg > 0.04) {
+        // Ensure hand is in the periphery or distinctly separated from central face
+        const isLateralHandMotion = minX < W * 0.3 || maxX > W * 0.7;
+
+        // WAVE (Hand Gesture): Deliberate horizontal hand oscillation (sustained motion spike > 12% across 3 frames)
+        if (isLateralHandMotion && last > 0.12 && prev > 0.08 && avg > 0.06 && avgMotionDelta > 12) {
           detectedGesture = 'WAVE';
           this.lastGestureTimestamp = now;
         }
-        // PALM / RAISED HAND: Sudden steady motion block in periphery
-        else if (last > 0.07 && last < 0.14 && denseClusters >= 3) {
+        // PALM (Hand Gesture): Open palm held steady in lateral view
+        else if (isLateralHandMotion && last > 0.09 && prev > 0.07 && prev2 > 0.06 && avg < 0.15) {
           detectedGesture = 'PALM';
           this.lastGestureTimestamp = now;
         }
-        // NOD / THUMBS UP: Rhythmic gentle motion
-        else if (avg >= 0.025 && avg <= 0.065 && this.waveMotionHistory.filter((v) => v >= 0.02).length >= 3) {
+        // NOD (Head Gesture): Rhythmic vertical head nod or deliberate vertical displacement
+        else if (!isLateralHandMotion && (
+          (avg >= 0.035 && avg <= 0.075 && this.waveMotionHistory.filter((v) => v >= 0.03).length >= 4) ||
+          this.isHeadNodding()
+        )) {
           detectedGesture = 'NOD';
           this.lastGestureTimestamp = now;
         }
@@ -391,5 +402,18 @@ export class OpenCvGestureService {
       gesture: detectedGesture,
       motionIntensity: motionRatio,
     };
+  }
+
+  private isHeadNodding(): boolean {
+    if (this.headYHistory.length < 4) return false;
+    const len = this.headYHistory.length;
+    const y0 = this.headYHistory[len - 4];
+    const y1 = this.headYHistory[len - 3];
+    const y2 = this.headYHistory[len - 2];
+    const y3 = this.headYHistory[len - 1];
+    // Vertical dip and recovery (nod down and up)
+    const isDipAndRise = y1 > y0 + 3 && y2 > y3 + 2;
+    const isRiseAndDip = y1 < y0 - 3 && y2 < y3 - 2;
+    return isDipAndRise || isRiseAndDip;
   }
 }

@@ -1,6 +1,7 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import {
   FaceBox,
+  GestureMotivation,
   PauseEvent,
   PauseReason,
   StudyCoachSettings,
@@ -11,6 +12,7 @@ import {
 } from '../models/video-study-coach.models';
 import { TopicQuizService } from './topic-quiz.service';
 import { OpenCvGestureService } from './opencv-gesture.service';
+import { AuthStore } from './auth.store';
 
 const SETTINGS_KEY = 'peerdsa_video_coach_settings_v1';
 
@@ -18,6 +20,7 @@ const SETTINGS_KEY = 'peerdsa_video_coach_settings_v1';
 export class VideoStudyCoachService {
   private readonly quiz = inject(TopicQuizService);
   protected readonly openCvService = inject(OpenCvGestureService);
+  private readonly auth = inject(AuthStore, { optional: true });
 
   // --- Persistent Settings ---
   private readonly settingsSignal = signal<StudyCoachSettings>(this.loadSettings());
@@ -52,8 +55,19 @@ export class VideoStudyCoachService {
   readonly currentFaceBox = signal<FaceBox | null>(null);
   readonly detectedGesture = signal<UserGestureType>('none');
   readonly isGestureControlActive = signal<boolean>(true);
+  readonly pendingGestureAction = signal<{
+    gesture: UserGestureType;
+    action: 'pause' | 'resume';
+    secondsRemaining: number;
+  } | null>(null);
+  readonly autoRewindOnReturn = signal<boolean>(true);
   readonly mediaStreamSignal = signal<MediaStream | null>(null);
   readonly isOpenCvActive = computed(() => this.openCvService.isOpenCvLoaded());
+
+  // --- Personalised Gesture Motivations ---
+  readonly latestMotivation = signal<GestureMotivation | null>(null);
+  readonly gestureMotivationHistory = signal<GestureMotivation[]>([]);
+  private motivationTimer: any = null;
 
   private mediaStream: MediaStream | null = null;
   private hiddenVideo: HTMLVideoElement | null = null;
@@ -63,6 +77,8 @@ export class VideoStudyCoachService {
   private motionlessFrames = 0;
   private presenceCheckInterval: any = null;
   private absenceCheckCount = 0;
+  private presenceReturnCheckCount = 0;
+  private pendingGestureTimer: any = null;
 
   // --- Break Timer (Pomodoro) ---
   readonly breakTimerSeconds = signal<number>(0);
@@ -695,11 +711,38 @@ export class VideoStudyCoachService {
     }
   }
 
-  resumeFromAway(): void {
+  resumeFromAway(rewind = true): void {
+    const wasPresenceLost = this.awayReason() === 'AWAY_PRESENCE_LOST';
     this.isAway.set(false);
     this.awayReason.set(null);
+    if (rewind && wasPresenceLost && this.autoRewindOnReturn()) {
+      this.rewindSeconds(3);
+      this.showToast('Welcome back! Resumed with 3s rewind so you don\'t miss a beat.', 'success', '⏪');
+    } else {
+      this.showToast('Resuming playback. Stay focused!', 'success', '▶');
+    }
     this.playVideo();
-    this.showToast('Resuming playback. Stay focused!', 'success', '▶');
+  }
+
+  rewindSeconds(seconds = 3): void {
+    try {
+      if (this.ytPlayer && typeof this.ytPlayer.getCurrentTime === 'function' && typeof this.ytPlayer.seekTo === 'function') {
+        const cur = this.ytPlayer.getCurrentTime();
+        const target = Math.max(0, cur - seconds);
+        this.ytPlayer.seekTo(target, true);
+        return;
+      }
+    } catch {}
+    this.sendIFrameCommand('seekTo', [0, false]);
+  }
+
+  toggleAutoRewindOnReturn(): void {
+    this.autoRewindOnReturn.update((v) => !v);
+    this.showToast(
+      this.autoRewindOnReturn() ? '⏪ 3s Auto-Rewind on return enabled' : 'Auto-Rewind disabled',
+      'info',
+      '⏪'
+    );
   }
 
   // --- Smart Client-Side Camera Presence & Gesture Guard ---
@@ -763,8 +806,8 @@ export class VideoStudyCoachService {
       // Warmup: capture baseline frames
       await this.warmupCameraFrames();
 
-      // Check presence every 1.2s for responsive pause/resume and gesture detection
-      this.presenceCheckInterval = setInterval(() => this.checkCameraPresence(), 1200);
+      // Check presence every 1.0s (3 consecutive absent ticks = 2.5 - 3.0s continuous absence before pausing)
+      this.presenceCheckInterval = setInterval(() => this.checkCameraPresence(), 1000);
 
       this.showToast('Smart Presence & Gesture Guard active. Auto-pauses when away and resumes on return!', 'success', '📷');
       return true;
@@ -801,6 +844,12 @@ export class VideoStudyCoachService {
       clearInterval(this.presenceCheckInterval);
       this.presenceCheckInterval = null;
     }
+    if (this.pendingGestureTimer) {
+      clearTimeout(this.pendingGestureTimer);
+      this.pendingGestureTimer = null;
+    }
+    this.pendingGestureAction.set(null);
+    this.presenceReturnCheckCount = 0;
     if (this.mediaStream) {
       this.mediaStream.getTracks().forEach((track) => track.stop());
       this.mediaStream = null;
@@ -888,35 +937,84 @@ export class VideoStudyCoachService {
     this.handlePresenceDecision(cvResult.isPresent);
   }
 
-  handleGestureAction(gesture: UserGestureType): void {
+  handleGestureAction(gesture: UserGestureType, immediate = false): void {
     if (!this.isGestureControlActive() || !this.settings().enableGestureControl) return;
+    if (this.pendingGestureTimer) return; // already a pending gesture action
 
     this.detectedGesture.set(gesture);
     this.playChime();
 
+    const targetAction = (this.isAway() || this.isPaused()) ? 'resume' : 'pause';
+
+    if (immediate) {
+      this.executeGestureAction(gesture, targetAction);
+      return;
+    }
+
+    // Require 1.5s deliberate confirmation before pausing or resuming to avoid accidental triggers
+    this.pendingGestureAction.set({
+      gesture,
+      action: targetAction,
+      secondsRemaining: 1.5,
+    });
+
+    const actionLabel = targetAction === 'pause' ? 'Pausing in 1.5s' : 'Resuming in 1.5s';
+    const icon = gesture === 'WAVE' ? '👋' : (gesture === 'PALM' ? '✋' : '👍');
+    this.showToast(`${icon} ${gesture} recognized — ${actionLabel}...`, 'info', icon);
+
+    this.pendingGestureTimer = setTimeout(() => {
+      this.executeGestureAction(gesture, targetAction);
+      this.pendingGestureTimer = null;
+      this.pendingGestureAction.set(null);
+    }, 1500);
+  }
+
+  cancelPendingGesture(): void {
+    if (this.pendingGestureTimer) {
+      clearTimeout(this.pendingGestureTimer);
+      this.pendingGestureTimer = null;
+    }
+    this.pendingGestureAction.set(null);
+    this.detectedGesture.set('none');
+    this.showToast('Gesture action cancelled.', 'info', '✕');
+  }
+
+  private executeGestureAction(gesture: UserGestureType, targetAction: 'pause' | 'resume'): void {
+    const motivation = this.generatePersonalizedMotivation(gesture, targetAction);
+    this.latestMotivation.set(motivation);
+    this.gestureMotivationHistory.update((h) => [motivation, ...h.slice(0, 9)]);
+
+    if (this.motivationTimer) clearTimeout(this.motivationTimer);
+    this.motivationTimer = setTimeout(() => {
+      if (this.latestMotivation()?.id === motivation.id) {
+        this.latestMotivation.set(null);
+      }
+    }, 7000);
+
     if (gesture === 'WAVE') {
-      if (this.isAway() || this.isPaused()) {
+      if (targetAction === 'resume') {
         this.resumeFromAway();
-        this.showToast('👋 Hand Wave: Video resumed!', 'success', '▶');
-      } else if (this.isPlaying()) {
+        this.showToast(motivation.message, 'success', '👋');
+      } else {
         this.pauseVideo('USER_PAUSE');
-        this.showToast('👋 Hand Wave: Video paused!', 'info', '⏸️');
+        this.showToast(motivation.message, 'info', '👋');
       }
     } else if (gesture === 'PALM') {
-      if (this.isPlaying()) {
-        this.pauseVideo('USER_PAUSE');
-        this.showToast('✋ Open Palm: Video paused!', 'info', '⏸️');
-      } else {
+      if (targetAction === 'resume') {
         this.resumeFromAway();
-        this.showToast('✋ Open Palm: Video resumed!', 'success', '▶');
+        this.showToast(motivation.message, 'success', '✋');
+      } else {
+        this.pauseVideo('USER_PAUSE');
+        this.showToast(motivation.message, 'info', '✋');
       }
     } else if (gesture === 'NOD' || gesture === 'THUMBS_UP') {
-      if (this.isAway() || this.isPaused()) {
+      if (targetAction === 'resume') {
         this.resumeFromAway();
-        this.showToast('👍 Gesture confirmed: Video resumed!', 'success', '▶');
+        this.showToast(motivation.message, 'success', motivation.icon);
       } else {
-        this.showToast('👍 Positive Gesture recognized! Retention score boosted.', 'success', '🌟');
+        this.showToast(motivation.message, 'success', motivation.icon);
         this.activePauseCount.update((c) => c + 1);
+        this.evaluateStudyPattern();
       }
     }
 
@@ -924,14 +1022,136 @@ export class VideoStudyCoachService {
       if (this.detectedGesture() === gesture) {
         this.detectedGesture.set('none');
       }
-    }, 2400);
+    }, 2000);
+  }
+
+  dismissLatestMotivation(): void {
+    if (this.motivationTimer) {
+      clearTimeout(this.motivationTimer);
+      this.motivationTimer = null;
+    }
+    this.latestMotivation.set(null);
+  }
+
+  generatePersonalizedMotivation(
+    gesture: UserGestureType,
+    action: 'pause' | 'resume' | 'checkpoint' = 'checkpoint'
+  ): GestureMotivation {
+    const user = this.auth?.currentUser ? this.auth.currentUser() : null;
+    const userName = user?.displayName || user?.username || 'Fellow Engineer';
+    const topic = this.cleanTopicTitle(this.currentVideoTitle());
+    const streak = user?.currentStreak || 0;
+    const solved = user?.totalSolved || 0;
+    const learningIndex = this.activeLearningIndex();
+    const streakText = streak > 1 ? ` (${streak}-day streak)` : '';
+
+    let gestureCategory: 'HAND' | 'HEAD' | 'AFFIRMATION' = 'HAND';
+    let title = '';
+    let message = '';
+    let icon = '✨';
+    let boostText = '';
+
+    if (gesture === 'NOD') {
+      gestureCategory = 'HEAD';
+      icon = '🧠';
+      boostText = '+5% Active Recall';
+      title = `Concept Internalized, ${userName}!`;
+      const nodMessages = [
+        `That head nod proves the ${topic} intuition is clicking! Recognizing state transitions early is how top engineers ace interviews.`,
+        `Neural pathways firing! You've grasped the core invariant for ${topic}, ${userName}. Keep this mental momentum alive!`,
+        `Mastery in motion! That deliberate nod marks deep synthesis for ${topic}. Your retention index is up to ${learningIndex}%!`,
+        `Brilliant focus, ${userName}${streakText}! Internalizing ${topic} step-by-step turns difficult problems into second nature.`,
+      ];
+      message = nodMessages[Math.floor(Math.random() * nodMessages.length)];
+    } else if (gesture === 'PALM') {
+      gestureCategory = 'HAND';
+      icon = '✋';
+      boostText = 'Deliberate Practice';
+      title = `Mindful Reflection, ${userName}!`;
+      const palmMessages = [
+        `Elite problem-solvers pause before coding to formulate the edge cases. Great discipline pausing on ${topic}!`,
+        `Active digestion mode engaged! Taking 30 seconds to trace ${topic} on paper beats 2 hours of passive watching.`,
+        `Smart pause! What's the loop invariant or recursion base case for ${topic}? Capture your thoughts in notes before continuing.`,
+        `Disciplined pacing, ${userName}! Pausing to synthesize ${topic} builds lasting recall under interview pressure.`,
+      ];
+      message = palmMessages[Math.floor(Math.random() * palmMessages.length)];
+    } else if (gesture === 'WAVE') {
+      gestureCategory = 'HAND';
+      icon = '👋';
+      if (action === 'resume') {
+        boostText = 'Momentum Restored';
+        title = `Ready to Conquer, ${userName}!`;
+        const resumeMessages = [
+          `Full focus mode engaged! Dive back into ${topic} and let's master the optimal approach.`,
+          `Back to the grind! High energy for ${topic}. Let's see how the instructor proves time complexity.`,
+          `Momentum restored, ${userName}${streakText}! Consistency is key to cracking your dream software role.`,
+          `Wave recognized — game on! Let's lock in the rest of this ${topic} pattern.`,
+        ];
+        message = resumeMessages[Math.floor(Math.random() * resumeMessages.length)];
+      } else {
+        boostText = 'Chunked Synthesis';
+        title = `Structured Pause, ${userName}!`;
+        const pauseMessages = [
+          `Wave acknowledged! Pausing to give your working memory room to consolidate ${topic}.`,
+          `Great study pacing, ${userName}! Chunking your study session into digestible intervals boosts retention by 40%.`,
+          `Taking control of your learning! Use this pause to reflect on the trade-offs of ${topic}.`,
+        ];
+        message = pauseMessages[Math.floor(Math.random() * pauseMessages.length)];
+      }
+    } else if (gesture === 'THUMBS_UP') {
+      gestureCategory = 'AFFIRMATION';
+      icon = '👍';
+      boostText = '+5% Retention Boost';
+      title = `Confidence High, ${userName}!`;
+      const thumbsMessages = [
+        `Thumbs up to mastery! You've added another proven algorithmic pattern to your toolkit.`,
+        `Confidence locked! ${topic} is becoming intuitive for you, ${userName}${solved > 0 ? ` (${solved} total solved)` : ''}!`,
+        `High-yield study session! Keep that positive energy going into your next coding challenge.`,
+      ];
+      message = thumbsMessages[Math.floor(Math.random() * thumbsMessages.length)];
+    } else {
+      gestureCategory = 'AFFIRMATION';
+      icon = '🌟';
+      title = `Great Focus, ${userName}!`;
+      message = `Active gesture detected during ${topic}. Staying engaged accelerates your path to DSA mastery!`;
+    }
+
+    return {
+      id: 'mot_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+      gesture,
+      gestureCategory,
+      title,
+      message,
+      icon,
+      boostText,
+      timestamp: Date.now(),
+    };
+  }
+
+  private cleanTopicTitle(rawTitle: string): string {
+    if (!rawTitle) return 'DSA';
+    const keywords = [
+      'Two Sum', 'Binary Search', 'Dynamic Programming', 'Graph', 'Tree', 'Trie',
+      'Linked List', 'Backtracking', 'Sliding Window', 'Stack', 'Queue', 'Heap',
+      'Sorting', 'Recursion', 'Greedy', 'Bit Manipulation', 'Segment Tree', 'System Design'
+    ];
+    for (const kw of keywords) {
+      if (new RegExp(`\\b${kw}\\b`, 'i').test(rawTitle)) {
+        return kw;
+      }
+    }
+    const cleaned = rawTitle.replace(/[\[\(][^\]\)]*[\]\)]/g, '').replace(/LeetCode\s*#?\d+/gi, '').trim();
+    const words = cleaned.split(/\s+/).slice(0, 4).join(' ');
+    return words.length > 25 ? words.slice(0, 25) + '...' : words || 'DSA';
   }
 
   private handlePresenceDecision(isPresent: boolean): void {
     if (!isPresent) {
       this.absenceCheckCount++;
-      // Debounce: require 2 consecutive ticks (~2.4s) to confirm user has left camera
-      if (this.absenceCheckCount >= 2) {
+      this.presenceReturnCheckCount = 0; // reset return count if absence detected
+
+      // If user is away for 2-3s continuously (3 consecutive checks at 1s = 2.5 - 3.0s), ONLY THEN pause
+      if (this.absenceCheckCount >= 3) {
         this.faceDetected.set(false);
         this.currentFaceBox.set(null);
         if (!this.isAway() && !!this.currentVideoId()) {
@@ -939,14 +1159,24 @@ export class VideoStudyCoachService {
         }
       }
     } else {
-      const wasAwayOrAbsent = !this.faceDetected() || (this.isAway() && this.awayReason() === 'AWAY_PRESENCE_LOST');
+      // User is present in frame: immediately reset continuous absence count
       this.absenceCheckCount = 0;
       this.motionlessFrames = 0;
       this.faceDetected.set(true);
 
-      // AUTOMATIC RESUME when user comes back into camera frame
-      if (wasAwayOrAbsent && this.isAway() && this.awayReason() === 'AWAY_PRESENCE_LOST') {
-        this.resumeFromAway();
+      const wasAway = this.isAway() && this.awayReason() === 'AWAY_PRESENCE_LOST';
+
+      if (wasAway) {
+        // Require 1.5 to 2.0 seconds (2 consecutive confirmed checks) of continuous presence before resuming
+        this.presenceReturnCheckCount++;
+        if (this.presenceReturnCheckCount >= 2) {
+          this.presenceReturnCheckCount = 0;
+          this.resumeFromAway();
+        } else if (this.presenceReturnCheckCount === 1) {
+          this.showToast('👤 Face detected — resuming video in 1s...', 'info', '👁️');
+        }
+      } else {
+        this.presenceReturnCheckCount = 0;
       }
     }
   }
