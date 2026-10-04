@@ -1,4 +1,4 @@
-import { Component, computed, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -6,9 +6,12 @@ import DOMPurify from 'dompurify';
 import { marked } from 'marked';
 import { forkJoin } from 'rxjs';
 import { BlogPost, BlogPostRequest, BlogPostStatus } from '../../core/models/blog.models';
+import { ArticleStudyCoachService } from '../../core/services/article-study-coach.service';
 import { BlogService } from '../../core/services/blog.service';
 import { NavigationHistoryService } from '../../core/services/navigation-history.service';
+import { TopicQuizService } from '../../core/services/topic-quiz.service';
 import { Spinner } from '../../shared/spinner';
+import { TopicQuizModal } from '../../shared/topic-quiz-modal/topic-quiz-modal';
 
 // Ensure external links in markdown open safely in a new tab without leaving the app
 DOMPurify.addHook('afterSanitizeAttributes', (node) => {
@@ -37,7 +40,7 @@ interface SubjectGroup {
 /** Subject-organised study articles grouped subject-wise with rich markdown reader. */
 @Component({
   selector: 'app-blog-page',
-  imports: [FormsModule, RouterLink, Spinner],
+  imports: [FormsModule, RouterLink, Spinner, TopicQuizModal],
   template: `
     <main id="main-content" tabindex="-1" class="blog">
       <header>
@@ -189,6 +192,266 @@ interface SubjectGroup {
             </div>
           </div>
 
+          <!-- Article Reading Coach HUD Bar -->
+          <div class="reading-hud-bar" role="region" aria-label="Reading Study Coach HUD">
+            <div class="hud-left">
+              <button
+                type="button"
+                class="hud-status-badge"
+                [class]="coach.patternLabel().badgeClass"
+                (click)="coach.toggleCoachDrawer()"
+                [title]="coach.patternLabel().subtitle"
+              >
+                <span class="hud-icon">{{ coach.patternLabel().icon }}</span>
+                <span class="hud-status-text">
+                  <span class="hud-status-title">{{ coach.patternLabel().title }}</span>
+                  <span class="hud-status-desc">{{ coach.patternLabel().subtitle }}</span>
+                </span>
+              </button>
+            </div>
+
+            <div class="hud-metrics">
+              <div class="hud-pill" title="Current Reading Pace (Words Per Minute)">
+                <span class="pill-icon">⚡</span>
+                <span class="pill-label">WPM</span>
+                <strong class="pill-val">{{ coach.currentWpm() }}</strong>
+              </div>
+
+              <div class="hud-pill" title="Continuous Reading Streak">
+                <span class="pill-icon">⏱️</span>
+                <span class="pill-label">Streak</span>
+                <strong class="pill-val">{{ coach.formattedContinuousRead() }}</strong>
+              </div>
+
+              <div class="hud-pill" title="Active Reflection Pauses Taken">
+                <span class="pill-icon">⏸️</span>
+                <span class="pill-label">Pauses</span>
+                <strong class="pill-val">{{ coach.pauseCount() }}</strong>
+              </div>
+
+              <div class="hud-pill" title="Article Scroll Depth">
+                <span class="pill-icon">📜</span>
+                <span class="pill-label">Depth</span>
+                <strong class="pill-val">{{ coach.scrollDepthPercent() }}%</strong>
+              </div>
+
+              <div
+                class="hud-pill retention-pill"
+                [class.high]="coach.retentionIndex() >= 80"
+                [class.medium]="coach.retentionIndex() >= 60 && coach.retentionIndex() < 80"
+                [class.low]="coach.retentionIndex() < 60"
+                title="Pedagogical Retention Score based on pace, reflection pauses, and active notes"
+              >
+                <span class="pill-icon">🎯</span>
+                <span class="pill-label">Retention</span>
+                <strong class="pill-val">{{ coach.retentionIndex() }}%</strong>
+              </div>
+
+              @if (coach.breakTimerActive()) {
+                <div class="hud-pill rest-pill" title="Pomodoro Eye Rest Active">
+                  <span class="pill-icon">☕</span>
+                  <span class="pill-label">Rest</span>
+                  <strong class="pill-val">{{ coach.formattedBreakTimer() }}</strong>
+                  <button type="button" class="mini-cancel-btn" (click)="coach.cancelBreakTimer()" aria-label="Cancel rest timer">✕</button>
+                </div>
+              }
+            </div>
+
+            <div class="hud-actions">
+              <button
+                type="button"
+                id="blog-hud-quiz-btn"
+                class="btn btn-sm btn-hud-quiz"
+                (click)="openTopicQuiz()"
+                title="Take an optional 60-second quiz on this topic to test retention"
+                aria-label="Take quick concept quiz"
+              >
+                ⚡ Quick Quiz
+              </button>
+              <button
+                type="button"
+                class="btn btn-sm btn-hud-toggle"
+                [class.active]="coach.isCoachDrawerOpen()"
+                (click)="coach.toggleCoachDrawer()"
+                aria-label="Toggle Study Coach and Scratchpad Drawer"
+              >
+                💡 Study Coach & Notes
+                @if (coach.activePauseCount() > 0) {
+                  <span class="hud-badge-dot">{{ coach.activePauseCount() }}</span>
+                }
+              </button>
+            </div>
+          </div>
+
+          <!-- Pedagogical Pattern Alert Banner (When Skimming or Reading Passively) -->
+          @if (coach.currentPattern() === 'SKIMMING' || coach.currentPattern() === 'PASSIVE_READING' || coach.currentPattern() === 'COMPREHENSION_STRUGGLE') {
+            <aside class="article-alert-banner" [class]="coach.patternLabel().badgeClass" role="alert">
+              <div class="banner-main">
+                <span class="banner-icon">{{ coach.patternLabel().icon }}</span>
+                <div class="banner-body">
+                  <strong>{{ coach.patternLabel().title }}</strong>
+                  <p>{{ coach.patternLabel().subtitle }}</p>
+                </div>
+              </div>
+              <div class="banner-buttons">
+                @if (coach.currentPattern() === 'SKIMMING') {
+                  <button type="button" class="btn btn-sm banner-action" (click)="applyArticleCoachAction('take_pause')">
+                    ⏸️ 60s Recall Pause
+                  </button>
+                  <button type="button" class="btn btn-sm btn-ghost banner-action" (click)="applyArticleCoachAction('insert_summary')">
+                    📝 1-Line Summary
+                  </button>
+                } @else if (coach.currentPattern() === 'PASSIVE_READING') {
+                  <button type="button" class="btn btn-sm banner-action" (click)="applyArticleCoachAction('insert_summary')">
+                    📝 1-Sentence Distillation
+                  </button>
+                  <button type="button" class="btn btn-sm btn-ghost banner-action" (click)="applyArticleCoachAction('start_rest_3m')">
+                    ☕ 3-Min Pomodoro Rest
+                  </button>
+                } @else if (coach.currentPattern() === 'COMPREHENSION_STRUGGLE') {
+                  <button type="button" class="btn btn-sm banner-action" (click)="applyArticleCoachAction('insert_invariant_breakdown')">
+                    🔍 Code Invariant Trace
+                  </button>
+                  <button type="button" class="btn btn-sm btn-ghost banner-action" (click)="applyArticleCoachAction('insert_tradeoffs')">
+                    ⚖️ Tradeoff Breakdown
+                  </button>
+                }
+              </div>
+            </aside>
+          }
+
+          <!-- Study Coach Drawer & In-Reader Active Scratchpad -->
+          @if (coach.isCoachDrawerOpen()) {
+            <section class="coach-drawer" aria-labelledby="coach-drawer-title">
+              <div class="drawer-header">
+                <div class="drawer-title-group">
+                  <h3 id="coach-drawer-title">
+                    <span>🧠</span> Active Reading Coach & Scratchpad
+                  </h3>
+                  <span class="drawer-subtitle">Observation-driven cognitive feedback for technical retention</span>
+                </div>
+                <button type="button" class="btn btn-quiet btn-xs" (click)="coach.toggleCoachDrawer()" aria-label="Close Study Coach">✕ Close</button>
+              </div>
+
+              <!-- Diagnostic 4-Metric Grid -->
+              <div class="coach-metrics-grid">
+                <div class="coach-metric-card">
+                  <span class="metric-icon">⏱️</span>
+                  <div class="metric-content">
+                    <span class="metric-title">Continuous vs Pause</span>
+                    <span class="metric-value">{{ coach.formattedReadTime() }} read / {{ coach.formattedPauseTime() }} pause</span>
+                    <span class="metric-sub">{{ coach.pauseCount() }} reflection pauses recorded</span>
+                  </div>
+                </div>
+
+                <div class="coach-metric-card">
+                  <span class="metric-icon">⚡</span>
+                  <div class="metric-content">
+                    <span class="metric-title">Pace & Depth</span>
+                    <span class="metric-value">{{ coach.currentWpm() }} WPM &bull; {{ coach.scrollDepthPercent() }}% scrolled</span>
+                    <span class="metric-sub">Ideal tech reading: 140–280 WPM</span>
+                  </div>
+                </div>
+
+                <div class="coach-metric-card">
+                  <span class="metric-icon">🔄</span>
+                  <div class="metric-content">
+                    <span class="metric-title">Re-reads & Highlights</span>
+                    <span class="metric-value">{{ coach.reReadCount() }} re-reads &bull; {{ coach.activePauseCount() }} active notes</span>
+                    <span class="metric-sub">Highlighting text boosts recall</span>
+                  </div>
+                </div>
+
+                <div class="coach-metric-card highlight">
+                  <span class="metric-icon">🎯</span>
+                  <div class="metric-content">
+                    <span class="metric-title">Retention Health</span>
+                    <span class="metric-value">{{ coach.retentionIndex() }} / 100</span>
+                    <span class="metric-sub">{{ coach.patternLabel().title }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Pomodoro Screen Rest Box -->
+              <div class="pomodoro-box">
+                <div class="pomodoro-info">
+                  <strong>☕ Cognitive Rest & Eye Refresh</strong>
+                  <p>Short pauses prevent cognitive saturation when processing algorithms and architecture.</p>
+                </div>
+                <div class="pomodoro-actions">
+                  @if (coach.breakTimerActive()) {
+                    <span class="active-timer-display">Resting: {{ coach.formattedBreakTimer() }} remaining</span>
+                    <button type="button" class="btn btn-sm btn-ghost" (click)="coach.cancelBreakTimer()">Resume Reading</button>
+                  } @else {
+                    <button type="button" class="btn btn-sm btn-quiet" (click)="coach.startBreakTimer(60)">1m Micro-Pause</button>
+                    <button type="button" class="btn btn-sm btn-quiet" (click)="coach.startBreakTimer(180)">3m Eye Rest</button>
+                    <button type="button" class="btn btn-sm btn-quiet" (click)="coach.startBreakTimer(300)">5m Pomodoro</button>
+                  }
+                </div>
+              </div>
+
+              <!-- Study Recommendations -->
+              <div class="coach-recommendations-section">
+                <h4>💡 Pedagogical Recommendations for Current Pace</h4>
+                <div class="recs-grid">
+                  @for (rec of coach.recommendations(); track rec.id) {
+                    <div class="rec-card" [class]="'rec-' + rec.category">
+                      <div class="rec-header">
+                        <span class="rec-title">{{ rec.title }}</span>
+                        <span class="rec-badge">{{ rec.badge }}</span>
+                      </div>
+                      <p class="rec-desc">{{ rec.description }}</p>
+                      @if (rec.actionText && rec.actionKey) {
+                        <button
+                          type="button"
+                          class="btn btn-xs btn-action"
+                          (click)="applyArticleCoachAction(rec.actionKey)"
+                        >
+                          {{ rec.actionText }}
+                        </button>
+                      }
+                    </div>
+                  }
+                </div>
+              </div>
+
+              <!-- Interactive In-Reader Study Scratchpad -->
+              <div class="scratchpad-box">
+                <div class="scratchpad-header">
+                  <div>
+                    <h4>📝 Article Active Scratchpad & Notes</h4>
+                    <span class="scratchpad-sub">Auto-saved for this article. Writing notes increases long-term retention.</span>
+                  </div>
+                  <div class="template-shortcuts">
+                    <button type="button" class="btn btn-xs btn-ghost" (click)="applyArticleCoachAction('insert_summary')">+ 1-Line Summary</button>
+                    <button type="button" class="btn btn-xs btn-ghost" (click)="applyArticleCoachAction('insert_interview_qa')">+ Mock Q&A</button>
+                    <button type="button" class="btn btn-xs btn-ghost" (click)="applyArticleCoachAction('insert_tradeoffs')">+ Tradeoffs</button>
+                  </div>
+                </div>
+                <textarea
+                  class="scratchpad-textarea"
+                  rows="5"
+                  placeholder="Synthesize key takeaways, invariants, or interview questions in your own words..."
+                  [ngModel]="coach.articleNotes()"
+                  (ngModelChange)="onNotesChange($event)"
+                ></textarea>
+              </div>
+            </section>
+          }
+
+          <!-- Eye Rest / Pomodoro Overlay -->
+          @if (coach.breakTimerActive()) {
+            <div class="reader-rest-overlay" role="dialog" aria-modal="true" aria-label="Reading Eye Rest">
+              <div class="rest-overlay-card">
+                <div class="rest-breathing-circle"></div>
+                <h3>☕ Time to Rest Your Eyes & Digest</h3>
+                <p class="rest-timer-counter">{{ coach.formattedBreakTimer() }}</p>
+                <p class="rest-hint">Look 20 feet away to relax your optical nerves and let concepts consolidate.</p>
+                <button type="button" class="btn btn-sm" (click)="coach.cancelBreakTimer()">Resume Reading Now</button>
+              </div>
+            </div>
+          }
+
           <div class="reader-header-meta">
             <span class="subject-badge-pill" (click)="filterBySubject(article.subject)">{{ getSubjectIcon(article.subject) }} {{ article.subject }}</span>
             <span class="meta-dot">·</span>
@@ -248,6 +511,9 @@ interface SubjectGroup {
               </div>
             </section>
           }
+
+          <!-- Optional Topic Concept Quiz Modal & Prompt -->
+          <app-topic-quiz-modal (saveTakeaway)="handleQuizTakeaway($event)"></app-topic-quiz-modal>
         </article>
       } @else {
         <!-- Subject-Wise Grouped Articles View -->
@@ -306,16 +572,27 @@ interface SubjectGroup {
           }
         </section>
       }
+
+      <!-- Floating Coach Toast -->
+      @if (coach.activeToast(); as toast) {
+        <div class="coach-toast" [class]="'toast-' + toast.type" role="status">
+          <span class="toast-icon">{{ toast.icon }}</span>
+          <span class="toast-message">{{ toast.message }}</span>
+          <button type="button" class="toast-close" (click)="coach.dismissToast()" aria-label="Dismiss notification">✕</button>
+        </div>
+      }
     </main>
   `,
   styleUrl: './blog-page.scss',
 })
-export class BlogPage implements OnInit {
+export class BlogPage implements OnInit, OnDestroy {
   private readonly blogs = inject(BlogService);
   private readonly sanitizer = inject(DomSanitizer);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   protected readonly nav = inject(NavigationHistoryService);
+  protected readonly coach = inject(ArticleStudyCoachService);
+  protected readonly quizService = inject(TopicQuizService);
   private pendingArticleId: number | null = null;
 
   protected readonly posts = signal<BlogPost[]>([]);
@@ -462,13 +739,19 @@ export class BlogPage implements OnInit {
           const found = this.posts().find((p) => p.id === parsedId);
           if (found) {
             this.selected.set(found);
+            this.coach.startSession(found.id, found.title, found.content, found.subject);
           }
         }
       } else {
         this.pendingArticleId = null;
         this.selected.set(null);
+        this.coach.endSession();
       }
     });
+  }
+
+  ngOnDestroy(): void {
+    this.coach.endSession();
   }
 
   protected selectDomain(domain: string): void {
@@ -486,8 +769,80 @@ export class BlogPage implements OnInit {
         queryParamsHandling: 'merge',
       });
     }
-    if (post && typeof window !== 'undefined') {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (post) {
+      if (typeof window !== 'undefined') {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+      this.coach.startSession(post.id, post.title, post.content, post.subject);
+    } else {
+      this.coach.endSession();
+    }
+  }
+
+  protected openTopicQuiz(): void {
+    const article = this.selected();
+    if (article) {
+      this.quizService.openManualQuiz(article.subject, article.title, 'article');
+    }
+  }
+
+  protected handleQuizTakeaway(takeaway: string): void {
+    const current = this.coach.articleNotes();
+    this.coach.updateArticleNotes(current ? current + takeaway : takeaway.trim());
+    this.coach.showToast('Quiz checkpoint takeaway saved into your notes!', 'success', '📝');
+  }
+
+  protected onNotesChange(text: string): void {
+    this.coach.updateArticleNotes(text);
+  }
+
+  protected applyArticleCoachAction(actionKey: string): void {
+    const current = this.coach.articleNotes();
+    switch (actionKey) {
+      case 'take_pause':
+        this.coach.startBreakTimer(60);
+        this.coach.showToast('Taking 60s pause. Digest the main thesis before moving forward.', 'info', '⏸️');
+        break;
+      case 'start_rest_3m':
+        this.coach.startBreakTimer(180);
+        break;
+      case 'start_rest_5m':
+        this.coach.startBreakTimer(300);
+        break;
+      case 'insert_summary': {
+        const template = `\n\n### 📝 1-Line Core Concept\n- **Problem Solved:** \n- **Key Invariant / Rule:** \n- **Main Tradeoff:** \n`;
+        this.coach.updateArticleNotes(current ? current + template : template.trim());
+        if (!this.coach.isCoachDrawerOpen()) {
+          this.coach.toggleCoachDrawer();
+        }
+        break;
+      }
+      case 'insert_interview_qa': {
+        const template = `\n\n### 🎯 Mock Interview Q&A\n- **Q:** How does this behave under high concurrency / edge cases?\n- **A:** \n- **Complexity:** Time O( ), Space O( )\n`;
+        this.coach.updateArticleNotes(current ? current + template : template.trim());
+        if (!this.coach.isCoachDrawerOpen()) {
+          this.coach.toggleCoachDrawer();
+        }
+        break;
+      }
+      case 'insert_tradeoffs': {
+        const template = `\n\n### ⚖️ Tradeoff Breakdown\n- **Pros / Strengths:** \n- **Cons / Bottlenecks:** \n- **When to Avoid:** \n`;
+        this.coach.updateArticleNotes(current ? current + template : template.trim());
+        if (!this.coach.isCoachDrawerOpen()) {
+          this.coach.toggleCoachDrawer();
+        }
+        break;
+      }
+      case 'insert_invariant_breakdown': {
+        const template = `\n\n### 🔍 Code Invariant Trace\n- **Base State:** \n- **Step-by-step Transformation:** \n- **Edge cases to watch for:** \n`;
+        this.coach.updateArticleNotes(current ? current + template : template.trim());
+        if (!this.coach.isCoachDrawerOpen()) {
+          this.coach.toggleCoachDrawer();
+        }
+        break;
+      }
+      default:
+        this.coach.showToast('Study action applied! Active engagement recorded.', 'success', '✨');
     }
   }
 
@@ -686,6 +1041,7 @@ export class BlogPage implements OnInit {
           const found = allPosts.find((p) => p.id === this.pendingArticleId);
           if (found) {
             this.selected.set(found);
+            this.coach.startSession(found.id, found.title, found.content, found.subject);
           }
         }
         this.loading.set(false);

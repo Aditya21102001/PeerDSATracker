@@ -1,17 +1,30 @@
-import { Component, ElementRef, ViewChild, computed, inject, signal } from '@angular/core';
+import {
+  AfterViewInit,
+  Component,
+  ElementRef,
+  HostListener,
+  OnDestroy,
+  ViewChild,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthStore } from '../../core/services/auth.store';
 import { NavigationHistoryService } from '../../core/services/navigation-history.service';
 import { VideoHubService } from '../../core/services/video-hub.service';
+import { VideoStudyCoachService } from '../../core/services/video-study-coach.service';
 import { Playlist, PlaylistItem, VideoSearchResult } from '../../core/models/video.models';
+import { TopicQuizService } from '../../core/services/topic-quiz.service';
 import { Spinner } from '../../shared/spinner';
+import { TopicQuizModal } from '../../shared/topic-quiz-modal/topic-quiz-modal';
 
 @Component({
   selector: 'app-video-hub-page',
   standalone: true,
-  imports: [FormsModule, RouterLink, Spinner],
+  imports: [FormsModule, RouterLink, Spinner, TopicQuizModal],
   template: `
     <main id="main-content" tabindex="-1" class="vh-page" [class.theater]="service.theaterMode()">
       <!-- Header Navigation -->
@@ -176,6 +189,7 @@ import { Spinner } from '../../shared/spinner';
                 <!-- 16:9 Responsive Embedded Video Player -->
                 <div class="video-frame-wrapper" id="vh-video-frame-wrapper">
                   <iframe
+                    #embeddedPlayerFrame
                     id="vh-embedded-player-frame"
                     [src]="sanitizedVideoUrl()"
                     [title]="'YouTube video player — ' + video.title"
@@ -184,8 +198,205 @@ import { Spinner } from '../../shared/spinner';
                     referrerpolicy="strict-origin-when-cross-origin"
                     allowfullscreen
                     class="video-iframe"
+                    (load)="onIframeLoad()"
                   ></iframe>
+
+                  <!-- Auto-Pause Away Overlay (When user switches tabs, blurs, or leaves screen) -->
+                  @if (coach.isAway()) {
+                    <div id="vh-away-overlay" class="away-overlay" role="alert" aria-live="assertive">
+                      <div class="away-card card" id="vh-away-card">
+                        <div class="away-icon-ring">
+                          <span class="away-icon">⏸️</span>
+                        </div>
+                        <h3 id="vh-away-title">Video Auto-Paused: You Were Away</h3>
+                        <p id="vh-away-desc" class="away-desc">
+                          @if (coach.awayReason() === 'AWAY_PRESENCE_LOST') {
+                            You stepped away from your desk. Video paused to preserve your study spot!
+                          } @else {
+                            You switched tabs or minimized the study window. Focus protected.
+                          }
+                        </p>
+                        <div class="away-stats-row">
+                          <span class="away-stat-pill">
+                            ⏱️ Continuous Watch: <strong>{{ coach.formattedContinuousWatch() }}</strong>
+                          </span>
+                          <span class="away-stat-pill">
+                            🌟 Retention Score: <strong>{{ coach.activeLearningIndex() }}/100</strong>
+                          </span>
+                        </div>
+                        <div class="away-actions-row">
+                          <button
+                            id="vh-away-resume-btn"
+                            type="button"
+                            class="btn btn-primary btn-resume"
+                            (click)="coach.resumeFromAway()"
+                            aria-label="Resume video"
+                          >
+                            ▶ Resume Watching (Space)
+                          </button>
+                          <button
+                            id="vh-away-notes-btn"
+                            type="button"
+                            class="btn btn-ghost"
+                            (click)="openNotesFromAway()"
+                            aria-label="Take note while paused"
+                          >
+                            📝 Note while Paused
+                          </button>
+                        </div>
+                        <small class="away-hint">💡 Tip: Press <kbd>Space</kbd> anytime to resume playback.</small>
+                      </div>
+                    </div>
+                  }
                 </div>
+
+                <!-- Live Study Habits & Focus HUD Bar -->
+                <div class="study-hud-bar card" id="vh-study-hud-bar" role="region" aria-label="Live Study Habits Monitor">
+                  <div class="hud-left">
+                    <div class="hud-status-group">
+                      <span
+                        id="vh-hud-status-badge"
+                        class="hud-status-badge"
+                        [class]="coach.patternLabel().badgeClass"
+                        [title]="coach.patternLabel().subtitle"
+                      >
+                        <span class="hud-icon">{{ coach.patternLabel().icon }}</span>
+                        <span class="hud-badge-title">{{ coach.patternLabel().title }}</span>
+                      </span>
+                      @if (coach.isPlaying()) {
+                        <span class="hud-live-pill" title="Playback is active">
+                          <span class="live-dot"></span> LIVE STUDYING
+                        </span>
+                      } @else {
+                        <span class="hud-paused-pill" title="Video is currently paused">
+                          ⏸️ PAUSED ({{ coach.currentPauseDurationSeconds() }}s)
+                        </span>
+                      }
+                    </div>
+
+                    <!-- Live Habit Metrics -->
+                    <div class="hud-metrics">
+                      <span class="hud-metric-pill" title="Continuous watch streak without pause">
+                        ⏱️ Continuous: <strong>{{ coach.formattedContinuousWatch() }}</strong>
+                      </span>
+                      <span class="hud-metric-pill" title="Total watch time in this session">
+                        👁️ Total: <strong>{{ coach.formattedWatchTime() }}</strong>
+                      </span>
+                      <span class="hud-metric-pill" title="Total active pauses taken to digest concepts">
+                        ⏸️ Pauses: <strong>{{ coach.pauseCount() }}</strong>
+                        @if (coach.activePauseCount() > 0) {
+                          <small class="notes-tag">({{ coach.activePauseCount() }} with notes)</small>
+                        }
+                      </span>
+                      <span
+                        class="hud-metric-pill score-pill"
+                        [class.elite]="coach.activeLearningIndex() >= 80"
+                        title="Active Learning Index calculated from watch continuity, pause pacing, and deliberate notes"
+                      >
+                        🌟 Retention Index: <strong>{{ coach.activeLearningIndex() }}/100</strong>
+                      </span>
+                    </div>
+                  </div>
+
+                  <div class="hud-right">
+                    <!-- Away Guard Toggle -->
+                    <button
+                      id="vh-hud-away-guard-toggle"
+                      type="button"
+                      class="btn btn-xs hud-pill-btn"
+                      [class.active]="coach.settings().autoPauseOnAway"
+                      (click)="toggleAutoPauseAway()"
+                      title="Toggle auto-pausing video when switching tabs or window blur"
+                      [attr.aria-pressed]="coach.settings().autoPauseOnAway"
+                    >
+                      🛡️ Away Guard: {{ coach.settings().autoPauseOnAway ? 'ON' : 'OFF' }}
+                    </button>
+
+                    <!-- Camera Focus Guard Toggle -->
+                    <button
+                      id="vh-hud-camera-guard-toggle"
+                      type="button"
+                      class="btn btn-xs hud-pill-btn"
+                      [class.active]="coach.cameraActive()"
+                      (click)="coach.toggleCameraPresence()"
+                      title="Toggle camera presence focus guard to pause if you step away from desk"
+                      [attr.aria-pressed]="coach.cameraActive()"
+                    >
+                      {{ coach.cameraActive() ? '🟢 Camera Guard ON' : '📷 Camera Presence' }}
+                    </button>
+
+                    <!-- Quick Concept Quiz Checkpoint -->
+                    <button
+                      id="vh-hud-quiz-btn"
+                      type="button"
+                      class="btn btn-xs btn-hud-quiz"
+                      (click)="openVideoQuiz()"
+                      title="Take an optional 60-second quiz on this video's topic"
+                      aria-label="Take quick concept quiz"
+                    >
+                      ⚡ Quick Quiz
+                    </button>
+
+                    <!-- Switch to Study Coach Tab -->
+                    <button
+                      id="vh-hud-coach-tab-btn"
+                      type="button"
+                      class="btn btn-xs btn-ghost btn-coach-link"
+                      (click)="activeTab.set('coach')"
+                      title="Open detailed study recommendations & habits feedback"
+                    >
+                      💡 Coaching Tips &amp; Feedback →
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Alert Banner for Continuous Passive Watching or High Cognitive Load -->
+                @if (coach.currentPattern() === 'PASSIVE_BINGE' || coach.currentPattern() === 'COGNITIVE_OVERLOAD') {
+                  <div
+                    class="coach-alert-banner"
+                    [class.alert-warning]="coach.currentPattern() === 'PASSIVE_BINGE'"
+                    [class.alert-info]="coach.currentPattern() === 'COGNITIVE_OVERLOAD'"
+                    role="alert"
+                    id="vh-coach-alert-banner"
+                  >
+                    <div class="banner-body">
+                      <span class="banner-icon">{{ coach.patternLabel().icon }}</span>
+                      <div class="banner-text">
+                        <strong>{{ coach.coachingRecommendations()[0]?.title }}</strong>
+                        <p>{{ coach.coachingRecommendations()[0]?.description }}</p>
+                      </div>
+                    </div>
+                    <div class="banner-actions">
+                      @if (coach.coachingRecommendations()[0]?.actionKey === 'take_pause') {
+                        <button
+                          id="vh-banner-pause-btn"
+                          type="button"
+                          class="btn btn-xs btn-accent"
+                          (click)="coach.pauseVideo('USER_PAUSE')"
+                        >
+                          ⏸️ Take 60s Active Pause
+                        </button>
+                      } @else if (coach.coachingRecommendations()[0]?.actionKey === 'slow_speed') {
+                        <button
+                          id="vh-banner-speed-btn"
+                          type="button"
+                          class="btn btn-xs btn-primary"
+                          (click)="coach.setPlaybackSpeed(0.75)"
+                        >
+                          🐢 0.75x Speed
+                        </button>
+                      }
+                      <button
+                        id="vh-banner-advice-btn"
+                        type="button"
+                        class="btn btn-xs btn-ghost"
+                        (click)="activeTab.set('coach')"
+                      >
+                        View Study Advice →
+                      </button>
+                    </div>
+                  </div>
+                }
 
                 <!-- Player Control Bar -->
                 <div class="player-bar" id="vh-player-bar">
@@ -307,6 +518,21 @@ import { Spinner } from '../../shared/spinner';
                     >
                       📝 Video Notes
                     </button>
+                    <button
+                      id="vh-tab-coach-btn"
+                      type="button"
+                      class="tab-btn"
+                      [class.active]="activeTab() === 'coach'"
+                      (click)="activeTab.set('coach')"
+                      role="tab"
+                      [attr.aria-selected]="activeTab() === 'coach'"
+                      aria-controls="vh-coach-panel"
+                    >
+                      🧠 Study Habits &amp; Feedback
+                      <span class="tab-score-chip" [class.high]="coach.activeLearningIndex() >= 80">
+                        {{ coach.activeLearningIndex() }}%
+                      </span>
+                    </button>
                     @if (service.activePlaylist(); as pl) {
                       <button
                         id="vh-tab-queue-btn"
@@ -344,7 +570,7 @@ import { Spinner } from '../../shared/spinner';
                         rows="4"
                         placeholder="Write key takeaways, algorithmic intuitions, edge cases, or code snippets here..."
                         [ngModel]="service.currentNotes()"
-                        (ngModelChange)="service.updateCurrentVideoNotes($event)"
+                        (ngModelChange)="onNotesChanged($event)"
                         aria-label="Personal notes for current video"
                       ></textarea>
                     </div>
@@ -414,6 +640,222 @@ import { Spinner } from '../../shared/spinner';
                         } @empty {
                           <p class="queue-empty">No videos match filter "{{ queueFilterText }}".</p>
                         }
+                      </div>
+                    </div>
+                  }
+                  <!-- Coach Tab Content -->
+                  @if (activeTab() === 'coach') {
+                    <div id="vh-coach-panel" class="coach-panel" role="tabpanel" aria-labelledby="vh-tab-coach-btn">
+                      <!-- Header with Habit Overview -->
+                      <div class="coach-panel-header">
+                        <div class="coach-title-group">
+                          <span class="coach-badge-large" [class]="coach.patternLabel().badgeClass">
+                            {{ coach.patternLabel().icon }} {{ coach.patternLabel().title }}
+                          </span>
+                          <p class="coach-subtitle">{{ coach.patternLabel().subtitle }}</p>
+                        </div>
+                        <div class="coach-score-box">
+                          <span class="score-label">Active Learning Index</span>
+                          <span class="score-value">{{ coach.activeLearningIndex() }}<small>/100</small></span>
+                        </div>
+                      </div>
+
+                      <!-- 4 Diagnostic Metric Cards -->
+                      <div class="coach-metrics-grid">
+                        <div class="coach-metric-card card">
+                          <span class="m-icon">⏱️</span>
+                          <div class="m-data">
+                            <span class="m-val">{{ coach.formattedContinuousWatch() }}</span>
+                            <span class="m-lbl">Continuous Streak</span>
+                          </div>
+                        </div>
+                        <div class="coach-metric-card card">
+                          <span class="m-icon">🏆</span>
+                          <div class="m-data">
+                            <span class="m-val">{{ formatSeconds(coach.maxContinuousStreakSeconds()) }}</span>
+                            <span class="m-lbl">Longest Unbroken Streak</span>
+                          </div>
+                        </div>
+                        <div class="coach-metric-card card">
+                          <span class="m-icon">⏸️</span>
+                          <div class="m-data">
+                            <span class="m-val">{{ coach.pauseCount() }} <small>({{ coach.activePauseCount() }} with notes)</small></span>
+                            <span class="m-lbl">Pauses Taken</span>
+                          </div>
+                        </div>
+                        <div class="coach-metric-card card">
+                          <span class="m-icon">👁️</span>
+                          <div class="m-data">
+                            <span class="m-val">{{ coach.formattedWatchTime() }} / {{ coach.formattedPauseTime() }}</span>
+                            <span class="m-lbl">Watch vs Pause Time</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- Active Pomodoro Rest Timer -->
+                      <div class="pomodoro-card card" id="vh-pomodoro-card">
+                        <div class="pomodoro-header">
+                          <div>
+                            <h4>⏱️ Focus Rest &amp; Eye Break Timer</h4>
+                            <p class="pomodoro-desc">Structured breaks avoid mental fatigue and reinforce spaced cognitive consolidation.</p>
+                          </div>
+                          @if (coach.breakTimerActive()) {
+                            <span class="break-active-badge">BREAK IN PROGRESS</span>
+                          }
+                        </div>
+
+                        @if (coach.breakTimerActive()) {
+                          <div class="pomodoro-active-view">
+                            <div class="timer-countdown-display">{{ coach.formattedBreakTimer() }}</div>
+                            <p class="break-tip">💡 Step away from the screen, blink, hydrate, and stretch.</p>
+                            <button
+                              id="vh-btn-cancel-pomodoro"
+                              type="button"
+                              class="btn btn-sm btn-ghost"
+                              (click)="coach.cancelBreakTimer()"
+                            >
+                              Cancel Break &amp; Resume
+                            </button>
+                          </div>
+                        } @else {
+                          <div class="pomodoro-actions">
+                            <button
+                              id="vh-btn-start-pomodoro-5"
+                              type="button"
+                              class="btn btn-sm btn-ghost"
+                              (click)="coach.startBreakTimer(300)"
+                            >
+                              ☕ 5-Min Screen Rest
+                            </button>
+                            <button
+                              id="vh-btn-start-pomodoro-10"
+                              type="button"
+                              class="btn btn-sm btn-ghost"
+                              (click)="coach.startBreakTimer(600)"
+                            >
+                              🚶 10-Min Walk Break
+                            </button>
+                          </div>
+                        }
+                      </div>
+
+                      <!-- Personalized "How to Study to Improve" Recommendations Section -->
+                      <div class="recommendations-section">
+                        <div class="recs-header">
+                          <h3>💡 How You Should Study This Topic to Improve</h3>
+                          <p>Personalized pedagogy based on your continuous playback and pause behavior.</p>
+                        </div>
+
+                        <div class="recs-grid" id="vh-recs-grid">
+                          @for (rec of coach.coachingRecommendations(); track rec.id) {
+                            <div class="rec-card card" id="vh-rec-{{ rec.id }}">
+                              <div class="rec-top-row">
+                                <span class="rec-category-badge {{ rec.category }}">{{ rec.badge }}</span>
+                                <span class="rec-pattern-tag">{{ coach.currentPattern() }}</span>
+                              </div>
+                              <h4 class="rec-title">{{ rec.title }}</h4>
+                              <p class="rec-desc">{{ rec.description }}</p>
+
+                              @if (rec.actionText && rec.actionKey) {
+                                <div class="rec-footer">
+                                  <button
+                                    id="vh-rec-action-{{ rec.id }}"
+                                    type="button"
+                                    class="btn btn-xs btn-primary rec-action-btn"
+                                    (click)="applyCoachAction(rec.actionKey)"
+                                  >
+                                    {{ rec.actionText }}
+                                  </button>
+                                </div>
+                              }
+                            </div>
+                          }
+                        </div>
+                      </div>
+
+                      <!-- Speed Adjustment Pacing Bar -->
+                      <div class="speed-adjust-card card">
+                        <div class="speed-header">
+                          <h4>⚡ Playback Speed Pacing</h4>
+                          <span>Current: <strong>{{ coach.currentPlaybackSpeed() }}x</strong></span>
+                        </div>
+                        <div class="speed-buttons-row">
+                          @for (spd of [0.75, 1, 1.25, 1.5]; track spd) {
+                            <button
+                              type="button"
+                              class="btn btn-xs"
+                              [class.btn-accent]="coach.currentPlaybackSpeed() === spd"
+                              [class.btn-ghost]="coach.currentPlaybackSpeed() !== spd"
+                              (click)="coach.setPlaybackSpeed(spd)"
+                            >
+                              {{ spd }}x
+                            </button>
+                          }
+                        </div>
+                      </div>
+
+                      <!-- Auto-Pause Away Guard & Privacy Settings -->
+                      <div class="away-settings-card card" id="vh-away-settings-card">
+                        <h4>🛡️ Auto-Pause &amp; Away Guard Settings</h4>
+                        <p class="settings-sub">Customize when PeerDSA automatically pauses playback to protect your focus.</p>
+
+                        <div class="settings-list">
+                          <label class="setting-row">
+                            <div class="setting-info">
+                              <span class="setting-title">Auto-Pause on Tab Switch / Window Blur</span>
+                              <small class="setting-hint">Automatically pauses video whenever you navigate away from this tab or minimize the browser.</small>
+                            </div>
+                            <input
+                              id="vh-setting-tab-pause"
+                              type="checkbox"
+                              class="toggle-checkbox"
+                              [checked]="coach.settings().autoPauseOnAway"
+                              (change)="toggleAutoPauseAway()"
+                            />
+                          </label>
+
+                          <label class="setting-row">
+                            <div class="setting-info">
+                              <span class="setting-title">Smart Camera Presence Focus Guard (Local AI)</span>
+                              <small class="setting-hint">Pauses video if you step away from your desk. Analyzed 100% locally in browser memory — no video is sent to any server.</small>
+                            </div>
+                            <input
+                              id="vh-setting-camera-presence"
+                              type="checkbox"
+                              class="toggle-checkbox"
+                              [checked]="coach.settings().enableCameraPresence"
+                              (change)="coach.toggleCameraPresence()"
+                            />
+                          </label>
+
+                          <label class="setting-row">
+                            <div class="setting-info">
+                              <span class="setting-title">Audio Chime on Auto-Pause</span>
+                              <small class="setting-hint">Plays a soft, subtle tone when the video is paused automatically.</small>
+                            </div>
+                            <input
+                              id="vh-setting-sound-chime"
+                              type="checkbox"
+                              class="toggle-checkbox"
+                              [checked]="coach.settings().soundAlertOnAutoPause"
+                              (change)="toggleSoundChime()"
+                            />
+                          </label>
+
+                          <label class="setting-row">
+                            <div class="setting-info">
+                              <span class="setting-title">Auto-Resume when Returning</span>
+                              <small class="setting-hint">Automatically resume playback as soon as you refocus the window or return in front of the screen.</small>
+                            </div>
+                            <input
+                              id="vh-setting-auto-resume"
+                              type="checkbox"
+                              class="toggle-checkbox"
+                              [checked]="coach.settings().autoResumeOnReturn"
+                              (change)="toggleAutoResume()"
+                            />
+                          </label>
+                        </div>
                       </div>
                     </div>
                   }
@@ -997,19 +1439,34 @@ import { Spinner } from '../../shared/spinner';
           </div>
         </div>
       }
+
+      <!-- Floating Coach Notification Toast -->
+      @if (coach.activeToast(); as toast) {
+        <aside id="vh-coach-toast" class="coach-toast {{ toast.type }}" role="status">
+          <span class="toast-icon">{{ toast.icon }}</span>
+          <span class="toast-msg">{{ toast.message }}</span>
+          <button type="button" class="toast-dismiss" (click)="coach.dismissToast()" aria-label="Dismiss notification">✕</button>
+        </aside>
+      }
+
+      <!-- Optional Topic Concept Quiz Modal & Prompt -->
+      <app-topic-quiz-modal (saveTakeaway)="handleQuizTakeaway($event)"></app-topic-quiz-modal>
     </main>
   `,
   styleUrl: './video-hub-page.scss',
 })
-export class VideoHubPage {
+export class VideoHubPage implements AfterViewInit, OnDestroy {
   protected readonly service = inject(VideoHubService);
   protected readonly auth = inject(AuthStore);
   protected readonly nav = inject(NavigationHistoryService);
+  protected readonly coach = inject(VideoStudyCoachService);
+  protected readonly quiz = inject(TopicQuizService);
   private readonly sanitizer = inject(DomSanitizer);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
 
   @ViewChild('searchInput') private searchInputRef?: ElementRef<HTMLInputElement>;
+  @ViewChild('embeddedPlayerFrame') private embeddedPlayerRef?: ElementRef<HTMLIFrameElement>;
 
   // View state: 'results' (Search / Browse feed) vs 'watch' (YouTube theater player)
   protected viewMode = signal<'results' | 'watch'>('results');
@@ -1019,7 +1476,7 @@ export class VideoHubPage {
   protected searchQuery = '';
   protected queueFilterText = '';
   protected playlistFilterText = '';
-  protected activeTab = signal<'notes' | 'queue'>('notes');
+  protected activeTab = signal<'notes' | 'queue' | 'coach'>('notes');
   protected selectedChip = signal<string>('All');
   protected playlistModalVideo = signal<VideoSearchResult | PlaylistItem | null>(null);
   protected showCreatePlaylistModal = signal<boolean>(false);
@@ -1072,7 +1529,9 @@ export class VideoHubPage {
     if (!v || !v.videoId) {
       return this.sanitizer.bypassSecurityTrustResourceUrl('about:blank');
     }
-    const embedUrl = `https://www.youtube.com/embed/${v.videoId}?autoplay=1&enablejsapi=1&rel=0`;
+    const origin = typeof window !== 'undefined' && window.location.origin ? window.location.origin : '';
+    const originParam = origin ? `&origin=${encodeURIComponent(origin)}&widget_referrer=${encodeURIComponent(origin)}` : '';
+    const embedUrl = `https://www.youtube.com/embed/${v.videoId}?autoplay=1&enablejsapi=1&rel=0${originParam}`;
     return this.sanitizer.bypassSecurityTrustResourceUrl(embedUrl);
   });
 
@@ -1158,6 +1617,7 @@ export class VideoHubPage {
 
   protected selectAndWatchVideo(video: VideoSearchResult | PlaylistItem, playlistId: number | string | null = null) {
     this.service.selectVideo(video, playlistId);
+    this.coach.setVideoMetadata(video.videoId, video.title, (video as any).category || 'DSA');
     this.viewMode.set('watch');
     this.dismissMiniplayer.set(false);
     this.router.navigate([], {
@@ -1252,9 +1712,126 @@ export class VideoHubPage {
     this.showCreatePlaylistModal.set(false);
   }
 
+  ngAfterViewInit(): void {
+    this.attachPlayerToCoach();
+  }
+
+  ngOnDestroy(): void {
+    this.coach.detachPlayer();
+  }
+
+  protected onIframeLoad(): void {
+    this.attachPlayerToCoach();
+  }
+
+  private attachPlayerToCoach(): void {
+    if (this.embeddedPlayerRef?.nativeElement) {
+      const v = this.service.currentVideo();
+      this.coach.attachPlayer(
+        this.embeddedPlayerRef.nativeElement,
+        v?.videoId || '',
+        v?.title || '',
+        (v as any)?.category || 'DSA'
+      );
+    }
+  }
+
+  protected openVideoQuiz(): void {
+    const current = this.service.currentVideo();
+    const title = current ? current.title : 'Data Structures & Algorithms';
+    const category = (current as any)?.category || 'DSA';
+    this.coach.pauseVideo('USER_PAUSE');
+    this.quiz.openManualQuiz(category, title, 'video');
+  }
+
+  protected handleQuizTakeaway(takeaway: string): void {
+    const current = this.service.currentNotes();
+    const updated = current ? current + takeaway : takeaway.trim();
+    this.service.updateCurrentVideoNotes(updated);
+    this.coach.showToast('Quiz checkpoint takeaway saved to video notes!', 'success', '📝');
+  }
+
+  @HostListener('document:keydown', ['$event'])
+  protected handleGlobalKeydown(e: KeyboardEvent): void {
+    const target = e.target as HTMLElement;
+    if (target && ['INPUT', 'TEXTAREA'].includes(target.tagName)) return;
+
+    if (e.code === 'Space' && this.coach.isAway()) {
+      e.preventDefault();
+      this.coach.resumeFromAway();
+    }
+  }
+
+  protected onNotesChanged(val: string): void {
+    this.service.updateCurrentVideoNotes(val);
+    this.coach.notifyNoteRecorded();
+  }
+
+  protected openNotesFromAway(): void {
+    this.activeTab.set('notes');
+  }
+
+  protected toggleAutoPauseAway(): void {
+    this.coach.updateSettings({
+      autoPauseOnAway: !this.coach.settings().autoPauseOnAway,
+    });
+  }
+
+  protected toggleSoundChime(): void {
+    this.coach.updateSettings({
+      soundAlertOnAutoPause: !this.coach.settings().soundAlertOnAutoPause,
+    });
+  }
+
+  protected toggleAutoResume(): void {
+    this.coach.updateSettings({
+      autoResumeOnReturn: !this.coach.settings().autoResumeOnReturn,
+    });
+  }
+
+  protected formatSeconds(sec: number): string {
+    const mins = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `${mins.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  }
+
+  protected applyCoachAction(actionKey: string): void {
+    switch (actionKey) {
+      case 'take_pause':
+        this.coach.pauseVideo('USER_PAUSE');
+        break;
+      case 'slow_speed':
+        this.coach.setPlaybackSpeed(0.75);
+        break;
+      case 'insert_feynman': {
+        const cur = this.service.currentNotes();
+        const template = `\n💡 [Feynman Technique Active Recall]:\n- Invariant / Why this approach works: \n- Why brute force failed: \n- Time & Space complexity: \n`;
+        this.service.updateCurrentVideoNotes(cur ? cur + template : template.trim());
+        this.activeTab.set('notes');
+        this.coach.notifyNoteRecorded();
+        break;
+      }
+      case 'insert_edge_cases': {
+        const cur = this.service.currentNotes();
+        const checklist = `\n✅ [Edge Cases Audit]:\n- [ ] Empty input / null\n- [ ] Single element\n- [ ] Duplicates / collisions\n- [ ] Negative integers / bounds\n- [ ] Odd vs even length\n`;
+        this.service.updateCurrentVideoNotes(cur ? cur + checklist : checklist.trim());
+        this.activeTab.set('notes');
+        this.coach.notifyNoteRecorded();
+        break;
+      }
+      case 'start_pomodoro':
+        this.coach.startBreakTimer(300);
+        break;
+      case 'open_notes':
+        this.activeTab.set('notes');
+        break;
+    }
+  }
+
   protected confirmDeletePlaylist(pl: Playlist) {
     if (confirm(`Are you sure you want to delete playlist "${pl.name}"?`)) {
       this.service.deletePlaylist(pl.id);
     }
   }
 }
+

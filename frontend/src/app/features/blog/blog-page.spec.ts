@@ -102,4 +102,84 @@ describe('BlogPage — Subject-wise Articles & Markdown Reader', () => {
     expect(markdownBody?.innerHTML).toContain('<h1');
     expect(markdownBody?.innerHTML).toContain('<pre><code');
   });
+
+  it('renders Reading Coach HUD bar when an article is selected', () => {
+    component['selectArticle'](mockPosts[0]);
+    fixture.detectChanges();
+
+    const el = fixture.nativeElement as HTMLElement;
+    const hud = el.querySelector('.reading-hud-bar');
+    expect(hud).not.toBeNull();
+    expect(hud?.textContent).toContain('Retention');
+    expect(hud?.textContent).toContain('WPM');
+  });
+
+  it('toggles coach drawer and displays metrics and scratchpad', () => {
+    component['selectArticle'](mockPosts[0]);
+    component['coach'].setCoachDrawerOpen(true);
+    fixture.detectChanges();
+
+    const el = fixture.nativeElement as HTMLElement;
+    const drawer = el.querySelector('.coach-drawer');
+    expect(drawer).not.toBeNull();
+    expect(drawer?.textContent).toContain('Active Reading Coach & Scratchpad');
+
+    const textarea = el.querySelector<HTMLTextAreaElement>('.scratchpad-textarea');
+    expect(textarea).not.toBeNull();
+  });
+
+  it('inserts 1-Line summary template into notes when triggered', () => {
+    component['selectArticle'](mockPosts[0]);
+    component['applyArticleCoachAction']('insert_summary');
+    fixture.detectChanges();
+
+    expect(component['coach'].articleNotes()).toContain('1-Line Core Concept');
+    expect(component['coach'].isCoachDrawerOpen()).toBe(true);
+  });
+
+  it('displays alert banner when SKIMMING or PASSIVE_READING is detected', () => {
+    component['selectArticle'](mockPosts[0]);
+    component['coach'].setPatternForTesting('SKIMMING');
+    fixture.detectChanges();
+
+    const el = fixture.nativeElement as HTMLElement;
+    const alert = el.querySelector('.article-alert-banner');
+    expect(alert).not.toBeNull();
+    expect(alert?.textContent).toContain('Skimming Alert');
+  });
+
+  it('shows eye rest overlay when Pomodoro break timer is active', () => {
+    component['selectArticle'](mockPosts[0]);
+    component['coach'].startBreakTimer(60);
+    fixture.detectChanges();
+
+    const el = fixture.nativeElement as HTMLElement;
+    const overlay = el.querySelector('.reader-rest-overlay');
+    expect(overlay).not.toBeNull();
+    expect(overlay?.textContent).toContain('Time to Rest Your Eyes');
+  });
+
+  it('triggers manual topic quiz when Quick Quiz button is clicked', () => {
+    component['selectArticle'](mockPosts[0]);
+    fixture.detectChanges();
+
+    const el = fixture.nativeElement as HTMLElement;
+    const quickQuizBtn = el.querySelector<HTMLButtonElement>('#blog-hud-quiz-btn');
+    expect(quickQuizBtn).not.toBeNull();
+
+    quickQuizBtn?.click();
+    fixture.detectChanges();
+
+    expect(component['quizService'].isOpen()).toBe(true);
+    expect(component['quizService'].activeQuestion()).not.toBeNull();
+    expect(component['quizService'].activeQuestion()?.topic).toBe('Java');
+  });
+
+  it('saves takeaway from quiz into active reading scratchpad notes', () => {
+    component['selectArticle'](mockPosts[0]);
+    component['handleQuizTakeaway']('\n\n### 💡 Checkpoint Takeaway: volatile keyword guarantees happens-before visibility.');
+
+    expect(component['coach'].articleNotes()).toContain('Checkpoint Takeaway: volatile keyword guarantees happens-before visibility.');
+  });
 });
+
