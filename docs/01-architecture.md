@@ -2,6 +2,15 @@
 
 > Read this first. Everything else assumes it.
 
+## Interactive Visual Architecture (Archify)
+
+PeerDSATracker includes verified, explorable Archify interactive diagrams with pan, zoom, dark/light themes, path tracing, and SVG/PNG exports:
+
+- 🏛️ **[Interactive Full System Architecture Diagram](file:///f:/PeerDSATracker/.archify/architecture-peerdsatracker-20261004-210500/peerdsatracker-architecture.html)** (`.archify/architecture-peerdsatracker-20261004-210500/peerdsatracker-architecture.html`):
+  Explorable system topology mapping the Angular 22 SPA, Video Study Coach, OpenCV.js Engine, JWT Security, Spring Boot 3.4 API, FastAPI Analytics, and PostgreSQL database.
+- ⚡ **[Interactive Camera Presence & Gesture Coaching Workflow](file:///f:/PeerDSATracker/.archify/workflow-camera-presence-gesture-20261004-210500/camera-presence-gesture-workflow.html)** (`.archify/workflow-camera-presence-gesture-20261004-210500/camera-presence-gesture-workflow.html`):
+  Signal-flow workflow tracking the 1s webcam sampling, 6x6 spatial grid skin voting, head nod / hand wave classification, 1.5s deliberate confirmation window, auto-pause/resume, and personalized motivation synthesis.
+
 ## What the application does
 
 PeerDSATracker is a progress tracker for the **Striver A2Z sheet**, a well-known curated list of

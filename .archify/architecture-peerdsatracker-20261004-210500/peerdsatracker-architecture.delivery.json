@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "974c2537-eff0-4b5b-b7ae-12412ab199c3",
+  "status": "current",
+  "command": "deliver",
+  "type": "architecture",
+  "input": "F:\\PeerDSATracker\\.archify\\architecture-peerdsatracker-20261004-210500\\candidate.json",
+  "output": "F:\\PeerDSATracker\\.archify\\architecture-peerdsatracker-20261004-210500\\peerdsatracker-architecture.html",
+  "specification": {
+    "sha256": "063f732a116f8482ad8444cd6480fc24b4fd69fdfda435bda568120479dc491c",
+    "bytes": 5656
+  },
+  "artifact": {
+    "sha256": "77a986b714c971ac64e0864f8d55991c38b586ad7a91b98dbe634d62d8c62407",
+    "bytes": 767586
+  }
+}

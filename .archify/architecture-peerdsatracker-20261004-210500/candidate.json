@@ -1,0 +1,216 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "PeerDSATracker — Full System Architecture",
+    "output": ".archify/architecture-peerdsatracker-20261004-210500/peerdsatracker-architecture.html",
+    "quality_profile": "showcase"
+  },
+  "components": [
+    {
+      "id": "user",
+      "type": "external",
+      "label": "Learner / DSA Student",
+      "sublabel": "Browser & Webcam Feed",
+      "pos": [40, 250],
+      "size": [140, 64],
+      "icon": "person"
+    },
+    {
+      "id": "yt_cdn",
+      "type": "external",
+      "label": "YouTube Player CDN",
+      "sublabel": "IFrame API postMessage",
+      "pos": [40, 60],
+      "size": [140, 64],
+      "tag": "Video Stream"
+    },
+    {
+      "id": "angular_spa",
+      "type": "frontend",
+      "label": "Angular 22 SPA",
+      "sublabel": "Signals & VideoHubPage",
+      "pos": [320, 250],
+      "size": [150, 64],
+      "tag": "Port 4200",
+      "icon": "frontend"
+    },
+    {
+      "id": "coach_service",
+      "type": "frontend",
+      "label": "VideoStudyCoach",
+      "sublabel": "Habits, Absence & Motivations",
+      "pos": [320, 60],
+      "size": [150, 64],
+      "tag": "Deliberate 1.5s Window"
+    },
+    {
+      "id": "opencv_service",
+      "type": "frontend",
+      "label": "OpenCV.js Engine",
+      "sublabel": "Skin Voting & Optical Flow",
+      "pos": [320, 440],
+      "size": [150, 64],
+      "tag": "Native + Wasm CV"
+    },
+    {
+      "id": "security_jwt",
+      "type": "security",
+      "label": "JWT Security Filter",
+      "sublabel": "Stateless Auth Guard",
+      "pos": [600, 250],
+      "size": [140, 64],
+      "tag": "HMAC-SHA256",
+      "icon": "security"
+    },
+    {
+      "id": "spring_backend",
+      "type": "backend",
+      "label": "Spring Boot 3.4 API",
+      "sublabel": "Java 21 Core Services",
+      "pos": [860, 250],
+      "size": [150, 64],
+      "tag": "Port 8080",
+      "icon": "backend"
+    },
+    {
+      "id": "fastapi_engine",
+      "type": "backend",
+      "label": "FastAPI Analytics",
+      "sublabel": "Python 3.12 Engine",
+      "pos": [860, 60],
+      "size": [150, 64],
+      "tag": "Port 8000"
+    },
+    {
+      "id": "leetcode_sync",
+      "type": "external",
+      "label": "LeetCode & GFG APIs",
+      "sublabel": "Problem Metadata Sync",
+      "pos": [860, 440],
+      "size": [150, 64],
+      "tag": "External Sync"
+    },
+    {
+      "id": "postgres_db",
+      "type": "database",
+      "label": "PostgreSQL 16",
+      "sublabel": "Users, Streaks, Notes",
+      "pos": [1150, 250],
+      "size": [140, 64],
+      "tag": "Port 5432",
+      "icon": "database"
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Client Layer (Local Device / Zero-Latency Edge Vision)",
+      "wraps": ["angular_spa", "coach_service", "opencv_service"]
+    },
+    {
+      "kind": "security-group",
+      "label": "Backend & Persistence Boundary",
+      "wraps": ["security_jwt", "spring_backend", "fastapi_engine", "postgres_db"]
+    }
+  ],
+  "connections": [
+    {
+      "id": "user-to-spa",
+      "from": "user",
+      "to": "angular_spa",
+      "label": "Interactions & Camera",
+      "variant": "emphasis"
+    },
+    {
+      "id": "spa-to-coach",
+      "from": "angular_spa",
+      "to": "coach_service",
+      "label": "Events & State",
+      "fromSide": "top",
+      "toSide": "bottom"
+    },
+    {
+      "id": "coach-to-yt",
+      "from": "coach_service",
+      "to": "yt_cdn",
+      "label": "Auto-Pause / Resume",
+      "fromSide": "left",
+      "toSide": "right"
+    },
+    {
+      "id": "spa-to-opencv",
+      "from": "angular_spa",
+      "to": "opencv_service",
+      "label": "Canvas Stream & Gestures",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "spa-to-jwt",
+      "from": "angular_spa",
+      "to": "security_jwt",
+      "label": "REST + Bearer JWT",
+      "variant": "emphasis"
+    },
+    {
+      "id": "jwt-to-spring",
+      "from": "security_jwt",
+      "to": "spring_backend",
+      "label": "Authorized Req",
+      "variant": "security"
+    },
+    {
+      "id": "spring-to-analytics",
+      "from": "spring_backend",
+      "to": "fastapi_engine",
+      "label": "SM-2 Spaced Repetition",
+      "fromSide": "top",
+      "toSide": "bottom"
+    },
+    {
+      "id": "spring-to-leetcode",
+      "from": "spring_backend",
+      "to": "leetcode_sync",
+      "label": "Sync Problems",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "spring-to-db",
+      "from": "spring_backend",
+      "to": "postgres_db",
+      "label": "JPA / Hibernate SQL"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Edge AI Vision",
+      "items": [
+        "100% on-device camera stream processing with zero network transmission",
+        "OpenCV.js WebAssembly with Native Canvas CV fallback",
+        "Distinguishes Head Nods (central Y-axis dip) from Hand Waves (peripheral oscillation)"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Personalized Study Coach",
+      "items": [
+        "Client-side pedagogical motivation synthesis engine with topic interpolation",
+        "Detects continuous absence (2-3s) before auto-pausing video",
+        "Deliberate 1.5s gesture confirmation window with live countdown"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "Backend & Analytics",
+      "items": [
+        "Spring Boot 3.4 on Java 21 managing users, problems, and study streaks",
+        "FastAPI Python engine computing spaced repetition and retention curves",
+        "PostgreSQL database storing notes, submissions, and session analytics"
+      ]
+    }
+  ]
+}

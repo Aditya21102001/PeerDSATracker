@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "d5712101-1d80-4347-86be-39e6fdd9fa86",
+  "status": "current",
+  "command": "deliver",
+  "type": "workflow",
+  "input": "F:\\PeerDSATracker\\.archify\\workflow-camera-presence-gesture-20261004-210500\\candidate.json",
+  "output": "F:\\PeerDSATracker\\.archify\\workflow-camera-presence-gesture-20261004-210500\\camera-presence-gesture-workflow.html",
+  "specification": {
+    "sha256": "d80948b582d737768ea999f06d2d437416705e7db869194b759fddf5e8c730fa",
+    "bytes": 5333
+  },
+  "artifact": {
+    "sha256": "f95f13c68dc4462db8d60945c17c3f1da1fe027e40373a99ae06f780cd5ff288",
+    "bytes": 768866
+  }
+}

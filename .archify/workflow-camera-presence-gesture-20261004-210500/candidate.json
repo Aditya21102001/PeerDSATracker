@@ -1,0 +1,72 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Camera Presence & Gesture Coaching Engine",
+    "animation": "trace",
+    "visual_preset": "signal-flow",
+    "quality_profile": "showcase",
+    "output": ".archify/workflow-camera-presence-gesture-20261004-210500/camera-presence-gesture-workflow.html"
+  },
+  "lanes": [
+    { "id": "learner", "label": "Learner & Webcam" },
+    { "id": "vision", "label": "Computer Vision (OpenCvGestureService)" },
+    { "id": "coach", "label": "Coaching Engine (VideoStudyCoachService)" },
+    { "id": "player", "label": "Video Hub UI & Player" }
+  ],
+  "phases": [
+    { "id": "acquisition", "label": "Capture & Stream", "fromCol": 0, "toCol": 1 },
+    { "id": "inference", "label": "Vision & Inference", "fromCol": 2, "toCol": 3, "variant": "emphasis" },
+    { "id": "action", "label": "Action & Feedback", "fromCol": 4, "toCol": 5, "variant": "dashed" }
+  ],
+  "groups": [
+    { "id": "vision_group", "label": "Zero-Latency Client Vision", "lane": "vision", "fromCol": 1, "toCol": 3, "variant": "emphasis" },
+    { "id": "coach_group", "label": "Debounce & Verification", "lane": "coach", "fromCol": 2, "toCol": 4, "variant": "security" },
+    { "id": "player_group", "label": "Feedback & Delivery", "lane": "player", "fromCol": 4, "toCol": 5, "variant": "dashed" }
+  ],
+  "mainPath": ["webcam", "canvas_stream", "cv_classify", "gesture_eval", "confirmation_gate", "coach_decision", "yt_action"],
+  "nodes": [
+    { "id": "webcam", "lane": "learner", "col": 0, "type": "external", "label": "Learner Webcam", "sublabel": "1s sample ticks", "width": 126 },
+    { "id": "canvas_stream", "lane": "vision", "col": 1, "type": "frontend", "label": "Offscreen Canvas", "sublabel": "2D pixel buffer", "width": 126 },
+    { "id": "cv_classify", "lane": "vision", "col": 2, "type": "frontend", "label": "Dual Vision Engine", "sublabel": "OpenCV + Canvas", "tag": "Skin Voting", "width": 126 },
+    { "id": "gesture_eval", "lane": "vision", "col": 3, "type": "frontend", "label": "Gesture Classifier", "sublabel": "Nod / Wave / Palm", "tag": "headYHistory", "width": 126 },
+    { "id": "absence_check", "lane": "coach", "col": 2, "type": "security", "label": "Absence Debounce", "sublabel": "2-3s continuous", "tag": "Anti-Flicker", "width": 126 },
+    { "id": "confirmation_gate", "lane": "coach", "col": 3, "type": "security", "label": "Confirmation Gate", "sublabel": "1.5s countdown", "tag": "Cancel Guard", "width": 126 },
+    { "id": "coach_decision", "lane": "coach", "col": 4, "type": "backend", "label": "Action Dispatcher", "sublabel": "Play / Pause / Retain", "tag": "State Engine", "width": 126 },
+    { "id": "motivation_engine", "lane": "coach", "col": 5, "type": "backend", "label": "Motivation Engine", "sublabel": "Topic & Streak Boost", "tag": "Personalized", "width": 126 },
+    { "id": "yt_action", "lane": "player", "col": 4, "type": "frontend", "label": "YouTube IFrame", "sublabel": "postMessage API", "tag": "pause / play", "width": 126 },
+    { "id": "motivation_card", "lane": "player", "col": 5, "type": "frontend", "label": "Motivation Card", "sublabel": "Glassmorphic overlay", "tag": "Boost Badge", "width": 126 }
+  ],
+  "edges": [
+    { "id": "webcam-to-canvas", "from": "webcam", "to": "canvas_stream", "label": "raw frame stream", "variant": "default" },
+    { "id": "canvas-to-classify", "from": "canvas_stream", "to": "cv_classify", "label": "pixel buffer", "variant": "default" },
+    { "id": "classify-to-gesture", "from": "cv_classify", "to": "gesture_eval", "label": "face + motion", "variant": "emphasis" },
+    { "id": "classify-to-absence", "from": "cv_classify", "to": "absence_check", "label": "face absent", "variant": "security" },
+    { "id": "absence-to-decision", "from": "absence_check", "to": "coach_decision", "label": "away confirmed", "variant": "security" },
+    { "id": "gesture-to-gate", "from": "gesture_eval", "to": "confirmation_gate", "label": "gesture detected", "variant": "emphasis" },
+    { "id": "gate-to-decision", "from": "confirmation_gate", "to": "coach_decision", "label": "confirmed", "variant": "emphasis" },
+    { "id": "decision-to-yt", "from": "coach_decision", "to": "yt_action", "label": "pause / resume", "variant": "emphasis" },
+    { "id": "decision-to-mot", "from": "coach_decision", "to": "motivation_engine", "label": "trigger motivation", "variant": "default" },
+    { "id": "mot-to-card", "from": "motivation_engine", "to": "motivation_card", "label": "display boost", "variant": "emphasis" }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Sub-Second Privacy Vision",
+      "items": [
+        "Webcam streams are analyzed 100% on the local device without server calls",
+        "Dual engine: OpenCV.js WebAssembly with high-performance native Canvas CV fallback",
+        "Skin chromaticity voting across YCbCr, RGB, and HSV spaces prevents false positives"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Pedagogical Confirmation & Debouncing",
+      "items": [
+        "Absence requires 3 consecutive negative samples (2-3s continuous) before pausing",
+        "Gestures require a 1.5s deliberate confirmation window with live cancellation support",
+        "Head Nods (+5% Active Recall) and Hand Waves trigger personalized motivation cards"
+      ]
+    }
+  ]
+}

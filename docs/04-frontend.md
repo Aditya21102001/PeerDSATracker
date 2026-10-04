@@ -285,6 +285,9 @@ degrade; they do not break the page.
 
 The `/videos` route embeds curated and searchable YouTube video tutorials alongside real-time study observation and focus guard mechanisms.
 
+> ⚡ **[Explore Interactive Archify Workflow Diagram](file:///f:/PeerDSATracker/.archify/workflow-camera-presence-gesture-20261004-210500/camera-presence-gesture-workflow.html)**:
+> Interactive signal-flow visualization of the camera sampling, OpenCV.js skin voting, head nod / hand wave inference, debounce filters, and personalized motivation triggers.
+
 ### Camera Presence Guard & Automatic Play/Pause
 
 - **Zero-Backend Client-Side Vision**: Presence and posture detection run entirely in the browser using WebRTC (`getUserMedia`), HTML5 Canvas, and optional hardware acceleration (`FaceDetector` API).
