@@ -78,6 +78,7 @@ export class VideoStudyCoachService {
   private presenceCheckInterval: any = null;
   private absenceCheckCount = 0;
   private presenceReturnCheckCount = 0;
+  private presenceTickCount = 0;
   private pendingGestureTimer: any = null;
 
   // --- Break Timer (Pomodoro) ---
@@ -806,8 +807,9 @@ export class VideoStudyCoachService {
       // Warmup: capture baseline frames
       await this.warmupCameraFrames();
 
-      // Check presence every 1.0s (3 consecutive absent ticks = 2.5 - 3.0s continuous absence before pausing)
-      this.presenceCheckInterval = setInterval(() => this.checkCameraPresence(), 1000);
+      // Check presence and gestures at 200ms (5 FPS) for responsive gesture tracking (<300ms latency)
+      this.presenceTickCount = 0;
+      this.presenceCheckInterval = setInterval(() => this.checkCameraPresence(), 200);
 
       this.showToast('Smart Presence & Gesture Guard active. Auto-pauses when away and resumes on return!', 'success', '📷');
       return true;
@@ -844,6 +846,7 @@ export class VideoStudyCoachService {
       clearInterval(this.presenceCheckInterval);
       this.presenceCheckInterval = null;
     }
+    this.presenceTickCount = 0;
     if (this.pendingGestureTimer) {
       clearTimeout(this.pendingGestureTimer);
       this.pendingGestureTimer = null;
@@ -929,12 +932,17 @@ export class VideoStudyCoachService {
       this.currentFaceBox.set(cvResult.faceBox);
     }
 
-    // Handle Gesture Recognition
+    // Handle Gesture Recognition on every frame (5 FPS)
     if (cvResult.gesture !== 'none') {
       this.handleGestureAction(cvResult.gesture);
     }
 
-    this.handlePresenceDecision(cvResult.isPresent);
+    // Evaluate presence decision on a 1.0s cadence (every 5 ticks at 200ms = 1000ms)
+    // Preserves the 2-3s continuous absence rule and 1.5-2s return rule
+    this.presenceTickCount++;
+    if (this.presenceTickCount % 5 === 0) {
+      this.handlePresenceDecision(cvResult.isPresent);
+    }
   }
 
   handleGestureAction(gesture: UserGestureType, immediate = false): void {
@@ -944,23 +952,56 @@ export class VideoStudyCoachService {
     this.detectedGesture.set(gesture);
     this.playChime();
 
-    const targetAction = (this.isAway() || this.isPaused()) ? 'resume' : 'pause';
+    // 1. If user is away or video is paused, ANY recognized gesture resumes playback!
+    if (this.isAway() || this.isPaused()) {
+      const targetAction = 'resume';
+      if (immediate) {
+        this.executeGestureAction(gesture, targetAction);
+        return;
+      }
 
+      this.pendingGestureAction.set({
+        gesture,
+        action: targetAction,
+        secondsRemaining: 1.5,
+      });
+
+      const icon = gesture === 'WAVE' ? '👋' : (gesture === 'PALM' ? '✋' : (gesture === 'NOD' ? '🧠' : '👍'));
+      this.showToast(`${icon} ${gesture} recognized — Resuming in 1.5s...`, 'info', icon);
+
+      this.pendingGestureTimer = setTimeout(() => {
+        this.executeGestureAction(gesture, targetAction);
+        this.pendingGestureTimer = null;
+        this.pendingGestureAction.set(null);
+      }, 1500);
+      return;
+    }
+
+    // 2. Video is actively playing:
+    if (gesture === 'NOD' || gesture === 'THUMBS_UP') {
+      // Comprehension Checkpoint!
+      // Nodding along while watching locks the concept into memory (+5% Active Recall).
+      // Executes immediately without interrupting video playback!
+      this.executeGestureAction(gesture, 'checkpoint');
+      return;
+    }
+
+    // 3. Hand gestures while playing: WAVE or PALM deliberate pause intent
+    const targetAction = 'pause';
     if (immediate) {
       this.executeGestureAction(gesture, targetAction);
       return;
     }
 
-    // Require 1.5s deliberate confirmation before pausing or resuming to avoid accidental triggers
+    // Require 1.5s deliberate confirmation before pausing to avoid accidental triggers
     this.pendingGestureAction.set({
       gesture,
       action: targetAction,
       secondsRemaining: 1.5,
     });
 
-    const actionLabel = targetAction === 'pause' ? 'Pausing in 1.5s' : 'Resuming in 1.5s';
-    const icon = gesture === 'WAVE' ? '👋' : (gesture === 'PALM' ? '✋' : '👍');
-    this.showToast(`${icon} ${gesture} recognized — ${actionLabel}...`, 'info', icon);
+    const icon = gesture === 'WAVE' ? '👋' : '✋';
+    this.showToast(`${icon} ${gesture} recognized — Pausing in 1.5s...`, 'info', icon);
 
     this.pendingGestureTimer = setTimeout(() => {
       this.executeGestureAction(gesture, targetAction);
@@ -979,7 +1020,10 @@ export class VideoStudyCoachService {
     this.showToast('Gesture action cancelled.', 'info', '✕');
   }
 
-  private executeGestureAction(gesture: UserGestureType, targetAction: 'pause' | 'resume'): void {
+  private executeGestureAction(
+    gesture: UserGestureType,
+    targetAction: 'pause' | 'resume' | 'checkpoint'
+  ): void {
     const motivation = this.generatePersonalizedMotivation(gesture, targetAction);
     this.latestMotivation.set(motivation);
     this.gestureMotivationHistory.update((h) => [motivation, ...h.slice(0, 9)]);
@@ -991,7 +1035,11 @@ export class VideoStudyCoachService {
       }
     }, 7000);
 
-    if (gesture === 'WAVE') {
+    if (targetAction === 'checkpoint') {
+      this.activePauseCount.update((c) => c + 1);
+      this.evaluateStudyPattern();
+      this.showToast(motivation.message, 'success', motivation.icon);
+    } else if (gesture === 'WAVE') {
       if (targetAction === 'resume') {
         this.resumeFromAway();
         this.showToast(motivation.message, 'success', '👋');

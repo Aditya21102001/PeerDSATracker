@@ -81,4 +81,51 @@ describe('OpenCvGestureService', () => {
     const result = service.analyzeFrame(canvas);
     expect(result.isPresent).toBe(false);
   });
+
+  it('detects head nod (NOD) when face vertically dips and returns to baseline with horizontal stability', () => {
+    (service as any).headYHistory = [40, 42, 47, 48, 43, 40];
+    (service as any).headXHistory = [80, 80, 81, 80, 80, 80];
+
+    const isNod = (service as any).isHeadNodding();
+    expect(isNod).toBe(true);
+  });
+
+  it('detects upward head nod (tilt up and recover)', () => {
+    (service as any).headYHistory = [45, 43, 38, 37, 42, 45];
+    (service as any).headXHistory = [80, 80, 80, 81, 80, 80];
+
+    const isNod = (service as any).isHeadNodding();
+    expect(isNod).toBe(true);
+  });
+
+  it('rejects head nod when horizontal sway is excessive (e.g. head turning/shaking)', () => {
+    (service as any).headYHistory = [40, 42, 47, 48, 43, 40];
+    (service as any).headXHistory = [70, 75, 82, 86, 78, 72]; // > 9px horizontal drift
+
+    const isNod = (service as any).isHeadNodding();
+    expect(isNod).toBe(false);
+  });
+
+  it('rejects head nod when head slumps and does not return to baseline', () => {
+    (service as any).headYHistory = [40, 43, 46, 50, 52, 53];
+    (service as any).headXHistory = [80, 80, 80, 80, 80, 80];
+
+    const isNod = (service as any).isHeadNodding();
+    expect(isNod).toBe(false);
+  });
+
+  it('detects hand wave (WAVE) when hand position oscillates horizontally with direction reversal', () => {
+    (service as any).handXHistory = [100, 115, 125, 112, 98];
+
+    const isWave = (service as any).isHandWaving();
+    expect(isWave).toBe(true);
+  });
+
+  it('rejects hand wave when movement is unidirectional without reversal', () => {
+    (service as any).handXHistory = [100, 105, 112, 120, 126];
+
+    const isWave = (service as any).isHandWaving();
+    expect(isWave).toBe(false);
+  });
 });
+

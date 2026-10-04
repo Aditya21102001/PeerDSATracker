@@ -9,8 +9,11 @@ export class OpenCvGestureService {
   readonly isInitializing = signal<boolean>(false);
   private openCvInstance: any = null;
   private prevLumaBuffer: Uint8ClampedArray | null = null;
-  private waveMotionHistory: number[] = [];
   private headYHistory: number[] = [];
+  private headXHistory: number[] = [];
+  private handXHistory: number[] = [];
+  private motionHistory: number[] = [];
+  private palmHoldCount = 0;
   private lastGestureTimestamp = 0;
 
   constructor() {
@@ -189,19 +192,45 @@ export class OpenCvGestureService {
       const faceClusterRatio = largestArea / totalPixels;
       const isPresent = faceClusterRatio >= 0.035; // at least 3.5% solid face cluster
 
+      if (isPresent && faceRect) {
+        this.recordHeadCenter(faceRect.x + faceRect.width / 2, faceRect.y + faceRect.height / 2);
+      }
+      if (handRect) {
+        this.recordHandCenter(handRect.x + handRect.width / 2);
+      }
+
       // Gesture analysis
       let detectedGesture: UserGestureType = 'none';
       const now = Date.now();
 
       if (isPresent && now - this.lastGestureTimestamp > 1400) {
-        // Hand wave / open palm detection:
-        // A waving hand produces significant peripheral motion and secondary skin contour
-        if (handRect && secondLargestArea / totalPixels >= 0.015) {
+        // 1. Hand wave: horizontal oscillation of hand contour
+        if (this.isHandWaving()) {
+          detectedGesture = 'WAVE';
+          this.lastGestureTimestamp = now;
+          this.resetHistories();
+        }
+        // 2. Open palm: secondary skin contour with aspect ratio in [0.65, 1.6] held steady
+        else if (handRect && secondLargestArea / totalPixels >= 0.012) {
           const handAspect = handRect.width / (handRect.height || 1);
-          if (handAspect > 0.6 && handAspect < 1.6) {
-            detectedGesture = 'PALM';
-            this.lastGestureTimestamp = now;
+          if (handAspect >= 0.65 && handAspect <= 1.6) {
+            this.palmHoldCount++;
+            if (this.palmHoldCount >= 2) {
+              detectedGesture = 'PALM';
+              this.lastGestureTimestamp = now;
+              this.resetHistories();
+            }
+          } else {
+            this.palmHoldCount = 0;
           }
+        }
+        // 3. Head nod: vertical dip and recovery with horizontal stability
+        else if (this.isHeadNodding()) {
+          detectedGesture = 'NOD';
+          this.lastGestureTimestamp = now;
+          this.resetHistories();
+        } else {
+          this.palmHoldCount = 0;
         }
       }
 
@@ -223,7 +252,7 @@ export class OpenCvGestureService {
   /**
    * Native Canvas Computer Vision Engine:
    * Uses spatial 6x6 grid clustering, multi-space skin chromaticity voting,
-   * and temporal optical flow velocity tracking. Zero external dependencies.
+   * separated face/lateral tracking, and temporal optical flow velocity tracking. Zero external dependencies.
    */
   private analyzeWithNativeCv(canvas: HTMLCanvasElement): {
     isPresent: boolean;
@@ -243,6 +272,10 @@ export class OpenCvGestureService {
     let totalLuma = 0;
     let motionPixels = 0;
     let motionSum = 0;
+    let motionXSum = 0;
+
+    let lateralMotionPixels = 0;
+    let lateralMotionSum = 0;
 
     // 6x6 Spatial Grid to prevent wall/wood false positives
     const GRID_X = 6;
@@ -256,6 +289,17 @@ export class OpenCvGestureService {
     let maxX = 0;
     let minY = H;
     let maxY = 0;
+
+    let faceMinX = W;
+    let faceMaxX = 0;
+    let faceMinY = H;
+    let faceMaxY = 0;
+
+    let lateralSkinPixels = 0;
+    let lateralMinX = W;
+    let lateralMaxX = 0;
+    let lateralMinY = H;
+    let lateralMaxY = 0;
 
     for (let y = 0; y < H; y++) {
       const gy = Math.min(GRID_Y - 1, Math.floor(y / cellH));
@@ -296,6 +340,23 @@ export class OpenCvGestureService {
           if (x > maxX) maxX = x;
           if (y < minY) minY = y;
           if (y > maxY) maxY = y;
+
+          // Face cluster is in central columns (gx: 1..4) and upper rows (gy <= 4)
+          if (gx >= 1 && gx <= 4 && gy <= 4) {
+            if (x < faceMinX) faceMinX = x;
+            if (x > faceMaxX) faceMaxX = x;
+            if (y < faceMinY) faceMinY = y;
+            if (y > faceMaxY) faceMaxY = y;
+          }
+
+          // Lateral skin (hand) in peripheral columns (gx <= 1 or gx >= 4) and y >= 18
+          if ((gx <= 1 || gx >= 4) && y >= 18) {
+            lateralSkinPixels++;
+            if (x < lateralMinX) lateralMinX = x;
+            if (x > lateralMaxX) lateralMaxX = x;
+            if (y < lateralMinY) lateralMinY = y;
+            if (y > lateralMaxY) lateralMaxY = y;
+          }
         }
 
         // Temporal optical flow delta
@@ -304,6 +365,12 @@ export class OpenCvGestureService {
           if (delta > 6) {
             motionPixels++;
             motionSum += delta;
+            motionXSum += x;
+
+            if (gx <= 1 || gx >= 4) {
+              lateralMotionPixels++;
+              lateralMotionSum += delta;
+            }
           }
         }
       }
@@ -314,6 +381,8 @@ export class OpenCvGestureService {
     const avgLuma = totalLuma / (W * H);
     const motionRatio = motionPixels / (W * H);
     const avgMotionDelta = motionPixels > 0 ? motionSum / motionPixels : 0;
+    const lateralMotionRatio = lateralMotionPixels / (W * H);
+    const avgLateralDelta = lateralMotionPixels > 0 ? lateralMotionSum / lateralMotionPixels : 0;
 
     // Pitch-black camera / lens blocked
     if (avgLuma < 8) {
@@ -329,16 +398,11 @@ export class OpenCvGestureService {
         const idx = gy * GRID_X + gx;
         const cellDensity = gridPixelCount[idx] > 0 ? gridSkinCount[idx] / gridPixelCount[idx] : 0;
         if (cellDensity >= 0.16) {
-          // at least 16% skin in this cell
           denseClusters++;
         }
       }
     }
 
-    // Living person presence criteria:
-    // 1. Either dense spatial cluster in central upper region (>= 2 cells)
-    // 2. OR 1 dense cluster + biological micro-motion
-    // 3. OR high motion (> 2.5%) with reasonable bounding box
     const hasCluster = denseClusters >= 2;
     const hasClusterWithMotion = denseClusters >= 1 && motionRatio >= 0.006;
     const hasStrongMotion = motionRatio >= 0.03 && avgMotionDelta > 10;
@@ -346,52 +410,77 @@ export class OpenCvGestureService {
     const isPresent = hasCluster || hasClusterWithMotion || hasStrongMotion;
 
     let faceBox: FaceBox | null = null;
-    if (isPresent && maxX > minX && maxY > minY) {
-      faceBox = {
-        x: minX,
-        y: minY,
-        width: Math.max(20, maxX - minX),
-        height: Math.max(20, maxY - minY),
-      };
-      this.headYHistory.push(faceBox.y + faceBox.height / 2);
-      if (this.headYHistory.length > 8) this.headYHistory.shift();
+    if (isPresent) {
+      if (faceMaxX > faceMinX && faceMaxY > faceMinY) {
+        faceBox = {
+          x: faceMinX,
+          y: faceMinY,
+          width: Math.max(20, faceMaxX - faceMinX),
+          height: Math.max(20, faceMaxY - faceMinY),
+        };
+      } else if (maxX > minX && maxY > minY) {
+        faceBox = {
+          x: minX,
+          y: minY,
+          width: Math.max(20, maxX - minX),
+          height: Math.max(20, maxY - minY),
+        };
+      }
+
+      if (faceBox) {
+        this.recordHeadCenter(faceBox.x + faceBox.width / 2, faceBox.y + faceBox.height / 2);
+      }
     }
 
-    // GESTURE CLASSIFICATION (Calibrated for high deliberate intent, zero accidental triggers)
+    // Track motion centroid for wave detection when noticeable motion exists
+    if (motionPixels > W * H * 0.015) {
+      this.recordHandCenter(motionXSum / motionPixels);
+    }
+
     let detectedGesture: UserGestureType = 'none';
     const now = Date.now();
 
     if (isPresent) {
-      this.waveMotionHistory.push(motionRatio);
-      if (this.waveMotionHistory.length > 8) this.waveMotionHistory.shift();
+      this.motionHistory.push(motionRatio);
+      if (this.motionHistory.length > 8) this.motionHistory.shift();
 
-      // Enforce 3.0s cooldown between gestures to prevent rapid repeated triggering
-      if (now - this.lastGestureTimestamp > 3000 && this.waveMotionHistory.length >= 4) {
-        const last = this.waveMotionHistory[this.waveMotionHistory.length - 1];
-        const prev = this.waveMotionHistory[this.waveMotionHistory.length - 2];
-        const prev2 = this.waveMotionHistory[this.waveMotionHistory.length - 3];
-        const avg = this.waveMotionHistory.reduce((a, b) => a + b, 0) / this.waveMotionHistory.length;
+      // Enforce 1.4s cooldown between gestures to prevent rapid repeated triggering
+      if (now - this.lastGestureTimestamp > 1400) {
+        // 1. WAVE (Hand Gesture): Oscillating horizontal hand motion or deliberate lateral burst
+        const isOscillating = this.isHandWaving();
+        const hasLateralBurst = lateralMotionRatio >= 0.028 && avgLateralDelta >= 7;
 
-        // Ensure hand is in the periphery or distinctly separated from central face
-        const isLateralHandMotion = minX < W * 0.3 || maxX > W * 0.7;
-
-        // WAVE (Hand Gesture): Deliberate horizontal hand oscillation (sustained motion spike > 12% across 3 frames)
-        if (isLateralHandMotion && last > 0.12 && prev > 0.08 && avg > 0.06 && avgMotionDelta > 12) {
+        if (isOscillating || hasLateralBurst) {
           detectedGesture = 'WAVE';
           this.lastGestureTimestamp = now;
+          this.resetHistories();
         }
-        // PALM (Hand Gesture): Open palm held steady in lateral view
-        else if (isLateralHandMotion && last > 0.09 && prev > 0.07 && prev2 > 0.06 && avg < 0.15) {
-          detectedGesture = 'PALM';
-          this.lastGestureTimestamp = now;
+        // 2. PALM (Hand Gesture): Open palm held steady in lateral/peripheral view
+        else if (lateralSkinPixels >= 55 && motionRatio <= 0.045) {
+          const handW = lateralMaxX - lateralMinX;
+          const handH = lateralMaxY - lateralMinY;
+          const aspect = handW / Math.max(1, handH);
+
+          if (aspect >= 0.55 && aspect <= 1.8) {
+            this.palmHoldCount++;
+            if (this.palmHoldCount >= 2) {
+              detectedGesture = 'PALM';
+              this.lastGestureTimestamp = now;
+              this.resetHistories();
+            }
+          } else {
+            this.palmHoldCount = 0;
+          }
         }
-        // NOD (Head Gesture): Rhythmic vertical head nod or deliberate vertical displacement
-        else if (!isLateralHandMotion && (
-          (avg >= 0.035 && avg <= 0.075 && this.waveMotionHistory.filter((v) => v >= 0.03).length >= 4) ||
-          this.isHeadNodding()
-        )) {
+        // 3. NOD (Head Gesture): Vertical head dip and recovery with horizontal stability
+        else if (this.isHeadNodding()) {
           detectedGesture = 'NOD';
           this.lastGestureTimestamp = now;
+          this.resetHistories();
+        } else {
+          if (motionRatio > 0.05) {
+            this.palmHoldCount = 0;
+          }
         }
       }
     }
@@ -404,16 +493,86 @@ export class OpenCvGestureService {
     };
   }
 
+  private recordHeadCenter(x: number, y: number): void {
+    this.headYHistory.push(y);
+    this.headXHistory.push(x);
+    if (this.headYHistory.length > 8) this.headYHistory.shift();
+    if (this.headXHistory.length > 8) this.headXHistory.shift();
+  }
+
+  private recordHandCenter(x: number): void {
+    this.handXHistory.push(x);
+    if (this.handXHistory.length > 8) this.handXHistory.shift();
+  }
+
+  private resetHistories(): void {
+    this.headYHistory = [];
+    this.headXHistory = [];
+    this.handXHistory = [];
+    this.motionHistory = [];
+    this.palmHoldCount = 0;
+  }
+
   private isHeadNodding(): boolean {
     if (this.headYHistory.length < 4) return false;
-    const len = this.headYHistory.length;
-    const y0 = this.headYHistory[len - 4];
-    const y1 = this.headYHistory[len - 3];
-    const y2 = this.headYHistory[len - 2];
-    const y3 = this.headYHistory[len - 1];
-    // Vertical dip and recovery (nod down and up)
-    const isDipAndRise = y1 > y0 + 3 && y2 > y3 + 2;
-    const isRiseAndDip = y1 < y0 - 3 && y2 < y3 - 2;
-    return isDipAndRise || isRiseAndDip;
+
+    // Check horizontal stability: head nod is strictly vertical; horizontal sway should be low
+    const minX = Math.min(...this.headXHistory);
+    const maxX = Math.max(...this.headXHistory);
+    if (maxX - minX > 9) {
+      return false; // too much horizontal sway or head turning
+    }
+
+    const minY = Math.min(...this.headYHistory);
+    const maxY = Math.max(...this.headYHistory);
+    const verticalRange = maxY - minY;
+
+    // A natural nod produces 3.5px to 24px vertical displacement on a 120px canvas
+    if (verticalRange < 3.5 || verticalRange > 24) {
+      return false;
+    }
+
+    const firstY = this.headYHistory[0];
+    const lastY = this.headYHistory[this.headYHistory.length - 1];
+
+    // Must return near original baseline (|last - first| <= 4.5px)
+    if (Math.abs(lastY - firstY) > 4.5) {
+      return false;
+    }
+
+    // Direction inflection test:
+    // Middle values must show a clear peak (dip down) or trough (tilt up)
+    const middleValues = this.headYHistory.slice(1, -1);
+    const maxMid = Math.max(...middleValues);
+    const minMid = Math.min(...middleValues);
+
+    const isDownwardNod = (maxMid - firstY >= 3.0) && (maxMid - lastY >= 2.5);
+    const isUpwardNod = (firstY - minMid >= 3.0) && (lastY - minMid >= 2.5);
+
+    return isDownwardNod || isUpwardNod;
+  }
+
+  private isHandWaving(): boolean {
+    if (this.handXHistory.length < 4) return false;
+
+    const minX = Math.min(...this.handXHistory);
+    const maxX = Math.max(...this.handXHistory);
+    const amplitude = maxX - minX;
+
+    // Must have noticeable horizontal swing (at least 7px on 160px canvas)
+    if (amplitude < 7) return false;
+
+    // Count direction reversals in horizontal velocity
+    let reversals = 0;
+    for (let i = 1; i < this.handXHistory.length - 1; i++) {
+      const dx1 = this.handXHistory[i] - this.handXHistory[i - 1];
+      const dx2 = this.handXHistory[i + 1] - this.handXHistory[i];
+      // Distinct direction reversal with momentum
+      if (dx1 * dx2 < -3) {
+        reversals++;
+      }
+    }
+
+    return reversals >= 1;
   }
 }
