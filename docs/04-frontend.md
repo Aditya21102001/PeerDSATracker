@@ -281,6 +281,25 @@ failure and fails fast.
 The dashboard must render its streak, XP, badges and heatmap **regardless**. The analytics panels
 degrade; they do not break the page.
 
+## Video Learning Hub & Study Coach (`VideoStudyCoachService`)
+
+The `/videos` route embeds curated and searchable YouTube video tutorials alongside real-time study observation and focus guard mechanisms.
+
+### Camera Presence Guard & Automatic Play/Pause
+
+- **Zero-Backend Client-Side Vision**: Presence and posture detection run entirely in the browser using WebRTC (`getUserMedia`), HTML5 Canvas, and optional hardware acceleration (`FaceDetector` API).
+- **Dual/Triple Engine Architecture**:
+  - **Tier 1 (GPU)**: Native browser `FaceDetector` API when supported.
+  - **Tier 2 (OpenCV.js)**: Dynamically loads `opencv.js` in background to perform YCrCb color segmentation, contour analysis, and convex hull defect calculation.
+  - **Tier 3 (Spatial Grid & Temporal Flow)**: 6x6 spatial cell density analysis to eliminate false positives from background furniture/warm walls, combined with optical-flow motion delta tracking.
+- **Auto-Pause on Away**: If the user steps away from the camera, absence is debounced across 2 ticks (~2.4s) and triggers `triggerAwayPause('AWAY_PRESENCE_LOST')`. The video pauses and the spot is saved.
+- **Auto-Resume on Return**: The moment the user steps back into camera frame, presence is re-acquired and playback resumes automatically with zero clicks required.
+- **Gesture Control**:
+  - `WAVE`: Hand wave toggles playback (pauses when playing, auto-resumes when away or paused).
+  - `PALM`: Raised open palm pauses video.
+  - `NOD` / `THUMBS_UP`: Confirms checkpoint and boosts Active Learning Index retention.
+- **Visible PiP Sentinel**: An interactive, glassmorphic Picture-in-Picture camera monitor on the watch page ensures video frames are actively decoded by the browser compositor and never throttled.
+
 ## Adding a page
 
 1. Add the interface to `core/models/api.models.ts`, matching the backend record exactly.

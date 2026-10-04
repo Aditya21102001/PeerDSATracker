@@ -30,11 +30,27 @@ export interface StudyCoachingRecommendation {
   actionKey?: string;
 }
 
+export type UserGestureType =
+  | 'none'
+  | 'WAVE'
+  | 'PALM'
+  | 'THUMBS_UP'
+  | 'NOD'
+  | 'V_SIGN';
+
+export interface FaceBox {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 export interface StudyCoachSettings {
   autoPauseOnAway: boolean;
   enableCameraPresence: boolean;
   soundAlertOnAutoPause: boolean;
   autoResumeOnReturn: boolean;
+  enableGestureControl?: boolean;
 }
 
 export interface StudyHabitMetrics {

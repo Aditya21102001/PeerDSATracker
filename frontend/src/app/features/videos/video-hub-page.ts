@@ -201,6 +201,112 @@ import { TopicQuizModal } from '../../shared/topic-quiz-modal/topic-quiz-modal';
                     (load)="onIframeLoad()"
                   ></iframe>
 
+                  <!-- Interactive Camera Focus & Gesture Sentinel PiP Widget -->
+                  @if (coach.cameraActive()) {
+                    <div
+                      id="vh-camera-pip-widget"
+                      class="camera-pip-widget"
+                      [class.minimized]="pipMinimized()"
+                      role="region"
+                      aria-label="Smart Camera Focus & Gesture Sentinel"
+                    >
+                      <div class="pip-header">
+                        <div class="pip-status-indicator">
+                          <span class="pip-pulse-dot" [class.away]="!coach.faceDetected()"></span>
+                          <span class="pip-status-text">
+                            {{ coach.faceDetected() ? 'Present' : 'Away' }}
+                          </span>
+                        </div>
+                        @if (coach.isOpenCvActive()) {
+                          <span class="pip-cv-badge" title="OpenCV Computer Vision Acceleration active">OpenCV</span>
+                        }
+                        <div class="pip-controls">
+                          <button
+                            id="vh-pip-minimize-btn"
+                            type="button"
+                            class="pip-ctrl-btn"
+                            (click)="togglePipMinimized()"
+                            [title]="pipMinimized() ? 'Expand Camera PiP' : 'Minimize Camera PiP'"
+                            [attr.aria-label]="pipMinimized() ? 'Expand camera' : 'Minimize camera'"
+                          >
+                            {{ pipMinimized() ? '□' : '—' }}
+                          </button>
+                          <button
+                            id="vh-pip-close-btn"
+                            type="button"
+                            class="pip-ctrl-btn"
+                            (click)="coach.toggleCameraPresence()"
+                            title="Turn off Camera Guard"
+                            aria-label="Close camera guard"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      </div>
+
+                      @if (!pipMinimized()) {
+                        <div class="pip-video-wrap">
+                          <video
+                            #pipVideoElement
+                            class="pip-video-feed"
+                            autoplay
+                            muted
+                            playsinline
+                            [srcObject]="coach.mediaStreamSignal()"
+                          ></video>
+
+                          <!-- Face Tracking Bounding Box Overlay -->
+                          @if (coach.currentFaceBox(); as box) {
+                            <div
+                              class="pip-face-box"
+                              [style.left.%]="(box.x / 160) * 100"
+                              [style.top.%]="(box.y / 120) * 100"
+                              [style.width.%]="(box.width / 160) * 100"
+                              [style.height.%]="(box.height / 120) * 100"
+                            ></div>
+                          }
+
+                          <!-- Detected Gesture Overlay Badge -->
+                          @if (coach.detectedGesture() !== 'none') {
+                            <div class="pip-gesture-overlay animate-pop">
+                              @switch (coach.detectedGesture()) {
+                                @case ('WAVE') {
+                                  <span class="gesture-icon">👋</span>
+                                  <span class="gesture-label">Wave</span>
+                                }
+                                @case ('PALM') {
+                                  <span class="gesture-icon">✋</span>
+                                  <span class="gesture-label">Palm</span>
+                                }
+                                @case ('NOD') {
+                                  <span class="gesture-icon">👍</span>
+                                  <span class="gesture-label">Nod</span>
+                                }
+                                @default {
+                                  <span class="gesture-icon">✨</span>
+                                  <span class="gesture-label">Gesture</span>
+                                }
+                              }
+                            </div>
+                          }
+                        </div>
+
+                        <div class="pip-footer">
+                          <button
+                            id="vh-pip-gesture-toggle"
+                            type="button"
+                            class="pip-toggle-btn"
+                            [class.active]="coach.isGestureControlActive()"
+                            (click)="coach.toggleGestureControl()"
+                            title="Toggle Hand Wave & Gesture controls"
+                          >
+                            {{ coach.isGestureControlActive() ? '✋ Gestures ON' : '✋ Gestures OFF' }}
+                          </button>
+                        </div>
+                      }
+                    </div>
+                  }
+
                   <!-- Auto-Pause Away Overlay (When user switches tabs, blurs, or leaves screen) -->
                   @if (coach.isAway()) {
                     <div id="vh-away-overlay" class="away-overlay" role="alert" aria-live="assertive">
@@ -211,7 +317,8 @@ import { TopicQuizModal } from '../../shared/topic-quiz-modal/topic-quiz-modal';
                         <h3 id="vh-away-title">Video Auto-Paused: You Were Away</h3>
                         <p id="vh-away-desc" class="away-desc">
                           @if (coach.awayReason() === 'AWAY_PRESENCE_LOST') {
-                            You stepped away from your desk. Video paused to preserve your study spot!
+                            You stepped away from your desk. Video paused automatically!
+                            <span class="away-auto-hint">✨ Return in front of your camera or wave your hand 👋 to resume automatically.</span>
                           } @else {
                             You switched tabs or minimized the study window. Focus protected.
                           }
@@ -244,7 +351,7 @@ import { TopicQuizModal } from '../../shared/topic-quiz-modal/topic-quiz-modal';
                             📝 Note while Paused
                           </button>
                         </div>
-                        <small class="away-hint">💡 Tip: Press <kbd>Space</kbd> anytime to resume playback.</small>
+                        <small class="away-hint">💡 Tip: Press <kbd>Space</kbd> or wave 👋 anytime to resume playback.</small>
                       </div>
                     </div>
                   }
@@ -1472,6 +1579,11 @@ export class VideoHubPage implements AfterViewInit, OnDestroy {
   protected viewMode = signal<'results' | 'watch'>('results');
   protected resultsLayout = signal<'list' | 'grid'>('list');
   protected dismissMiniplayer = signal<boolean>(false);
+  protected pipMinimized = signal<boolean>(false);
+
+  protected togglePipMinimized(): void {
+    this.pipMinimized.update((v) => !v);
+  }
 
   protected searchQuery = '';
   protected queueFilterText = '';

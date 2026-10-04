@@ -202,3 +202,17 @@ window from; replaying that is theft however fresh it looks.
 Content must work at a **320 CSS px** viewport with no two-dimensional scrolling — which is what
 400% zoom on a 1280px screen actually means. Wide content may scroll inside its own container (the
 leaderboard table, the heatmap); the page itself may not.
+
+### Camera Presence Sentinel
+
+The client-side vision pipeline in `VideoStudyCoachService` that monitors user presence in front of the
+screen using WebRTC and HTML5 canvas. If the user steps away from their desk, the video auto-pauses
+(`AWAY_PRESENCE_LOST`) and automatically resumes playback when the user returns.
+
+### Gesture-Aware Playback
+
+Real-time computer vision analysis (OpenCV.js + native spatial flow) detecting hand gestures (`WAVE`, `PALM`, `NOD`) to control video playback (pause, resume, note checkpoints) touch-free without backend processing.
+
+### Active Learning Index (Retention Score)
+
+A 0–100 heuristic calculated in real-time based on watch continuity, active digest pauses, deliberate note-taking, and optional 60-second topic concept checkpoints. Discourages passive binge-watching in favor of deliberate spaced synthesis.

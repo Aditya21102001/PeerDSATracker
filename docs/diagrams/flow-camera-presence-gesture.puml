@@ -1,0 +1,86 @@
+@startuml flow-camera-presence-gesture
+' Client-side Camera Presence Sentinel & Gesture-Aware Playback Engine
+'
+' Render: plantuml docs/diagrams/flow-camera-presence-gesture.puml
+
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam sequence {
+  ParticipantBackgroundColor #FDFDFD
+  ParticipantBorderColor #5B5BD6
+  ArrowColor #59606F
+  LifeLineBorderColor #5B5BD6
+  LifeLineBackgroundColor #EFF1F6
+}
+skinparam note {
+  BackgroundColor #FFF8E1
+  BorderColor #C2670A
+}
+
+title Smart Camera Presence Sentinel & Gesture Recognition Flow
+
+actor User
+participant "VideoHubPage\n(PiP Sentinel)" as Hub
+participant "VideoStudyCoachService" as Coach
+participant "OpenCvGestureService\n(Vision Engine)" as CV
+participant "YouTube Player\n(IFrame / API)" as Player
+
+autonumber
+
+== Initialization ==
+User -> Hub: Select & watch video
+Hub -> Coach: attachPlayer(iframe, videoId)
+Coach -> Player: init YT.Player & sendHandshake()
+User -> Hub: Enable "Camera Presence"
+Hub -> Coach: startCameraPresence()
+Coach -> Coach: getUserMedia({ video: 320x240 })
+Coach -> CV: loadOpenCv() [async background]
+Coach -> Hub: stream linked to live PiP monitor
+note over Hub: PiP displays live video, tracking box,\nand ensures Chromium never throttles frames
+
+== Presence Monitoring Loop (every 1.2s) ==
+loop Continuous Study Monitoring
+  Coach -> CV: analyzeFrame(hiddenCanvas)
+  alt FaceDetector / OpenCV available
+    CV -> CV: Detect face box & skin contours
+  else Native Spatial Grid Fallback
+    CV -> CV: 6x6 spatial cell density + optical flow motion
+  end
+  CV --> Coach: { isPresent, faceBox, gesture, motionIntensity }
+
+  == Case 1: User Steps Away From Desk ==
+  alt isPresent == false (consecutive checks >= 2)
+    Coach -> Coach: triggerAwayPause('AWAY_PRESENCE_LOST')
+    Coach -> Player: pauseVideo() [direct + burst postMessage]
+    Coach -> Hub: display Away Overlay + playChime()
+    note over Hub: Video paused automatically.\nSpot preserved!
+  end
+
+  == Case 2: User Returns to Camera ==
+  alt isPresent == true (was previously away)
+    Coach -> Coach: handleReturnFromAway()
+    Coach -> Player: playVideo() [direct + postMessage]
+    Coach -> Hub: dismiss Away Overlay & show "Welcome back" toast
+    note over User: Playback resumes automatically!\nZero clicks needed.
+  end
+
+  == Case 3: User Performs Hand Gesture ==
+  alt gesture detected ('WAVE' | 'PALM' | 'NOD')
+    Coach -> Coach: handleGestureAction(gesture)
+    alt gesture == 'WAVE'
+      Coach -> Player: toggle play/pause
+      Coach -> Hub: show animated 👋 Wave notification
+    else gesture == 'PALM'
+      Coach -> Player: pauseVideo()
+      Coach -> Hub: show animated ✋ Palm notification
+    else gesture == 'NOD'
+      Coach -> Coach: boost Active Learning Index (+5%)
+    end
+  end
+end
+
+== Teardown ==
+Hub -> Coach: detachPlayer()
+Coach -> Coach: stopCameraPresence() (release tracks, cleanup canvas)
+
+@enduml

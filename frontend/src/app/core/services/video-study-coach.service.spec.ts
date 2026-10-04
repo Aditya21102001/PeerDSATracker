@@ -140,8 +140,48 @@ describe('VideoStudyCoachService', () => {
     expect(service.awayReason()).toBe('AWAY_PRESENCE_LOST');
     expect(service.isPlaying()).toBe(false);
 
-    // User returns in front of camera
+    // User returns in front of camera -> MUST AUTO-RESUME automatically!
     (service as any).handlePresenceDecision(true);
     expect(service.faceDetected()).toBe(true);
+    expect(service.isAway()).toBe(false);
+    expect(service.awayReason()).toBeNull();
+    expect(service.isPlaying()).toBe(true);
+  });
+
+  it('understands hand wave gesture to toggle pause and auto-resume', () => {
+    (service as any).handlePlayDetected();
+    service.setVideoMetadata('vid-gesture-1', 'Dynamic Programming');
+    expect(service.isPlaying()).toBe(true);
+
+    // Wave hand while playing -> triggers pause
+    service.handleGestureAction('WAVE');
+    expect(service.detectedGesture()).toBe('WAVE');
+    expect(service.isPlaying()).toBe(false);
+    expect(service.isPaused()).toBe(true);
+
+    // Wave hand while paused -> triggers resume
+    service.handleGestureAction('WAVE');
+    expect(service.isPlaying()).toBe(true);
+    expect(service.isPaused()).toBe(false);
+  });
+
+  it('understands open palm gesture to pause video', () => {
+    (service as any).handlePlayDetected();
+    service.setVideoMetadata('vid-gesture-2', 'Graph BFS');
+    expect(service.isPlaying()).toBe(true);
+
+    service.handleGestureAction('PALM');
+    expect(service.detectedGesture()).toBe('PALM');
+    expect(service.isPlaying()).toBe(false);
+    expect(service.isPaused()).toBe(true);
+  });
+
+  it('understands nod / thumbs up gesture to boost retention and resume if away', () => {
+    service.triggerAwayPause('AWAY_PRESENCE_LOST');
+    expect(service.isAway()).toBe(true);
+
+    service.handleGestureAction('NOD');
+    expect(service.isAway()).toBe(false);
+    expect(service.isPlaying()).toBe(true);
   });
 });
