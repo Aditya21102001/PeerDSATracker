@@ -47,6 +47,8 @@ export class VideoStudyCoachService {
   private mediaStream: MediaStream | null = null;
   private hiddenVideo: HTMLVideoElement | null = null;
   private hiddenCanvas: HTMLCanvasElement | null = null;
+  private nativeFaceDetector: any = null;
+  private prevFrameData: Uint8ClampedArray | null = null;
   private presenceCheckInterval: any = null;
   private absenceCheckCount = 0;
 
@@ -343,6 +345,11 @@ export class VideoStudyCoachService {
   private sendIFrameCommand(func: string, args: any[] = []): void {
     if (!this.iframeElement?.contentWindow) return;
     try {
+      // Dispatches both empty-array and empty-string variants to guarantee support across YouTube iframe versions
+      this.iframeElement.contentWindow.postMessage(
+        JSON.stringify({ event: 'command', func, args: args.length > 0 ? args : '' }),
+        '*'
+      );
       this.iframeElement.contentWindow.postMessage(
         JSON.stringify({ event: 'command', func, args }),
         '*'
@@ -578,7 +585,7 @@ export class VideoStudyCoachService {
     if (!this.settings().autoPauseOnAway) return;
 
     if (document.hidden) {
-      if (this.isPlaying()) {
+      if (!this.isAway() && (this.isPlaying() || !this.isPaused() || !!this.currentVideoId())) {
         this.triggerAwayPause('AWAY_TAB_SWITCH');
       }
     } else {
@@ -590,7 +597,7 @@ export class VideoStudyCoachService {
     if (!this.settings().autoPauseOnAway) return;
 
     // Only pause on blur if tab switch didn't already trigger it and we are actively watching
-    if (this.isPlaying() && !this.isAway()) {
+    if (!this.isAway() && (this.isPlaying() || !this.isPaused() || !!this.currentVideoId())) {
       this.triggerAwayPause('AWAY_TAB_SWITCH');
     }
   }
@@ -635,7 +642,7 @@ export class VideoStudyCoachService {
     this.showToast('Resuming playback. Stay focused!', 'success', '▶');
   }
 
-  // --- Smart AI Camera Presence Guard (Opt-in) ---
+  // --- Smart Client-Side Camera Presence Guard (Opt-in) ---
 
   async startCameraPresence(): Promise<boolean> {
     try {
@@ -655,6 +662,20 @@ export class VideoStudyCoachService {
       this.hiddenVideo.autoplay = true;
       this.hiddenVideo.muted = true;
       this.hiddenVideo.playsInline = true;
+      this.hiddenVideo.setAttribute('playsinline', '');
+      this.hiddenVideo.setAttribute('muted', '');
+      this.hiddenVideo.style.position = 'fixed';
+      this.hiddenVideo.style.top = '-9999px';
+      this.hiddenVideo.style.left = '-9999px';
+      this.hiddenVideo.style.width = '1px';
+      this.hiddenVideo.style.height = '1px';
+      this.hiddenVideo.style.opacity = '0';
+      this.hiddenVideo.style.pointerEvents = 'none';
+
+      if (typeof document !== 'undefined' && document.body) {
+        document.body.appendChild(this.hiddenVideo);
+      }
+
       this.hiddenVideo.srcObject = this.mediaStream;
       await this.hiddenVideo.play();
 
@@ -665,9 +686,10 @@ export class VideoStudyCoachService {
       this.cameraActive.set(true);
       this.faceDetected.set(true);
       this.absenceCheckCount = 0;
+      this.prevFrameData = null;
 
-      // Start presence check loop (every 2.5s)
-      this.presenceCheckInterval = setInterval(() => this.checkCameraPresence(), 2500);
+      // Start presence check loop (every 1.5s for fast and responsive detection)
+      this.presenceCheckInterval = setInterval(() => this.checkCameraPresence(), 1500);
 
       this.showToast('Smart Presence Guard active. Video will pause if you step away!', 'success', '📷');
       return true;
@@ -691,9 +713,14 @@ export class VideoStudyCoachService {
     }
     if (this.hiddenVideo) {
       this.hiddenVideo.srcObject = null;
+      if (this.hiddenVideo.parentNode) {
+        this.hiddenVideo.parentNode.removeChild(this.hiddenVideo);
+      }
       this.hiddenVideo = null;
     }
     this.hiddenCanvas = null;
+    this.prevFrameData = null;
+    this.nativeFaceDetector = null;
     this.cameraActive.set(false);
     this.faceDetected.set(true);
     this.absenceCheckCount = 0;
@@ -710,66 +737,123 @@ export class VideoStudyCoachService {
     }
   }
 
-  private checkCameraPresence(): void {
+  private async checkCameraPresence(): Promise<void> {
     if (!this.hiddenVideo || !this.hiddenCanvas || !this.cameraActive()) return;
 
-    const ctx = this.hiddenCanvas.getContext('2d');
-    if (!ctx || this.hiddenVideo.videoWidth === 0) return;
+    const ctx = this.hiddenCanvas.getContext('2d', { willReadFrequently: true });
+    if (!ctx || this.hiddenVideo.videoWidth === 0 || this.hiddenVideo.readyState < 2) return;
 
     ctx.drawImage(this.hiddenVideo, 0, 0, this.hiddenCanvas.width, this.hiddenCanvas.height);
 
-    try {
-      const frame = ctx.getImageData(0, 0, this.hiddenCanvas.width, this.hiddenCanvas.height);
-      const data = frame.data;
-      let totalLuma = 0;
-      let q1 = 0, q2 = 0, q3 = 0, q4 = 0;
-      const halfW = this.hiddenCanvas.width / 2;
-      const halfH = this.hiddenCanvas.height / 2;
-      const w = this.hiddenCanvas.width;
-      const pixelCount = data.length / 4;
-
-      for (let i = 0; i < data.length; i += 4) {
-        const luma = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
-        totalLuma += luma;
-        const pIdx = i / 4;
-        const x = pIdx % w;
-        const y = Math.floor(pIdx / w);
-        if (x < halfW && y < halfH) q1 += luma;
-        else if (x >= halfW && y < halfH) q2 += luma;
-        else if (x < halfW && y >= halfH) q3 += luma;
-        else q4 += luma;
+    // Tier 1: Hardware-accelerated browser native FaceDetector API (Chromium / Shape Detection API)
+    if (typeof (window as any).FaceDetector === 'function') {
+      try {
+        if (!this.nativeFaceDetector) {
+          this.nativeFaceDetector = new (window as any).FaceDetector({ fastMode: true, maxDetectedFaces: 1 });
+        }
+        const faces = await this.nativeFaceDetector.detect(this.hiddenCanvas);
+        const faceFound = Array.isArray(faces) && faces.length > 0;
+        this.handlePresenceDecision(faceFound);
+        return;
+      } catch {
+        // Fall through to pixel-level computer vision
       }
+    }
 
-      const avgLuma = totalLuma / pixelCount;
-      const qSize = pixelCount / 4;
-      const qVariance =
-        Math.abs(q1 / qSize - avgLuma) +
-        Math.abs(q2 / qSize - avgLuma) +
-        Math.abs(q3 / qSize - avgLuma) +
-        Math.abs(q4 / qSize - avgLuma);
+    // Tier 2: Real-time Computer Vision Pixel Pipeline (Zero external dependencies)
+    try {
+      const width = this.hiddenCanvas.width;
+      const height = this.hiddenCanvas.height;
+      const frame = ctx.getImageData(0, 0, width, height);
+      const data = frame.data;
 
-      // If camera covered (very low luma) or empty room (extremely low quadrant variance), consider absent
-      const isAbsent = avgLuma < 10 || qVariance < 3;
+      // Region of Interest: Upper-central portrait zone where a desk-facing user sits
+      const xMin = Math.floor(width * 0.18);
+      const xMax = Math.floor(width * 0.82);
+      const yMin = Math.floor(height * 0.08);
+      const yMax = Math.floor(height * 0.82);
 
-      if (isAbsent) {
-        this.absenceCheckCount++;
-        // If absent for 2 consecutive checks (5 seconds)
-        if (this.absenceCheckCount >= 2) {
-          this.faceDetected.set(false);
-          if (this.isPlaying() && !this.isAway()) {
-            this.triggerAwayPause('AWAY_PRESENCE_LOST');
+      let roiPixels = 0;
+      let skinPixels = 0;
+      let motionPixels = 0;
+      let totalLuma = 0;
+
+      const currentLuma = new Uint8ClampedArray(width * height);
+
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          const pIdx = y * width + x;
+          const i = pIdx * 4;
+          const r = data[i];
+          const g = data[i + 1];
+          const b = data[i + 2];
+          const luma = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+          currentLuma[pIdx] = luma;
+          totalLuma += luma;
+
+          if (x >= xMin && x <= xMax && y >= yMin && y <= yMax) {
+            roiPixels++;
+
+            // YCbCr skin chrominance cluster test
+            const cb = 128 - 0.168736 * r - 0.331264 * g + 0.5 * b;
+            const cr = 128 + 0.5 * r - 0.418688 * g - 0.081312 * b;
+
+            // Invariant human skin chromaticity boundaries across all human ethnicities
+            if (cb >= 77 && cb <= 127 && cr >= 133 && cr <= 173 && r > g && g > b && luma > 18) {
+              skinPixels++;
+            }
+
+            // Temporal inter-frame motion delta
+            if (this.prevFrameData) {
+              const delta = Math.abs(luma - this.prevFrameData[pIdx]);
+              if (delta > 6) {
+                motionPixels++;
+              }
+            }
           }
         }
-      } else {
-        const wasAbsent = !this.faceDetected();
-        this.absenceCheckCount = 0;
-        this.faceDetected.set(true);
+      }
 
-        if (wasAbsent && this.isAway() && this.awayReason() === 'AWAY_PRESENCE_LOST') {
-          this.handleReturnFromAway();
+      this.prevFrameData = currentLuma;
+
+      const avgLuma = totalLuma / (width * height);
+      const skinRatio = roiPixels > 0 ? skinPixels / roiPixels : 0;
+      const motionRatio = roiPixels > 0 ? motionPixels / roiPixels : 0;
+
+      // Covered camera or pitch black room
+      if (avgLuma < 10) {
+        this.handlePresenceDecision(false);
+        return;
+      }
+
+      // Live person criteria:
+      // Substantial skin tone in portrait zone (>2.5%) OR subtle posture/micro-motion (>1.2%) with skin presence (>0.8%)
+      const isPresent = skinRatio >= 0.025 || (skinRatio >= 0.008 && motionRatio >= 0.012);
+      this.handlePresenceDecision(isPresent);
+    } catch (e) {
+      // Keep presence state on canvas read error
+    }
+  }
+
+  private handlePresenceDecision(isPresent: boolean): void {
+    if (!isPresent) {
+      this.absenceCheckCount++;
+      // If absent for 2 consecutive checks (~3 seconds)
+      if (this.absenceCheckCount >= 2) {
+        this.faceDetected.set(false);
+        if (!this.isAway() && (this.isPlaying() || !this.isPaused() || !!this.currentVideoId())) {
+          this.triggerAwayPause('AWAY_PRESENCE_LOST');
         }
       }
-    } catch {}
+    } else {
+      const wasAbsent = !this.faceDetected();
+      this.absenceCheckCount = 0;
+      this.faceDetected.set(true);
+
+      if (wasAbsent && this.isAway() && this.awayReason() === 'AWAY_PRESENCE_LOST') {
+        this.handleReturnFromAway();
+      }
+    }
   }
 
   // --- Pomodoro Rest Timer ---

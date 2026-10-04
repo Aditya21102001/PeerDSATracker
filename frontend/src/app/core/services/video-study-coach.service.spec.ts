@@ -121,4 +121,27 @@ describe('VideoStudyCoachService', () => {
     service.cancelBreakTimer();
     expect(service.breakTimerActive()).toBe(false);
   });
+
+  it('triggers away pause when camera presence confirms absence across consecutive checks', () => {
+    (service as any).handlePlayDetected();
+    service.setVideoMetadata('test-vid-123', 'Binary Trees');
+    expect(service.isPlaying()).toBe(true);
+    expect(service.isAway()).toBe(false);
+
+    // 1st absence check - debouncing: not triggered yet
+    (service as any).handlePresenceDecision(false);
+    expect(service.faceDetected()).toBe(true);
+    expect(service.isAway()).toBe(false);
+
+    // 2nd consecutive absence check - confirms user is away from camera
+    (service as any).handlePresenceDecision(false);
+    expect(service.faceDetected()).toBe(false);
+    expect(service.isAway()).toBe(true);
+    expect(service.awayReason()).toBe('AWAY_PRESENCE_LOST');
+    expect(service.isPlaying()).toBe(false);
+
+    // User returns in front of camera
+    (service as any).handlePresenceDecision(true);
+    expect(service.faceDetected()).toBe(true);
+  });
 });
