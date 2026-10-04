@@ -45,6 +45,9 @@ interface RoadmapStep {
           <a routerLink="/videos" class="nav-link highlighted">
             <span class="nav-icon">📺</span> Video Hub
           </a>
+          <a routerLink="/architecture" class="nav-link highlighted">
+            <span class="nav-icon">🏛️</span> Architecture
+          </a>
           <a href="#roadmap" class="nav-link">🗺️ 474 Roadmap</a>
           <a href="#ai-engine" class="nav-link">🤖 AI Interview</a>
           <a href="#career" class="nav-link">💼 Career Portal</a>

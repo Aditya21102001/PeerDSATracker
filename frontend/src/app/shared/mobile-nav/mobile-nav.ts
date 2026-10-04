@@ -154,6 +154,7 @@ export class MobileNav {
     { path: '/blog', label: 'Articles', icon: '▤' },
     { path: '/profile', label: 'Platforms', icon: '🔗' },
     { path: '/security', label: 'Password', icon: '🔒' },
+    { path: '/architecture', label: 'Architecture', icon: '🏛️' },
     { path: '/guide', label: 'Guide', icon: '?' },
   ];
 

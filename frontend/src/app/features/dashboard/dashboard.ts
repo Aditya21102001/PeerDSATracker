@@ -61,6 +61,7 @@ import { Spinner } from '../../shared/spinner';
           <a id="dash-nav-profile" routerLink="/profile" class="dash-nav-pill">👤 Platforms</a>
           <a id="dash-nav-security" routerLink="/security" class="dash-nav-pill">🔐 Password</a>
           <a id="dash-nav-guide" routerLink="/guide" class="dash-nav-pill">🧭 Guide</a>
+          <a id="dash-nav-architecture" routerLink="/architecture" class="dash-nav-pill highlight-arch" title="View interactive Archify system architecture">🏛️ Architecture</a>
           <button id="dash-btn-video-tour" type="button" class="dash-nav-pill video-tour-btn" (click)="videoTour.open()" title="Watch 2-minute video tour">🎬 Tour</button>
           <button id="dash-btn-signout" type="button" class="dash-nav-pill sign-out" (click)="signOut()">🚪 Sign out</button>
         </nav>

@@ -117,6 +117,20 @@ header {
         }
       }
 
+      &.highlight-arch {
+        background: rgba(2, 132, 199, 0.12);
+        border-color: rgba(2, 132, 199, 0.45);
+        color: #0284c7;
+        font-weight: 700;
+
+        &:hover {
+          background: #0284c7;
+          color: #ffffff;
+          border-color: #0284c7;
+          box-shadow: 0 4px 14px rgba(2, 132, 199, 0.35);
+        }
+      }
+
       &.highlight-hire {
         background: rgba(99, 102, 241, 0.1);
         border-color: rgba(99, 102, 241, 0.45);

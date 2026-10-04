@@ -49,6 +49,7 @@ export class App {
       clean === '/' ||
       clean.startsWith('/study-guides') ||
       clean.startsWith('/videos') ||
+      clean.startsWith('/architecture') ||
       clean === '/guide'
     );
   });

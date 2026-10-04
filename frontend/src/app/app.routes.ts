@@ -160,5 +160,12 @@ export const routes: Routes = [
     path: 'videos',
     loadComponent: () => import('./features/videos/video-hub-page').then((m) => m.VideoHubPage),
   },
+  {
+    // Interactive System Architecture & Workflows (Archify): explorable SVG/HTML architecture diagrams.
+    // Accessible to both guests and signed-in users.
+    path: 'architecture',
+    loadComponent: () =>
+      import('./features/architecture/architecture-page').then((m) => m.ArchitecturePage),
+  },
   { path: '**', redirectTo: '' },
 ];
