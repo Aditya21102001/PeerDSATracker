@@ -1084,7 +1084,7 @@ export class VideoStudyCoachService {
         const resumeMessages = [
           `Full focus mode engaged! Dive back into ${topic} and let's master the optimal approach.`,
           `Back to the grind! High energy for ${topic}. Let's see how the instructor proves time complexity.`,
-          `Momentum restored, ${userName}${streakText}! Consistency is key to cracking your dream software role.`,
+          `Momentum restored, ${userName}${streakText}! Consistency in mastering ${topic} is key to cracking your dream software role.`,
           `Wave recognized — game on! Let's lock in the rest of this ${topic} pattern.`,
         ];
         message = resumeMessages[Math.floor(Math.random() * resumeMessages.length)];
@@ -1093,7 +1093,7 @@ export class VideoStudyCoachService {
         title = `Structured Pause, ${userName}!`;
         const pauseMessages = [
           `Wave acknowledged! Pausing to give your working memory room to consolidate ${topic}.`,
-          `Great study pacing, ${userName}! Chunking your study session into digestible intervals boosts retention by 40%.`,
+          `Great study pacing, ${userName}! Chunking your study session on ${topic} into digestible intervals boosts retention by 40%.`,
           `Taking control of your learning! Use this pause to reflect on the trade-offs of ${topic}.`,
         ];
         message = pauseMessages[Math.floor(Math.random() * pauseMessages.length)];
@@ -1104,9 +1104,9 @@ export class VideoStudyCoachService {
       boostText = '+5% Retention Boost';
       title = `Confidence High, ${userName}!`;
       const thumbsMessages = [
-        `Thumbs up to mastery! You've added another proven algorithmic pattern to your toolkit.`,
+        `Thumbs up to mastery! You've added another proven algorithmic pattern for ${topic} to your toolkit.`,
         `Confidence locked! ${topic} is becoming intuitive for you, ${userName}${solved > 0 ? ` (${solved} total solved)` : ''}!`,
-        `High-yield study session! Keep that positive energy going into your next coding challenge.`,
+        `High-yield study session! Keep that positive energy going into mastering ${topic}.`,
       ];
       message = thumbsMessages[Math.floor(Math.random() * thumbsMessages.length)];
     } else {
