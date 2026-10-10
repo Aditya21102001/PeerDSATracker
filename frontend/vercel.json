@@ -16,6 +16,10 @@
   ],
   "headers": [
     {
+      "source": "/(sitemap\\.xml|robots\\.txt)",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=3600, must-revalidate" }]
+    },
+    {
       "source": "/:file(.*\\.(?:js|css|woff2|woff|ttf))",
       "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
     },

@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9
+        http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
+  <!-- Homepage / Main Landing Page -->
+  <url>
+    <loc>https://peer-dsa-tracker-iota.vercel.app/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>1.00</priority>
+  </url>
+
+  <!-- Free Public Study Guides -->
+  <url>
+    <loc>https://peer-dsa-tracker-iota.vercel.app/study-guides</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.90</priority>
+  </url>
+  <url>
+    <loc>https://peer-dsa-tracker-iota.vercel.app/study-guides/dsa</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.85</priority>
+  </url>
+  <url>
+    <loc>https://peer-dsa-tracker-iota.vercel.app/study-guides/java</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.85</priority>
+  </url>
+  <url>
+    <loc>https://peer-dsa-tracker-iota.vercel.app/study-guides/spring-boot</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.85</priority>
+  </url>
+  <url>
+    <loc>https://peer-dsa-tracker-iota.vercel.app/study-guides/angular</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.85</priority>
+  </url>
+  <url>
+    <loc>https://peer-dsa-tracker-iota.vercel.app/study-guides/system-design</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.85</priority>
+  </url>
+
+  <!-- Video Hub -->
+  <url>
+    <loc>https://peer-dsa-tracker-iota.vercel.app/videos</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.80</priority>
+  </url>
+
+  <!-- Architecture & System Workflows -->
+  <url>
+    <loc>https://peer-dsa-tracker-iota.vercel.app/architecture</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.80</priority>
+  </url>
+
+  <!-- Methodology Guide -->
+  <url>
+    <loc>https://peer-dsa-tracker-iota.vercel.app/guide</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.70</priority>
+  </url>
+
+  <!-- Public Authentication Entry Points -->
+  <url>
+    <loc>https://peer-dsa-tracker-iota.vercel.app/signin</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.50</priority>
+  </url>
+  <url>
+    <loc>https://peer-dsa-tracker-iota.vercel.app/signup</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.50</priority>
+  </url>
+</urlset>

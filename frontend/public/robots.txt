@@ -1,0 +1,30 @@
+# robots.txt for PeerDSATracker (https://peer-dsa-tracker-iota.vercel.app)
+User-agent: *
+Allow: /
+Allow: /guide
+Allow: /study-guides
+Allow: /study-guides/*
+Allow: /videos
+Allow: /architecture
+Allow: /signin
+Allow: /signup
+
+# Private, session-gated, and internal endpoints
+Disallow: /api/
+Disallow: /oauth/
+Disallow: /dashboard
+Disallow: /sheet
+Disallow: /revision
+Disallow: /notes/
+Disallow: /code/
+Disallow: /messages
+Disallow: /security
+Disallow: /reset
+Disallow: /code
+Disallow: /interview
+Disallow: /proctor
+Disallow: /hire
+
+# Host and Sitemap locations
+Host: https://peer-dsa-tracker-iota.vercel.app
+Sitemap: https://peer-dsa-tracker-iota.vercel.app/sitemap.xml

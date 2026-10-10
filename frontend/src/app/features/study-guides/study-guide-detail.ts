@@ -1,7 +1,8 @@
-import { Component, computed, inject, input, signal } from '@angular/core';
+import { Component, computed, effect, inject, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { AuthStore } from '../../core/services/auth.store';
 import { NavigationHistoryService } from '../../core/services/navigation-history.service';
+import { SeoService } from '../../core/services/seo.service';
 import {
   GuideTopic,
   StudyGuidesService,
@@ -183,6 +184,7 @@ export class StudyGuideDetail {
   readonly guideId = input.required<string>();
 
   private readonly svc = inject(StudyGuidesService);
+  private readonly seo = inject(SeoService);
   protected readonly auth = inject(AuthStore);
   protected readonly nav = inject(NavigationHistoryService);
 
@@ -191,6 +193,18 @@ export class StudyGuideDetail {
   protected readonly copiedId = signal<string | null>(null);
 
   constructor() {
+    // Dynamically update SEO metadata when guide is loaded
+    effect(() => {
+      const g = this.guide();
+      if (g) {
+        this.seo.updateMeta({
+          title: `${g.title} Study Guide & Interview Cheatsheet | PeerDSATracker`,
+          description: g.description,
+          url: `https://peer-dsa-tracker-iota.vercel.app/study-guides/${g.id}`,
+        });
+      }
+    });
+
     // Select the first topic once the guide is available
     queueMicrotask(() => {
       const g = this.guide();

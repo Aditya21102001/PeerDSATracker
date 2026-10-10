@@ -1,0 +1,24 @@
+{
+  "name": "PeerDSATracker — 474 Striver A2Z Problems",
+  "short_name": "PeerDSA",
+  "description": "Master 474 Striver A2Z DSA problems with spaced repetition, multi-engine code runner, and AI mock technical interviews.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0c0e14",
+  "theme_color": "#5b5bd6",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "/og-image.png",
+      "sizes": "1200x630",
+      "type": "image/png"
+    }
+  ],
+  "categories": ["education", "developer tools", "productivity"]
+}
