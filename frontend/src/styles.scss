@@ -477,6 +477,10 @@ textarea {
     border-color var(--t-fast) var(--ease),
     box-shadow var(--t-fast) var(--ease);
 
+  @media (max-width: 48rem) {
+    font-size: 1rem; // Prevents iOS Safari from auto-zooming on input focus
+  }
+
   &::placeholder {
     color: var(--text-faint);
   }

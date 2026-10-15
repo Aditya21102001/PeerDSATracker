@@ -13,6 +13,10 @@ import { LastSignInService } from '../../core/services/last-sign-in.service';
   template: `
     <main id="main-content" tabindex="-1" class="auth">
       <header>
+        <a routerLink="/" class="auth-home-link" aria-label="PeerDSATracker Home">
+          <span class="auth-brand-bolt" aria-hidden="true">⚡</span>
+          <span>PeerDSA</span>
+        </a>
         <h1>⚡ The Grind ⚡</h1>
         <p class="tagline">Your missions are waiting.</p>
       </header>

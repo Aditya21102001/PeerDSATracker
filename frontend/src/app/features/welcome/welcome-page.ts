@@ -31,22 +31,22 @@ interface RoadmapStep {
       <!-- Public Top Navigation -->
       <header class="public-nav" aria-label="Main Navigation">
         <div class="nav-brand">
-          <a routerLink="/" class="brand-link">
-            <span class="brand-bolt">⚡</span>
+          <a routerLink="/" class="brand-link" (click)="closeMobileMenu()">
+            <span class="brand-bolt" aria-hidden="true">⚡</span>
             <span class="brand-text">PeerDSA</span>
           </a>
-          <span class="brand-badge">Free &amp; Open</span>
+          <span class="brand-badge">Free</span>
         </div>
 
-        <nav class="nav-links">
+        <nav class="nav-links" aria-label="Desktop Navigation">
           <a routerLink="/study-guides" class="nav-link highlighted">
-            <span class="nav-icon">📚</span> Study Guides
+            <span class="nav-icon" aria-hidden="true">📚</span> Study Guides
           </a>
           <a routerLink="/videos" class="nav-link highlighted">
-            <span class="nav-icon">📺</span> Video Hub
+            <span class="nav-icon" aria-hidden="true">📺</span> Video Hub
           </a>
           <a routerLink="/architecture" class="nav-link highlighted">
-            <span class="nav-icon">🏛️</span> Architecture
+            <span class="nav-icon" aria-hidden="true">🏛️</span> Architecture
           </a>
           <a href="#roadmap" class="nav-link">🗺️ 474 Roadmap</a>
           <a href="#ai-engine" class="nav-link">🤖 AI Interview</a>
@@ -58,11 +58,11 @@ interface RoadmapStep {
           <!-- Backend warm-up indicator (subtle and reassuring) -->
           <div class="server-status" [title]="backendStatusTooltip()">
             @if (backend.isReady()) {
-              <span class="status-dot ready"></span>
-              <span class="status-label">Cloud Online</span>
+              <span class="status-dot ready" aria-hidden="true"></span>
+              <span class="status-label">Online</span>
             } @else {
-              <span class="status-dot warming"></span>
-              <span class="status-label">Cloud Warming</span>
+              <span class="status-dot warming" aria-hidden="true"></span>
+              <span class="status-label">Warming</span>
             }
           </div>
 
@@ -72,8 +72,108 @@ interface RoadmapStep {
             <a [routerLink]="['/signin']" [queryParams]="authQueryParams()" class="btn-signin">Sign in</a>
             <a [routerLink]="['/signup']" [queryParams]="authQueryParams()" class="btn-cta">Start Free 🚀</a>
           }
+
+          <!-- Mobile Hamburger Toggle -->
+          <button
+            type="button"
+            class="mobile-menu-btn"
+            [attr.aria-expanded]="mobileMenuOpen()"
+            aria-controls="mobile-nav-drawer"
+            aria-label="Toggle navigation menu"
+            (click)="toggleMobileMenu()"
+          >
+            <span class="bar" [class.open]="mobileMenuOpen()" aria-hidden="true"></span>
+            <span class="bar" [class.open]="mobileMenuOpen()" aria-hidden="true"></span>
+            <span class="bar" [class.open]="mobileMenuOpen()" aria-hidden="true"></span>
+          </button>
         </div>
       </header>
+
+      <!-- Mobile Navigation Drawer -->
+      @if (mobileMenuOpen()) {
+        <div class="mobile-drawer-backdrop" (click)="closeMobileMenu()" aria-hidden="true"></div>
+        <nav
+          id="mobile-nav-drawer"
+          class="mobile-nav-drawer"
+          aria-label="Mobile Navigation Drawer"
+        >
+          <div class="drawer-header">
+            <div class="drawer-brand">
+              <span class="brand-bolt" aria-hidden="true">⚡</span>
+              <span class="drawer-title">PeerDSA</span>
+            </div>
+            <button
+              type="button"
+              class="drawer-close"
+              aria-label="Close navigation menu"
+              (click)="closeMobileMenu()"
+            >
+              ✕
+            </button>
+          </div>
+
+          <div class="drawer-links">
+            <a routerLink="/study-guides" class="drawer-link highlighted" (click)="closeMobileMenu()">
+              <span class="drawer-icon" aria-hidden="true">📚</span>
+              <div class="drawer-text">
+                <span class="drawer-link-title">Study Guides</span>
+                <span class="drawer-link-desc">DSA, Java, Spring &amp; Angular</span>
+              </div>
+            </a>
+            <a routerLink="/videos" class="drawer-link highlighted" (click)="closeMobileMenu()">
+              <span class="drawer-icon" aria-hidden="true">📺</span>
+              <div class="drawer-text">
+                <span class="drawer-link-title">Video Hub</span>
+                <span class="drawer-link-desc">Curated YouTube Playlists</span>
+              </div>
+            </a>
+            <a routerLink="/architecture" class="drawer-link highlighted" (click)="closeMobileMenu()">
+              <span class="drawer-icon" aria-hidden="true">🏛️</span>
+              <div class="drawer-text">
+                <span class="drawer-link-title">Architecture</span>
+                <span class="drawer-link-desc">Interactive Archify Diagrams</span>
+              </div>
+            </a>
+            <a href="#roadmap" class="drawer-link" (click)="closeMobileMenu()">
+              <span class="drawer-icon" aria-hidden="true">🗺️</span>
+              <div class="drawer-text">
+                <span class="drawer-link-title">474 Roadmap</span>
+                <span class="drawer-link-desc">Striver A2Z Syllabus Steps</span>
+              </div>
+            </a>
+            <a href="#ai-engine" class="drawer-link" (click)="closeMobileMenu()">
+              <span class="drawer-icon" aria-hidden="true">🤖</span>
+              <div class="drawer-text">
+                <span class="drawer-link-title">AI Interview</span>
+                <span class="drawer-link-desc">Live Mock Assessment Simulator</span>
+              </div>
+            </a>
+            <a href="#career" class="drawer-link" (click)="closeMobileMenu()">
+              <span class="drawer-icon" aria-hidden="true">💼</span>
+              <div class="drawer-text">
+                <span class="drawer-link-title">Career Portal</span>
+                <span class="drawer-link-desc">ATS Matchmaker &amp; Openings</span>
+              </div>
+            </a>
+            <a routerLink="/guide" class="drawer-link" (click)="closeMobileMenu()">
+              <span class="drawer-icon" aria-hidden="true">📖</span>
+              <div class="drawer-text">
+                <span class="drawer-link-title">How it Works</span>
+                <span class="drawer-link-desc">Spaced Repetition Method</span>
+              </div>
+            </a>
+          </div>
+
+          <div class="drawer-actions">
+            @if (auth.isAuthenticated()) {
+              <a routerLink="/dashboard" class="btn btn-hero-primary drawer-btn" (click)="closeMobileMenu()">Dashboard ⚡</a>
+            } @else {
+              <a [routerLink]="['/signup']" [queryParams]="authQueryParams()" class="btn btn-hero-primary drawer-btn" (click)="closeMobileMenu()">Start Free 🚀</a>
+              <a [routerLink]="['/signin']" [queryParams]="authQueryParams()" class="btn btn-hero-secondary drawer-btn" (click)="closeMobileMenu()">Sign in</a>
+            }
+          </div>
+        </nav>
+      }
 
       <!-- Auth Required Notification (when redirected from a protected route) -->
       @if (authRequired()) {
@@ -101,7 +201,7 @@ interface RoadmapStep {
           </div>
 
           <h1 class="hero-title">
-            Conquer 474 Problems.<br>
+            Conquer 474 Problems.<span class="break-desktop"><br></span>
             <span class="gradient-text">Ace Tech Interviews.</span>
           </h1>
 
@@ -485,6 +585,17 @@ export class WelcomePage {
   private readonly route = inject(ActivatedRoute);
   protected readonly backend = inject(BackendStatus);
   protected readonly auth = inject(AuthStore);
+
+  /** Mobile drawer menu state */
+  protected readonly mobileMenuOpen = signal(false);
+
+  protected toggleMobileMenu(): void {
+    this.mobileMenuOpen.update((open) => !open);
+  }
+
+  protected closeMobileMenu(): void {
+    this.mobileMenuOpen.set(false);
+  }
 
   /** Whether the visitor was redirected here because auth is required */
   protected readonly authRequired = computed(() => {

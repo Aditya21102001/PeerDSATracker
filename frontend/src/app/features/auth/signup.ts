@@ -12,6 +12,10 @@ import { AuthStore } from '../../core/services/auth.store';
   template: `
     <main id="main-content" tabindex="-1" class="auth">
       <header>
+        <a routerLink="/" class="auth-home-link" aria-label="PeerDSATracker Home">
+          <span class="auth-brand-bolt" aria-hidden="true">⚡</span>
+          <span>PeerDSA</span>
+        </a>
         <h1>Join the Force</h1>
         <p class="tagline">474 problems. Zero excuses.</p>
       </header>

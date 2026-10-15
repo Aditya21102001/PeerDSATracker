@@ -1,12 +1,13 @@
 .theme-switch {
   position: fixed;
-  top: var(--sp-4);
+  top: 0.65rem;
   right: var(--sp-4);
-  z-index: 10;
+  z-index: 60;
 
-  // Tuck closer to the corner on a phone, where every pixel of header is contested.
-  @media (max-width: 30rem) {
-    top: var(--sp-2);
+  // Tuck closer to the corner on mobile screens
+  @media (max-width: 48rem) {
+    top: 0.55rem;
     right: var(--sp-2);
   }
 }
+

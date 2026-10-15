@@ -317,11 +317,54 @@ type DiagramTab = 'architecture' | 'workflow';
 
     @media (max-width: 768px) {
       .arch-container {
-        padding: 1rem;
+        padding: 0.75rem;
+      }
+
+      .arch-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.75rem;
+
+        .header-nav {
+          width: 100%;
+          justify-content: flex-start;
+          flex-wrap: wrap;
+        }
+      }
+
+      .controls-bar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.75rem;
+
+        .tab-pills {
+          flex-direction: column;
+          width: 100%;
+
+          .tab-btn {
+            width: 100%;
+            text-align: center;
+            justify-content: center;
+          }
+        }
+
+        .actions {
+          width: 100%;
+
+          .btn-popout {
+            width: 100%;
+            text-align: center;
+            justify-content: center;
+          }
+        }
       }
 
       .viewer-section .frame-wrapper {
-        height: 520px;
+        height: 440px;
+      }
+
+      .feature-hints {
+        grid-template-columns: 1fr !important;
       }
     }
   `],

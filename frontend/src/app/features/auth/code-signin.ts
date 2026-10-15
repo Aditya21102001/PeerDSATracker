@@ -11,7 +11,13 @@ type Step = 'address' | 'code' | 'password' | 'done';
   imports: [ReactiveFormsModule, RouterLink],
   template: `
     <main id="main-content" tabindex="-1" class="auth">
-      <h1>Sign in with a code</h1>
+      <header>
+        <a routerLink="/" class="auth-home-link" aria-label="PeerDSATracker Home">
+          <span class="auth-brand-bolt" aria-hidden="true">⚡</span>
+          <span>PeerDSA</span>
+        </a>
+        <h1>Sign in with a code</h1>
+      </header>
 
       @switch (step()) {
         @case ('address') {
