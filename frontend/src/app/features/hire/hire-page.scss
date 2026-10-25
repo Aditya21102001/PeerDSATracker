@@ -1878,3 +1878,387 @@
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+
+// ------------------------------------------------------------- Real-Time Sync & ATS Copilot Enhancements
+.hero-buttons-col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2, 0.5rem);
+  width: 100%;
+}
+
+.hero-aux-buttons {
+  display: flex;
+  gap: var(--sp-2, 0.5rem);
+  flex-wrap: wrap;
+
+  .btn-sync-live {
+    flex: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    padding: 0.55rem 0.9rem;
+    border-radius: var(--radius-md, 8px);
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #38bdf8;
+    background: rgba(56, 189, 248, 0.1);
+    border: 1px solid rgba(56, 189, 248, 0.25);
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &:hover:not(:disabled) {
+      background: rgba(56, 189, 248, 0.2);
+      border-color: rgba(56, 189, 248, 0.5);
+      transform: translateY(-1px);
+    }
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+  }
+
+  .btn-extension-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.55rem 0.9rem;
+    border-radius: var(--radius-md, 8px);
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #a855f7;
+    background: rgba(168, 85, 247, 0.1);
+    border: 1px solid rgba(168, 85, 247, 0.25);
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &:hover {
+      background: rgba(168, 85, 247, 0.2);
+      border-color: rgba(168, 85, 247, 0.5);
+      transform: translateY(-1px);
+    }
+  }
+}
+
+.job-source-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+
+  .source-live-badge {
+    color: #10b981;
+    background: rgba(16, 185, 129, 0.12);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+  }
+
+  .source-curated-badge {
+    color: #94a3b8;
+    background: rgba(148, 163, 184, 0.1);
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+  }
+
+  .channel-badge {
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+
+    &.email-channel {
+      color: #38bdf8;
+      background: rgba(56, 189, 248, 0.1);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+    }
+
+    &.ats-channel {
+      color: #a78bfa;
+      background: rgba(167, 139, 250, 0.1);
+      border: 1px solid rgba(167, 139, 250, 0.25);
+    }
+  }
+}
+
+.applied-badge.btn-relaunch {
+  cursor: pointer;
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  color: #10b981;
+  padding: 0.4rem 0.8rem;
+  border-radius: var(--radius-sm, 6px);
+  font-size: 0.78rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: rgba(16, 185, 129, 0.25);
+    transform: translateY(-1px);
+  }
+}
+
+.app-delivery-status-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 0.4rem;
+  flex-wrap: wrap;
+
+  .delivery-channel-pill {
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 0.15rem 0.55rem;
+    border-radius: 4px;
+    color: #a78bfa;
+    background: rgba(167, 139, 250, 0.12);
+    border: 1px solid rgba(167, 139, 250, 0.25);
+
+    &.email-pill {
+      color: #38bdf8;
+      background: rgba(56, 189, 248, 0.12);
+      border-color: rgba(56, 189, 248, 0.3);
+    }
+  }
+
+  .receipt-code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.68rem;
+    color: var(--text-muted);
+    background: rgba(255, 255, 255, 0.04);
+    padding: 0.15rem 0.45rem;
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+}
+
+// ------------------------------------------------------------- Real-Time ATS Copilot Modal
+.ats-copilot-modal {
+  max-width: 44rem;
+
+  .copilot-badge-icon {
+    width: 36px;
+    height: 36px;
+    background: linear-gradient(135deg, #6366f1, #4f46e5);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
+  }
+
+  .copilot-hero-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--sp-3, 0.75rem);
+    background: rgba(99, 102, 241, 0.08);
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    padding: 1rem;
+    border-radius: var(--radius-md, 8px);
+    margin-bottom: var(--sp-4, 1rem);
+
+    .copilot-hero-icon {
+      font-size: 1.5rem;
+    }
+
+    h4 {
+      margin: 0 0 0.25rem;
+      font-size: 0.95rem;
+      color: #e0e7ff;
+    }
+
+    p {
+      margin: 0;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      line-height: 1.45;
+    }
+  }
+
+  .copilot-packet-preview {
+    h4 {
+      font-size: 0.85rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      margin: 0 0 var(--sp-3, 0.75rem);
+    }
+  }
+
+  .copilot-fields-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--sp-3, 0.75rem);
+    margin-bottom: var(--sp-4, 1rem);
+  }
+
+  .copilot-field {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm, 6px);
+    padding: 0.6rem 0.8rem;
+
+    .field-label {
+      display: block;
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+    }
+
+    .field-val-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text);
+
+      .truncate-val {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+    }
+  }
+
+  .btn-copy-sm {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-muted);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 4px;
+    padding: 0.2rem 0.45rem;
+    font-size: 0.7rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+
+    &:hover {
+      background: var(--accent);
+      color: #fff;
+    }
+  }
+
+  .copilot-cover-letter {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm, 6px);
+    padding: 0.8rem;
+
+    .cover-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.4rem;
+
+      .field-label {
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: var(--text-muted);
+      }
+    }
+
+    .cover-text {
+      font-size: 0.82rem;
+      color: var(--text-secondary, #cbd5e1);
+      line-height: 1.5;
+      margin: 0;
+    }
+  }
+
+  .modal-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+
+    .copilot-footer-left {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .btn-launch-apply {
+      padding: 0.65rem 1.3rem;
+      font-weight: 700;
+      font-size: 0.9rem;
+      box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4);
+    }
+  }
+}
+
+// ------------------------------------------------------------- Extension Guide Modal
+.extension-guide-modal {
+  max-width: 38rem;
+
+  .guide-steps {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-3, 0.75rem);
+  }
+
+  .step-card {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--sp-3, 0.75rem);
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-subtle);
+    padding: 0.9rem 1rem;
+    border-radius: var(--radius-md, 8px);
+
+    &.highlight {
+      background: rgba(16, 185, 129, 0.08);
+      border-color: rgba(16, 185, 129, 0.25);
+
+      .step-num {
+        background: #10b981;
+        color: #fff;
+      }
+    }
+
+    .step-num {
+      width: 28px;
+      height: 28px;
+      background: rgba(99, 102, 241, 0.2);
+      color: var(--accent);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 0.85rem;
+      flex-shrink: 0;
+    }
+
+    h5 {
+      margin: 0 0 0.25rem;
+      font-size: 0.9rem;
+      color: var(--text);
+    }
+
+    p {
+      margin: 0;
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      line-height: 1.4;
+
+      code {
+        background: rgba(0, 0, 0, 0.3);
+        padding: 0.15rem 0.35rem;
+        border-radius: 4px;
+        color: #f43f5e;
+        font-size: 0.78rem;
+      }
+    }
+  }
+}
+

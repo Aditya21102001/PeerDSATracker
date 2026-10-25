@@ -114,21 +114,48 @@
           <span class="match-label">Jobs matching &ge; 70%</span>
         </div>
 
-        <button
-          type="button"
-          class="btn-hero-apply"
-          (click)="applyToAllMatching()"
-          [disabled]="applyingAll() || eligibleMatchingJobs().length === 0"
-          id="btn-apply-all-matching"
-        >
-          @if (applyingAll()) {
-            <span class="spinner-inline"></span> Applying to all roles…
-          } @else if (eligibleMatchingJobs().length > 0) {
-            ⚡ 1-Click Apply to All ({{ eligibleMatchingJobs().length }} Roles)
-          } @else {
-            ✓ All Matching Roles Applied
-          }
-        </button>
+        <div class="hero-buttons-col">
+          <button
+            type="button"
+            class="btn-hero-apply"
+            (click)="applyToAllMatching()"
+            [disabled]="applyingAll() || eligibleMatchingJobs().length === 0"
+            id="btn-apply-all-matching"
+          >
+            @if (applyingAll()) {
+              <span class="spinner-inline"></span> Applying in Realtime…
+            } @else if (eligibleMatchingJobs().length > 0) {
+              ⚡ 1-Click Apply to All ({{ eligibleMatchingJobs().length }} Roles)
+            } @else {
+              ✓ All Matching Roles Applied
+            }
+          </button>
+
+          <div class="hero-aux-buttons">
+            <button
+              type="button"
+              class="btn-sync-live"
+              (click)="syncLiveJobs()"
+              [disabled]="syncingRealJobs()"
+              title="Fetch latest verified real tech openings from Arbeitnow & Remotive live APIs"
+            >
+              @if (syncingRealJobs()) {
+                <span class="spinner-inline"></span> Syncing Real Jobs…
+              } @else {
+                🔄 Fetch Live Openings (Arbeitnow & Remotive)
+              }
+            </button>
+
+            <button
+              type="button"
+              class="btn-extension-badge"
+              (click)="openExtensionGuide()"
+              title="View instructions to load ATS Copilot Chrome extension"
+            >
+              🧩 ATS Copilot Extension
+            </button>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -215,6 +242,21 @@
       <div class="jobs-grid">
         @for (job of filteredJobs(); track job.id) {
           <article class="job-card" [class.is-applied]="job.isApplied">
+            <!-- Source & Channel Badge Row -->
+            <div class="job-source-row">
+              @if (job.source && job.source !== 'MANUAL') {
+                <span class="source-live-badge">⚡ LIVE: {{ job.source }}</span>
+              } @else {
+                <span class="source-curated-badge">VERIFIED TECH ROLE</span>
+              }
+
+              @if (job.applyType === 'EMAIL' && job.contactEmail) {
+                <span class="channel-badge email-channel">✉️ Direct Recruiter Inbox ({{ job.contactEmail }})</span>
+              } @else {
+                <span class="channel-badge ats-channel">🚀 1-Click ATS Copilot</span>
+              }
+            </div>
+
             <!-- Header Row -->
             <div class="job-card-header">
               <div class="company-brand">
@@ -302,9 +344,14 @@
                 </a>
 
                 @if (job.isApplied) {
-                  <span class="applied-badge">
-                    ✓ Applied ({{ job.applicationStatus || 'APPLIED' }})
-                  </span>
+                  <button
+                    type="button"
+                    class="applied-badge btn-relaunch"
+                    (click)="openAtsCopilotModal(job)"
+                    title="Open ATS Copilot pre-filled packet"
+                  >
+                    ✓ Applied (Launch Copilot ↗)
+                  </button>
                 } @else {
                   <button
                     type="button"
@@ -313,9 +360,11 @@
                     [disabled]="applyingJobId() === job.id"
                   >
                     @if (applyingJobId() === job.id) {
-                      <span class="spinner-inline"></span> Applying…
+                      <span class="spinner-inline"></span> Submitting…
+                    } @else if (job.applyType === 'EMAIL') {
+                      ✉️ Realtime Email Apply
                     } @else {
-                      ⚡ 1-Click Apply
+                      ⚡ Realtime ATS Apply
                     }
                   </button>
                 }
@@ -777,6 +826,19 @@
                       <span>💰 {{ app.salaryRange }}</span>
                       <span>Applied on {{ app.appliedAt | date: 'mediumDate' }}</span>
                     </div>
+
+                    <div class="app-delivery-status-row">
+                      <span class="delivery-channel-pill" [class.email-pill]="app.deliveryChannel === 'EMAIL_DISPATCH'">
+                        @if (app.deliveryChannel === 'EMAIL_DISPATCH') {
+                          ✉️ Transactional Email Dispatched
+                        } @else {
+                          🚀 Realtime ATS Copilot Synced
+                        }
+                      </span>
+                      @if (app.deliveryReceipt) {
+                        <span class="receipt-code">Receipt: {{ app.deliveryReceipt }}</span>
+                      }
+                    </div>
                   </div>
                 </div>
 
@@ -875,6 +937,174 @@
               </button>
             }
           </div>
+        </footer>
+      </div>
+    </div>
+  }
+
+  <!-- REAL-TIME ATS COPILOT MODAL -->
+  @if (atsCopilotJob(); as cJob) {
+    <div class="modal-backdrop" (click)="closeAtsCopilotModal()" role="dialog" aria-modal="true">
+      <div class="modal-card ats-copilot-modal" (click)="$event.stopPropagation()">
+        <header class="modal-header">
+          <div class="modal-brand">
+            <div class="copilot-badge-icon">⚡</div>
+            <div>
+              <h2>Real-Time ATS Copilot Runner</h2>
+              <span class="modal-company">1-Click Auto-Fill for {{ cJob.company }} · {{ cJob.title }}</span>
+            </div>
+          </div>
+          <button type="button" class="btn-close-modal" (click)="closeAtsCopilotModal()">✕</button>
+        </header>
+
+        <div class="modal-body">
+          <div class="copilot-hero-banner">
+            <div class="copilot-hero-icon">🎯</div>
+            <div>
+              <h4>Real Application Submission Ready</h4>
+              <p>
+                Candidate packet compiled from your resume snapshot. Click <strong>Launch & Auto-Fill</strong> to open the official opening on {{ cJob.company }}'s career portal with ATS Copilot active.
+              </p>
+            </div>
+          </div>
+
+          <div class="copilot-packet-preview">
+            <h4>Candidate Profile Snapshot</h4>
+            <div class="copilot-fields-grid">
+              <div class="copilot-field">
+                <span class="field-label">Headline</span>
+                <div class="field-val-row">
+                  <span class="truncate-val">{{ profile()?.headline || profileForm.headline || 'Software Engineer' }}</span>
+                  <button type="button" class="btn-copy-sm" (click)="copyFieldText('headline', profile()?.headline || profileForm.headline || 'Software Engineer')">
+                    {{ copiedField() === 'headline' ? '✓ Copied' : 'Copy' }}
+                  </button>
+                </div>
+              </div>
+
+              <div class="copilot-field">
+                <span class="field-label">Experience</span>
+                <div class="field-val-row">
+                  <span>{{ profile()?.yearsOfExperience || profileForm.yearsOfExperience }} Years</span>
+                  <button type="button" class="btn-copy-sm" (click)="copyFieldText('yoe', '' + (profile()?.yearsOfExperience || profileForm.yearsOfExperience))">
+                    {{ copiedField() === 'yoe' ? '✓ Copied' : 'Copy' }}
+                  </button>
+                </div>
+              </div>
+
+              <div class="copilot-field">
+                <span class="field-label">Role / Company</span>
+                <div class="field-val-row">
+                  <span class="truncate-val">{{ profile()?.currentRole || profileForm.currentRole || 'Software Engineer' }} ({{ profile()?.currentCompany || profileForm.currentCompany || 'Tech' }})</span>
+                  <button type="button" class="btn-copy-sm" (click)="copyFieldText('role', profile()?.currentRole || profileForm.currentRole || 'Software Engineer')">
+                    {{ copiedField() === 'role' ? '✓ Copied' : 'Copy' }}
+                  </button>
+                </div>
+              </div>
+
+              <div class="copilot-field">
+                <span class="field-label">Key Skills</span>
+                <div class="field-val-row">
+                  <span class="truncate-val">{{ profile()?.skills || profileForm.skills }}</span>
+                  <button type="button" class="btn-copy-sm" (click)="copyFieldText('skills', profile()?.skills || profileForm.skills)">
+                    {{ copiedField() === 'skills' ? '✓ Copied' : 'Copy' }}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            @if (profile()?.resumeSummary || profileForm.resumeSummary) {
+              <div class="copilot-cover-letter">
+                <div class="cover-header">
+                  <span class="field-label">ATS Tailored Cover Note</span>
+                  <button type="button" class="btn-copy-sm" (click)="copyFieldText('cover', profile()?.resumeSummary || profileForm.resumeSummary)">
+                    {{ copiedField() === 'cover' ? '✓ Copied' : 'Copy Note' }}
+                  </button>
+                </div>
+                <p class="cover-text">{{ profile()?.resumeSummary || profileForm.resumeSummary }}</p>
+              </div>
+            }
+          </div>
+        </div>
+
+        <footer class="modal-footer">
+          <div class="copilot-footer-left">
+            <button type="button" class="btn btn-ghost" (click)="copyFullPacket(cJob)">
+              📋 Copy JSON Packet
+            </button>
+            <button type="button" class="btn btn-ghost" (click)="openExtensionGuide()">
+              🧩 Extension Setup
+            </button>
+          </div>
+
+          <div class="copilot-footer-right">
+            <a
+              [href]="getDirectJobOpeningUrl(cJob)"
+              target="_blank"
+              rel="noopener"
+              class="btn btn-primary btn-launch-apply"
+              (click)="closeAtsCopilotModal()"
+            >
+              🚀 Launch Opening & Auto-Fill ↗
+            </a>
+          </div>
+        </footer>
+      </div>
+    </div>
+  }
+
+  <!-- CHROME EXTENSION SETUP GUIDE MODAL -->
+  @if (showExtensionGuide()) {
+    <div class="modal-backdrop" (click)="closeExtensionGuide()" role="dialog" aria-modal="true">
+      <div class="modal-card extension-guide-modal" (click)="$event.stopPropagation()">
+        <header class="modal-header">
+          <div class="modal-brand">
+            <div class="copilot-badge-icon">🧩</div>
+            <div>
+              <h2>PeerDSA ATS Copilot Browser Extension</h2>
+              <span class="modal-company">Real-time 1-Click Form Auto-Fill for Chrome & Edge</span>
+            </div>
+          </div>
+          <button type="button" class="btn-close-modal" (click)="closeExtensionGuide()">✕</button>
+        </header>
+
+        <div class="modal-body">
+          <div class="guide-steps">
+            <div class="step-card">
+              <span class="step-num">1</span>
+              <div>
+                <h5>Open Extensions in Chrome / Edge</h5>
+                <p>Navigate to <code>chrome://extensions</code> or <code>edge://extensions</code> in your browser address bar.</p>
+              </div>
+            </div>
+            <div class="step-card">
+              <span class="step-num">2</span>
+              <div>
+                <h5>Enable Developer Mode</h5>
+                <p>Toggle the <strong>Developer mode</strong> switch in the top right corner.</p>
+              </div>
+            </div>
+            <div class="step-card">
+              <span class="step-num">3</span>
+              <div>
+                <h5>Click "Load Unpacked"</h5>
+                <p>Click <strong>Load unpacked</strong> and select the directory: <br>
+                <code>frontend/src/assets/extension</code></p>
+              </div>
+            </div>
+            <div class="step-card highlight">
+              <span class="step-num">⚡</span>
+              <div>
+                <h5>Automatic Real-Time Auto-Fill</h5>
+                <p>Whenever you open any Greenhouse, Lever, Ashby, Workday, or job board URL, the extension immediately pops up and fills all candidate fields in 0.2 seconds!</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <footer class="modal-footer">
+          <button type="button" class="btn btn-secondary" (click)="closeExtensionGuide()">
+            Got It! Close Guide
+          </button>
         </footer>
       </div>
     </div>

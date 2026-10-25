@@ -109,6 +109,10 @@ export class HirePage implements OnInit {
   protected readonly applyingAll = signal<boolean>(false);
   protected readonly applyingJobId = signal<number | null>(null);
   protected readonly savingProfile = signal<boolean>(false);
+  protected readonly syncingRealJobs = signal<boolean>(false);
+  protected readonly atsCopilotJob = signal<JobOpening | null>(null);
+  protected readonly showExtensionGuide = signal<boolean>(false);
+  protected readonly copiedField = signal<string | null>(null);
   protected readonly notification = signal<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
   protected readonly selectedJobModal = signal<JobOpening | null>(null);
 
@@ -289,6 +293,28 @@ export class HirePage implements OnInit {
    * Note: External corporate portals (Workday/Greenhouse/Taleo) do not accept third-party bot submissions,
    * so the details modal also provides a direct link to the company's official careers URL.
    */
+  protected syncLiveJobs(): void {
+    this.syncingRealJobs.set(true);
+    this.hire.syncRealJobs().subscribe({
+      next: (res) => {
+        this.syncingRealJobs.set(false);
+        this.showToast(res.message, 'success');
+        this.hire.listJobs().subscribe((jobs) => this.jobs.set(jobs));
+      },
+      error: () => {
+        this.syncingRealJobs.set(false);
+        this.showToast('Could not fetch live job feeds. Check internet connection.', 'error');
+      },
+    });
+  }
+
+  /**
+   * 1-Click Apply to a single job:
+   * Issues an authenticated POST to /api/hire/jobs/{jobId}/apply.
+   * If the opening accepts direct email applications, dispatches a real application email with your candidate profile snapshot.
+   * If it is on an external ATS portal (Greenhouse, Lever, etc.), registers the application in your ATS pipeline
+   * and opens the real-time ATS Copilot with pre-filled fields.
+   */
   protected applyToJob(job: JobOpening): void {
     if (job.isApplied) return;
     this.applyingJobId.set(job.id);
@@ -301,7 +327,13 @@ export class HirePage implements OnInit {
           list.map((j) => (j.id === job.id ? { ...j, isApplied: true, applicationStatus: 'APPLIED', appliedAt: app.appliedAt } : j))
         );
         this.applications.update((list) => [app, ...list]);
-        this.showToast(`Successfully applied to ${job.company} (${job.title})!`, 'success');
+
+        if (job.applyType === 'EMAIL' && job.contactEmail) {
+          this.showToast(`Real email application dispatched to ${job.company} (${job.contactEmail})!`, 'success');
+        } else {
+          this.showToast(`Application recorded for ${job.company}! Launching ATS Copilot runner...`, 'success');
+          this.openAtsCopilotModal(job);
+        }
       },
       error: () => {
         this.applyingJobId.set(null);
@@ -311,9 +343,10 @@ export class HirePage implements OnInit {
   }
 
   /**
-   * Naukri-grade 1-Click "Apply to All Matching":
-   * Filters all unapplied jobs with match score >= 70% and batches them into the applicant pipeline
-   * in a single atomic database transaction on the backend.
+   * Real-time bulk 1-Click "Apply to All Matching":
+   * Evaluates all unapplied jobs with match score >= 70% and batches them into real-time application pipelines:
+   * - Dispatches direct email applications to verified hiring inboxes
+   * - Generates ATS Copilot pre-filled packets for web portals
    */
   protected applyToAllMatching(): void {
     const eligible = this.eligibleMatchingJobs();
@@ -337,6 +370,58 @@ export class HirePage implements OnInit {
         this.showToast('Error executing bulk application. Please try again.', 'error');
       },
     });
+  }
+
+  // ATS Copilot Launcher & Clipboard helpers
+  protected openAtsCopilotModal(job: JobOpening): void {
+    this.atsCopilotJob.set(job);
+  }
+
+  protected closeAtsCopilotModal(): void {
+    this.atsCopilotJob.set(null);
+  }
+
+  protected copyFieldText(fieldName: string, text: string): void {
+    if (!text) return;
+    navigator.clipboard.writeText(text).then(() => {
+      this.copiedField.set(fieldName);
+      setTimeout(() => {
+        if (this.copiedField() === fieldName) this.copiedField.set(null);
+      }, 2000);
+    });
+  }
+
+  protected copyFullPacket(job: JobOpening): void {
+    const p = this.profile();
+    const packet = {
+      jobTitle: job.title,
+      company: job.company,
+      candidate: {
+        headline: p?.headline || this.profileForm.headline,
+        yearsOfExperience: p?.yearsOfExperience || this.profileForm.yearsOfExperience,
+        currentCompany: p?.currentCompany || this.profileForm.currentCompany,
+        currentRole: p?.currentRole || this.profileForm.currentRole,
+        skills: p?.skills || this.profileForm.skills,
+        preferredLocations: p?.preferredLocations || this.profileForm.preferredLocations,
+        noticePeriodDays: p?.noticePeriodDays || this.profileForm.noticePeriodDays,
+        resumeSummary: p?.resumeSummary || this.profileForm.resumeSummary,
+        education: p?.education || this.profileForm.education,
+      },
+      matchScore: job.matchScore,
+      platform: 'PeerDSATracker Verified ATS Pipeline'
+    };
+
+    navigator.clipboard.writeText(JSON.stringify(packet, null, 2)).then(() => {
+      this.showToast('Complete application packet copied to clipboard!', 'success');
+    });
+  }
+
+  protected openExtensionGuide(): void {
+    this.showExtensionGuide.set(true);
+  }
+
+  protected closeExtensionGuide(): void {
+    this.showExtensionGuide.set(false);
   }
 
   // Resume extraction methods & handlers

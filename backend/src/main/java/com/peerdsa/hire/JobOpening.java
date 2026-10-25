@@ -58,6 +58,15 @@ public class JobOpening {
     @Column(name = "openings_count", nullable = false)
     private int openingsCount = 1;
 
+    @Column(name = "contact_email", nullable = false)
+    private String contactEmail = "";
+
+    @Column(nullable = false)
+    private String source = "MANUAL";
+
+    @Column(name = "apply_type", nullable = false)
+    private String applyType = "ATS_PORTAL";
+
     @Column(name = "posted_at", nullable = false)
     private Instant postedAt = Instant.now();
 
@@ -192,5 +201,29 @@ public class JobOpening {
 
     public Instant getCreatedAt() {
         return createdAt;
+    }
+
+    public String getContactEmail() {
+        return contactEmail;
+    }
+
+    public void setContactEmail(String contactEmail) {
+        this.contactEmail = contactEmail != null ? contactEmail : "";
+    }
+
+    public String getSource() {
+        return source;
+    }
+
+    public void setSource(String source) {
+        this.source = source != null ? source : "MANUAL";
+    }
+
+    public String getApplyType() {
+        return applyType;
+    }
+
+    public void setApplyType(String applyType) {
+        this.applyType = applyType != null ? applyType : "ATS_PORTAL";
     }
 }

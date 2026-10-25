@@ -64,6 +64,12 @@ public class HireController {
         return hireService.listJobs(requireUser(user).getId());
     }
 
+    @PostMapping("/jobs/sync-real")
+    public HireDtos.SyncRealJobsResult syncRealJobs(@AuthenticationPrincipal User user) {
+        requireUser(user);
+        return hireService.syncRealJobs();
+    }
+
     @PostMapping("/jobs/{jobId}/apply")
     public JobApplicationDto apply(
             @AuthenticationPrincipal User user,

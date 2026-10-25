@@ -8,6 +8,7 @@ import {
   JobApplication,
   JobOpening,
   SaveCandidateProfileRequest,
+  SyncRealJobsResult,
 } from '../models/hire.models';
 
 @Injectable({ providedIn: 'root' })
@@ -28,6 +29,10 @@ export class HireService {
 
   listJobs(): Observable<JobOpening[]> {
     return this.http.get<JobOpening[]>('/api/hire/jobs');
+  }
+
+  syncRealJobs(): Observable<SyncRealJobsResult> {
+    return this.http.post<SyncRealJobsResult>('/api/hire/jobs/sync-real', {});
   }
 
   apply(jobId: number): Observable<JobApplication> {

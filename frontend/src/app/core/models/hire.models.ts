@@ -62,6 +62,9 @@ export interface JobOpening {
   requiredSkills: string;
   description: string;
   externalApplyUrl: string;
+  contactEmail?: string;
+  source?: string;
+  applyType?: 'EMAIL' | 'ATS_PORTAL' | string;
   postedAt: string;
   matchScore: number;
   matchingSkills: string[];
@@ -83,6 +86,8 @@ export interface JobApplication {
   matchScore: number;
   appliedAt: string;
   notes: string;
+  deliveryChannel?: string;
+  deliveryReceipt?: string;
 }
 
 export interface ApplyAllResult {
@@ -91,4 +96,11 @@ export interface ApplyAllResult {
   minScoreThreshold: number;
   message: string;
   appliedApplications: JobApplication[];
+}
+
+export interface SyncRealJobsResult {
+  newlyFetched: number;
+  totalActive: number;
+  sourceSummary: string;
+  message: string;
 }

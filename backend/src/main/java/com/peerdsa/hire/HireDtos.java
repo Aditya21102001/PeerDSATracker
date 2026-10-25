@@ -51,6 +51,9 @@ public final class HireDtos {
             String requiredSkills,
             String description,
             String externalApplyUrl,
+            String contactEmail,
+            String source,
+            String applyType,
             Instant postedAt,
             int matchScore,
             List<String> matchingSkills,
@@ -70,7 +73,15 @@ public final class HireDtos {
             String status,
             int matchScore,
             Instant appliedAt,
-            String notes) {}
+            String notes,
+            String deliveryChannel,
+            String deliveryReceipt) {}
+
+    public record SyncRealJobsResult(
+            int newlyFetched,
+            int totalActive,
+            String sourceSummary,
+            String message) {}
 
     public record ApplyAllRequest(Integer minMatchScore) {}
 

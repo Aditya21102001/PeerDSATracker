@@ -7,4 +7,6 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface JobOpeningRepository extends JpaRepository<JobOpening, Long> {
     List<JobOpening> findByIsActiveTrueOrderByPostedAtDesc();
+    boolean existsByExternalApplyUrl(String externalApplyUrl);
+    long countBySource(String source);
 }

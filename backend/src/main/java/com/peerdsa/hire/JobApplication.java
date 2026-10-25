@@ -37,6 +37,12 @@ public class JobApplication {
     @Column(nullable = false, columnDefinition = "text")
     private String notes = "";
 
+    @Column(name = "delivery_channel", nullable = false)
+    private String deliveryChannel = "PLATFORM";
+
+    @Column(name = "delivery_receipt", nullable = false)
+    private String deliveryReceipt = "";
+
     @Column(name = "applied_at", nullable = false, updatable = false)
     private Instant appliedAt = Instant.now();
 
@@ -109,5 +115,21 @@ public class JobApplication {
 
     public void setUpdatedAt(Instant updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public String getDeliveryChannel() {
+        return deliveryChannel;
+    }
+
+    public void setDeliveryChannel(String deliveryChannel) {
+        this.deliveryChannel = deliveryChannel != null ? deliveryChannel : "PLATFORM";
+    }
+
+    public String getDeliveryReceipt() {
+        return deliveryReceipt;
+    }
+
+    public void setDeliveryReceipt(String deliveryReceipt) {
+        this.deliveryReceipt = deliveryReceipt != null ? deliveryReceipt : "";
     }
 }

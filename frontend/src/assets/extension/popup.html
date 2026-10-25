@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>PeerDSA ATS Copilot</title>
+  <style>
+    body {
+      width: 320px;
+      margin: 0;
+      padding: 16px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0f172a;
+      color: #f8fafc;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 1px solid #1e293b;
+      padding-bottom: 12px;
+      margin-bottom: 14px;
+    }
+    .badge {
+      background: #4f46e5;
+      color: white;
+      font-weight: 700;
+      border-radius: 8px;
+      padding: 4px 8px;
+      font-size: 14px;
+    }
+    h2 {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 600;
+      color: #e2e8f0;
+    }
+    .subtitle {
+      font-size: 11px;
+      color: #94a3b8;
+    }
+    .field {
+      margin-bottom: 10px;
+    }
+    label {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      color: #cbd5e1;
+      margin-bottom: 3px;
+    }
+    input, textarea {
+      width: 100%;
+      box-sizing: border-box;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      color: #f1f5f9;
+      padding: 6px 8px;
+      font-size: 12px;
+    }
+    input:focus, textarea:focus {
+      outline: none;
+      border-color: #6366f1;
+    }
+    .actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 14px;
+    }
+    button {
+      flex: 1;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+    }
+    .btn-save {
+      background: #4f46e5;
+      color: white;
+    }
+    .btn-save:hover {
+      background: #4338ca;
+    }
+    .status-msg {
+      margin-top: 8px;
+      font-size: 11px;
+      text-align: center;
+      color: #10b981;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="badge">⚡</div>
+    <div>
+      <h2>PeerDSA ATS Copilot</h2>
+      <div class="subtitle">Real-time 1-Click Form Autofill</div>
+    </div>
+  </div>
+
+  <div class="field">
+    <label for="fullName">Full Name</label>
+    <input type="text" id="fullName" placeholder="Aditya Yadav">
+  </div>
+
+  <div class="field">
+    <label for="email">Email</label>
+    <input type="email" id="email" placeholder="aditya@example.com">
+  </div>
+
+  <div class="field">
+    <label for="phone">Phone</label>
+    <input type="tel" id="phone" placeholder="+91 9876543210">
+  </div>
+
+  <div class="field">
+    <label for="linkedIn">LinkedIn URL</label>
+    <input type="text" id="linkedIn" placeholder="https://linkedin.com/in/adityayadav">
+  </div>
+
+  <div class="field">
+    <label for="github">GitHub URL</label>
+    <input type="text" id="github" placeholder="https://github.com/Aditya21102001">
+  </div>
+
+  <div class="field">
+    <label for="currentRole">Current Role & YOE</label>
+    <input type="text" id="currentRole" placeholder="Senior Software Engineer (4.5 YOE)">
+  </div>
+
+  <div class="actions">
+    <button class="btn-save" id="saveBtn">Save Profile</button>
+  </div>
+  <div class="status-msg" id="statusMsg">Saved! Active on all job pages.</div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
