@@ -1,0 +1,324 @@
+<main id="main-content" tabindex="-1" class="portfolio-page">
+  <!-- Top Navigation & Return Bar -->
+  <header class="portfolio-header">
+    <div class="nav-breadcrumbs">
+      <button
+        type="button"
+        class="nav-back-pill"
+        (click)="nav.back('/dashboard')"
+        aria-label="Go back"
+      >
+        ← Back to {{ nav.previousPageLabel('Dashboard') }}
+      </button>
+      <span class="badge-creator">⚡ LEAD ARCHITECT & OWNER</span>
+    </div>
+
+    <nav class="portfolio-nav" aria-label="Portal Navigation">
+      <a routerLink="/dashboard">Dashboard</a>
+      <a routerLink="/sheet">Syllabus Sheet</a>
+      <a routerLink="/hire">Career Portal</a>
+      <a routerLink="/interview">AI Interview</a>
+      <a routerLink="/study-guides">Study Guides</a>
+    </nav>
+  </header>
+
+  <!-- Hero Banner Section -->
+  <section class="hero-section">
+    <div class="hero-glow-sphere"></div>
+    <div class="hero-content">
+      <div class="hero-avatar-col">
+        <div class="avatar-ring">
+          <div class="avatar-inner">
+            <span class="avatar-initials">AY</span>
+          </div>
+          <div class="online-indicator" title="Available for Engineering Opportunities"></div>
+        </div>
+      </div>
+
+      <div class="hero-text-col">
+        <div class="title-eyebrow">
+          <span class="pulse-indicator"></span>
+          <span>AVAILABLE FOR SENIOR FULL-STACK & GEN-AI ROLES</span>
+        </div>
+        <h1 class="hero-name">{{ developerInfo.name }}</h1>
+        <h2 class="hero-title">{{ developerInfo.headline }}</h2>
+        <p class="hero-subtitle">{{ developerInfo.subHeadline }} · 📍 {{ developerInfo.location }}</p>
+
+        <p class="hero-bio">
+          {{ developerInfo.summary }}
+        </p>
+
+        <!-- Fast Contact Bar -->
+        <div class="hero-actions">
+          <a
+            [href]="'mailto:' + developerInfo.email"
+            class="btn btn-primary"
+            title="Send Email to Aditya Yadav"
+          >
+            ✉️ Contact Directly
+          </a>
+
+          <a
+            [href]="developerInfo.linkedIn"
+            target="_blank"
+            rel="noopener"
+            class="btn btn-secondary btn-linkedin"
+            title="View LinkedIn Profile"
+          >
+            💼 LinkedIn Profile ↗
+          </a>
+
+          <a
+            [href]="developerInfo.github"
+            target="_blank"
+            rel="noopener"
+            class="btn btn-secondary btn-github"
+            title="View GitHub Repositories"
+          >
+            🐙 GitHub ↗
+          </a>
+
+          <button
+            type="button"
+            class="btn btn-ghost btn-copy"
+            (click)="copyContact('phone', developerInfo.phone)"
+            title="Click to copy phone number"
+          >
+            📞 {{ copiedContact() === 'phone' ? '✓ Copied!' : developerInfo.phone }}
+          </button>
+
+          <button
+            type="button"
+            class="btn btn-ghost btn-copy"
+            (click)="copyContact('email', developerInfo.email)"
+            title="Click to copy email address"
+          >
+            📧 {{ copiedContact() === 'email' ? '✓ Email Copied!' : 'Copy Email' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Quick Highlight Cards -->
+  <section class="metrics-grid">
+    @for (stat of competitiveStats; track stat.title) {
+      <div class="metric-card" [style.--card-accent]="stat.color">
+        <div class="metric-icon">{{ stat.icon }}</div>
+        <div class="metric-info">
+          <span class="metric-platform">{{ stat.platform }}</span>
+          <h3 class="metric-title">{{ stat.title }}</h3>
+          <span class="metric-rating">{{ stat.rating }}</span>
+          <p class="metric-detail">{{ stat.solved }}</p>
+        </div>
+      </div>
+    }
+  </section>
+
+  <!-- Flagship Projects Section -->
+  <section class="portfolio-section">
+    <div class="section-header">
+      <div class="section-title-wrap">
+        <span class="section-tag">ENGINEERING SHOWCASE</span>
+        <h2>Flagship Software Products</h2>
+      </div>
+      <p class="section-desc">Production-grade distributed systems and modern web applications built end to end.</p>
+    </div>
+
+    <div class="projects-grid">
+      @for (project of projects; track project.title) {
+        <article class="project-card" [class.is-flagship]="project.isFlagship">
+          <div class="project-header">
+            <div class="project-title-row">
+              <h3>{{ project.title }}</h3>
+              <span class="badge-flagship">★ Flagship Product</span>
+            </div>
+            <p class="project-subtitle">{{ project.subtitle }}</p>
+          </div>
+
+          <div class="project-tags">
+            @for (tag of project.tags; track tag) {
+              <span class="tag-chip">{{ tag }}</span>
+            }
+          </div>
+
+          <p class="project-description">{{ project.description }}</p>
+
+          <div class="project-highlights">
+            <h4>Key Architectural Achievements:</h4>
+            <ul>
+              @for (h of project.highlights; track h) {
+                <li>{{ h }}</li>
+              }
+            </ul>
+          </div>
+
+          <div class="project-footer">
+            <span class="project-metric-pill">⚡ {{ project.metrics }}</span>
+
+            <div class="project-links">
+              <a [href]="project.githubUrl" target="_blank" rel="noopener" class="btn btn-sm btn-ghost">
+                🐙 Source Code ↗
+              </a>
+              @if (project.liveUrl) {
+                <a [href]="project.liveUrl" target="_blank" rel="noopener" class="btn btn-sm btn-primary">
+                  🚀 Launch Live Platform ↗
+                </a>
+              }
+            </div>
+          </div>
+        </article>
+      }
+    </div>
+  </section>
+
+  <!-- Professional Work Experience Timeline -->
+  <section class="portfolio-section">
+    <div class="section-header">
+      <div class="section-title-wrap">
+        <span class="section-tag">INDUSTRY TRACK RECORD</span>
+        <h2>Professional Work Experience</h2>
+      </div>
+      <p class="section-desc">Enterprise full-stack engineering, high-throughput microservices, and Generative AI delivery.</p>
+    </div>
+
+    <div class="timeline">
+      @for (exp of experiences; track exp.company) {
+        <div class="timeline-item">
+          <div class="timeline-dot"></div>
+          <div class="timeline-content">
+            <div class="timeline-header">
+              <div>
+                <h3 class="timeline-role">{{ exp.role }}</h3>
+                <h4 class="timeline-company">{{ exp.company }} · <span class="timeline-loc">{{ exp.location }}</span></h4>
+              </div>
+              <div class="timeline-badge-group">
+                <span class="badge-period">{{ exp.period }}</span>
+                <span class="badge-status">{{ exp.badge }}</span>
+              </div>
+            </div>
+
+            <ul class="timeline-points">
+              @for (pt of exp.points; track pt) {
+                <li>{{ pt }}</li>
+              }
+            </ul>
+
+            <div class="timeline-skills">
+              @for (tech of exp.techStack; track tech) {
+                <span class="tech-pill">{{ tech }}</span>
+              }
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+  </section>
+
+  <!-- Comprehensive Technical Skills Grid -->
+  <section class="portfolio-section">
+    <div class="section-header">
+      <div class="section-title-wrap">
+        <span class="section-tag">CORE COMPETENCIES</span>
+        <h2>Technical Skill Ecosystem</h2>
+      </div>
+      <p class="section-desc">Proficiencies in modern web standards, distributed architectures, vector systems, and cloud infrastructure.</p>
+    </div>
+
+    <div class="skills-catalog-grid">
+      @for (cat of skillCategories; track cat.category) {
+        <div class="skill-category-card">
+          <div class="category-header">
+            <span class="cat-icon">{{ cat.icon }}</span>
+            <h3>{{ cat.category }}</h3>
+          </div>
+          <div class="skill-tags-cloud">
+            @for (skill of cat.skills; track skill) {
+              <span class="skill-bubble">{{ skill }}</span>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  </section>
+
+  <!-- Certifications & Academic Background -->
+  <section class="portfolio-section">
+    <div class="two-col-grid">
+      <!-- Certifications -->
+      <div class="certs-column">
+        <div class="section-header-sm">
+          <span class="section-tag">CREDENTIALS</span>
+          <h3>Verified Certifications</h3>
+        </div>
+
+        <div class="certs-list">
+          @for (cert of certifications; track cert.name) {
+            <div class="cert-card">
+              <div class="cert-icon">📜</div>
+              <div class="cert-info">
+                <h4>{{ cert.name }}</h4>
+                <span class="cert-issuer">{{ cert.issuer }}</span>
+              </div>
+              <span class="cert-badge">✓ Verified</span>
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Education & Academic Foundation -->
+      <div class="education-column">
+        <div class="section-header-sm">
+          <span class="section-tag">ACADEMIC FOUNDATION</span>
+          <h3>Education & Degree</h3>
+        </div>
+
+        <div class="edu-card">
+          <div class="edu-icon">🎓</div>
+          <div class="edu-content">
+            <h4 class="edu-degree">{{ developerInfo.degree }}</h4>
+            <h5 class="edu-college">{{ developerInfo.college }}</h5>
+            <span class="edu-period">{{ developerInfo.graduationYear }}</span>
+            <p class="edu-desc">
+              Rigorous curriculum in Computer Science & Information Technology, Data Structures & Algorithms, Object-Oriented System Design, Operating Systems, Computer Networks, and Relational Database Systems.
+            </p>
+          </div>
+        </div>
+
+        <div class="tcs-awards-card">
+          <div class="edu-icon">🏆</div>
+          <div class="edu-content">
+            <h4 class="edu-degree">Corporate Honors & Competitive Recognitions</h4>
+            <ul class="awards-list">
+              <li><strong>TCS CodeVita Season 10:</strong> Global Rank 229 of 100,000+ coders (Top 0.3%).</li>
+              <li><strong>TCS Contextual Master:</strong> Awarded for domain-specific architecture excellence.</li>
+              <li><strong>Special Initiative & Star of the Quarter:</strong> Multiple quarter recognitions for zero-downtime Angular 22 migrations and HLS streaming delivery.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Connect & Hire Call To Action -->
+  <section class="cta-banner">
+    <div class="cta-inner">
+      <h2>Let's Build Extraordinary Software Together</h2>
+      <p>
+        Whether you are hiring for high-impact software engineering roles or building scalable distributed systems with modern Angular & Spring Boot, let's connect.
+      </p>
+
+      <div class="cta-buttons">
+        <a [href]="'mailto:' + developerInfo.email" class="btn btn-primary btn-lg">
+          ✉️ Send Aditya an Email
+        </a>
+        <a [href]="developerInfo.linkedIn" target="_blank" rel="noopener" class="btn btn-secondary btn-lg">
+          💼 Connect on LinkedIn
+        </a>
+        <a routerLink="/hire" class="btn btn-ghost btn-lg">
+          ⚡ Explore PeerDSA Career Portal →
+        </a>
+      </div>
+    </div>
+  </section>
+</main>

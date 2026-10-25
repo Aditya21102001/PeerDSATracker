@@ -1,4 +1,5 @@
 import { Component, computed, inject, signal } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { buildInfo } from '../../build-info';
 import { BackendStatus } from '../core/services/backend-status';
 
@@ -55,27 +56,16 @@ function exact(iso: string | null | undefined): string {
   return Number.isNaN(at.getTime()) ? '' : at.toLocaleString();
 }
 
-/**
- * Which build is running, on both halves of the deployment.
- *
- * The two halves deploy independently -- the SPA to Vercel, the backend to Render -- so "the
- * version" is two facts, and a bug report naming only one of them can send you reading code that
- * was never live. The frontend values are baked in at build time by scripts/build-info.mjs; the
- * backend values arrive from GET /api/meta, already fetched by the startup probe in
- * {@link BackendStatus}, so this footer adds no request of its own.
- *
- * The api line is absent until that probe answers, which on a cold start is a while. That is
- * correct: a gap is honest, where a version carried over from a previous session would not be.
- */
 @Component({
   selector: 'app-footer',
+  imports: [RouterLink],
   template: `
     <footer class="site-footer">
       <p class="line owner">
         <span class="product">PeerDSATracker</span>
         <span class="sep" aria-hidden="true">·</span>
         <!-- The year is read at runtime, so this never needs an annual edit to stop being wrong. -->
-        <small>© {{ year }} Aditya Yadav</small>
+        <small>© {{ year }} <a routerLink="/portfolio" class="developer-portfolio-link" title="View Developer & Owner Portfolio">Aditya Yadav</a></small>
       </p>
 
       <p class="line">
@@ -164,6 +154,18 @@ function exact(iso: string | null | undefined): string {
 
     .owner small {
       font-size: inherit;
+    }
+
+    .owner .developer-portfolio-link {
+      color: inherit;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+      font-weight: 600;
+      transition: color 0.15s ease;
+
+      &:hover {
+        color: var(--accent);
+      }
     }
 
     .line {

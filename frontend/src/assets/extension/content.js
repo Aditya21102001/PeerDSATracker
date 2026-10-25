@@ -11,17 +11,17 @@
     firstName: 'Aditya',
     lastName: 'Yadav',
     fullName: 'Aditya Yadav',
-    email: 'aditya@example.com',
-    phone: '+91 9876543210',
-    linkedIn: 'https://linkedin.com/in/adityayadav',
+    email: 'adityakumaryadav21102001@gmail.com',
+    phone: '+91 9217665318',
+    linkedIn: 'https://linkedin.com/in/aditya-yadav-9b4a48192',
     github: 'https://github.com/Aditya21102001',
-    portfolio: 'https://peerdsa.net',
-    currentCompany: 'Senior Software Engineer',
-    currentRole: 'Senior Software Engineer',
-    yearsOfExperience: '4.5',
+    portfolio: 'https://peer-dsa-tracker-iota.vercel.app/portfolio',
+    currentCompany: 'Tata Consultancy Services',
+    currentRole: 'Software Developer',
+    yearsOfExperience: '3.0',
     noticePeriod: '30',
-    location: 'Bengaluru, India',
-    coverLetter: 'I am excited to apply for this opening. With a strong foundation in scalable distributed backend services, DSA, Spring Boot, and high-performance APIs, I am confident in delivering immediate impact.'
+    location: 'Gorakhpur, India',
+    coverLetter: 'I am excited to apply for this opening. With 3 years of enterprise experience building modern Angular (v22 zoneless/signals), Spring Boot microservices, Azure OpenAI GenAI features, and FFmpeg/HLS adaptive streaming, I am confident in delivering high performance and immediate impact.'
   };
 
   function getStoredProfile(callback) {

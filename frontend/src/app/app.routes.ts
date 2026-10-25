@@ -192,5 +192,16 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./features/architecture/architecture-page').then((m) => m.ArchitecturePage),
   },
+  {
+    // Aditya Yadav Developer & Owner Portfolio
+    path: 'portfolio',
+    title: 'Aditya Yadav — Full-Stack & Generative AI Software Developer | Portfolio',
+    loadComponent: () => import('./features/portfolio/portfolio-page').then((m) => m.PortfolioPage),
+  },
+  {
+    path: 'developer',
+    redirectTo: 'portfolio',
+    pathMatch: 'full',
+  },
   { path: '**', redirectTo: '' },
 ];
