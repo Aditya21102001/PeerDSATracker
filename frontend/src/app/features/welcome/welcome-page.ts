@@ -48,6 +48,9 @@ interface RoadmapStep {
           <a routerLink="/architecture" class="nav-link highlighted">
             <span class="nav-icon" aria-hidden="true">🏛️</span> Architecture
           </a>
+          <a routerLink="/portfolio" class="nav-link highlighted">
+            <span class="nav-icon" aria-hidden="true">👨‍💻</span> Creator Portfolio
+          </a>
           <a href="#roadmap" class="nav-link">🗺️ 474 Roadmap</a>
           <a href="#ai-engine" class="nav-link">🤖 AI Interview</a>
           <a href="#career" class="nav-link">💼 Career Portal</a>
@@ -132,6 +135,13 @@ interface RoadmapStep {
               <div class="drawer-text">
                 <span class="drawer-link-title">Architecture</span>
                 <span class="drawer-link-desc">Interactive Archify Diagrams</span>
+              </div>
+            </a>
+            <a routerLink="/portfolio" class="drawer-link highlighted" (click)="closeMobileMenu()">
+              <span class="drawer-icon" aria-hidden="true">👨‍💻</span>
+              <div class="drawer-text">
+                <span class="drawer-link-title">Creator Portfolio</span>
+                <span class="drawer-link-desc">Aditya Yadav (Full-Stack &amp; GenAI)</span>
               </div>
             </a>
             <a href="#roadmap" class="drawer-link" (click)="closeMobileMenu()">

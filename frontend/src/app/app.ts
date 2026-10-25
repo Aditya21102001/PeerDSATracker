@@ -50,7 +50,9 @@ export class App {
       clean.startsWith('/study-guides') ||
       clean.startsWith('/videos') ||
       clean.startsWith('/architecture') ||
-      clean === '/guide'
+      clean === '/guide' ||
+      clean === '/portfolio' ||
+      clean === '/developer'
     );
   });
 }
