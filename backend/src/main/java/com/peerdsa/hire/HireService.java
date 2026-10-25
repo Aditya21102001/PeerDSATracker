@@ -12,6 +12,7 @@ import com.peerdsa.mail.BrevoMailClient;
 import com.peerdsa.user.User;
 import com.peerdsa.user.UserRepository;
 import java.time.Instant;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -25,6 +26,9 @@ import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import org.apache.pdfbox.Loader;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.text.PDFTextStripper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,6 +36,7 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
@@ -139,11 +144,71 @@ public class HireService {
     }
 
     /**
+     * Extracts structured candidate profile data from an uploaded resume file (PDF or text).
+     */
+    public ExtractedProfileDto extractProfileFromFile(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            return extractProfileFromResume("");
+        }
+        String filename = file.getOriginalFilename() != null ? file.getOriginalFilename().toLowerCase() : "";
+        String extractedText = "";
+
+        if (filename.endsWith(".pdf") || (file.getContentType() != null && file.getContentType().contains("pdf"))) {
+            try (PDDocument document = Loader.loadPDF(file.getBytes())) {
+                PDFTextStripper stripper = new PDFTextStripper();
+                stripper.setSortByPosition(true);
+                extractedText = stripper.getText(document);
+                log.info("PDFBox extracted {} characters from '{}'", extractedText.length(), filename);
+            } catch (Exception e) {
+                log.error("Failed to extract PDF text from '{}': {}", filename, e.getMessage());
+                try {
+                    extractedText = new String(file.getBytes(), StandardCharsets.UTF_8);
+                } catch (Exception ignored) {}
+            }
+        } else {
+            try {
+                extractedText = new String(file.getBytes(), StandardCharsets.UTF_8);
+            } catch (Exception e) {
+                log.error("Failed to read text from uploaded file: {}", e.getMessage());
+            }
+        }
+
+        ExtractedProfileDto dto = extractProfileFromResume(extractedText);
+        return new ExtractedProfileDto(
+                dto.candidateName(),
+                dto.email(),
+                dto.phone(),
+                dto.linkedIn(),
+                dto.gitHub(),
+                dto.portfolioUrl(),
+                dto.headline(),
+                dto.yearsOfExperience(),
+                dto.currentCompany(),
+                dto.currentRole(),
+                dto.currentCtc(),
+                dto.expectedCtc(),
+                dto.noticePeriodDays(),
+                dto.preferredLocations(),
+                dto.skills(),
+                dto.certifications(),
+                dto.education(),
+                dto.resumeSummary(),
+                extractedText
+        );
+    }
+
+    /**
      * Extracts structured candidate profile data from raw resume text using LLM or smart heuristic parser.
      */
     public ExtractedProfileDto extractProfileFromResume(String resumeText) {
         if (resumeText == null || resumeText.isBlank()) {
             return new ExtractedProfileDto(
+                    "",
+                    "",
+                    "",
+                    "",
+                    "",
+                    "",
                     "Software Engineer",
                     2.0,
                     "",
@@ -155,7 +220,8 @@ public class HireService {
                     "Java, Spring Boot, DSA, SQL, Git",
                     "",
                     "B.Tech in Computer Science",
-                    "Engineering professional with experience in software development and problem solving."
+                    "Engineering professional with experience in software development and problem solving.",
+                    ""
             );
         }
 
@@ -163,6 +229,11 @@ public class HireService {
         if (openRouter != null && openRouter.isConfigured()) {
             try {
                 String systemPrompt = "You are an expert technical recruiter and resume parser. Given a candidate's resume, extract their profile as a valid JSON object with EXACT keys: "
+                        + "\"candidateName\" (string), "
+                        + "\"email\" (string), "
+                        + "\"phone\" (string), "
+                        + "\"linkedIn\" (string), "
+                        + "\"gitHub\" (string), "
                         + "\"headline\" (string, concise technical headline), "
                         + "\"yearsOfExperience\" (number), "
                         + "\"currentCompany\" (string), "
@@ -183,6 +254,11 @@ public class HireService {
                     int end = reply.lastIndexOf('}') + 1;
                     Map<String, Object> map = mapper.readValue(reply.substring(start, end), new TypeReference<>() {});
 
+                    String name = (String) map.getOrDefault("candidateName", "");
+                    String email = (String) map.getOrDefault("email", "");
+                    String phone = (String) map.getOrDefault("phone", "");
+                    String li = (String) map.getOrDefault("linkedIn", "");
+                    String gh = (String) map.getOrDefault("gitHub", "");
                     String headline = (String) map.getOrDefault("headline", "Software Engineer");
                     double yoe = map.get("yearsOfExperience") instanceof Number n ? n.doubleValue() : 2.0;
                     String company = (String) map.getOrDefault("currentCompany", "");
@@ -197,6 +273,12 @@ public class HireService {
                     String summary = (String) map.getOrDefault("resumeSummary", "");
 
                     return new ExtractedProfileDto(
+                            name,
+                            email,
+                            phone,
+                            li,
+                            gh,
+                            "",
                             headline,
                             Math.max(0.0, Math.min(50.0, yoe)),
                             company,
@@ -208,7 +290,8 @@ public class HireService {
                             skills,
                             certs,
                             edu,
-                            summary
+                            summary,
+                            resumeText
                     );
                 }
             } catch (Exception e) {
@@ -221,26 +304,89 @@ public class HireService {
     }
 
     private ExtractedProfileDto extractWithHeuristics(String text) {
+        if (text == null) text = "";
         String lower = text.toLowerCase();
 
-        // 1. Extract Experience
+        // 1. Extract Contact Info
+        String candidateName = "";
+        String email = "";
+        String phone = "";
+        String linkedIn = "";
+        String gitHub = "";
+        String portfolioUrl = "";
+
+        // Extract Email
+        Matcher mEmail = Pattern.compile("(?i)\\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}\\b").matcher(text);
+        if (mEmail.find()) {
+            email = mEmail.group();
+        }
+
+        // Extract Phone (Indian and International)
+        Matcher mPhone = Pattern.compile("(?:\\+91[\\-\\s]?)?[6-9]\\d{9}|(?:\\+\\d{1,3}[-\\s]?)?\\(?\\d{3}\\)?[-\\s]?\\d{3}[-\\s]?\\d{4}").matcher(text);
+        if (mPhone.find()) {
+            phone = mPhone.group().trim();
+        }
+
+        // Extract LinkedIn
+        Matcher mLi = Pattern.compile("(?i)(?:https?://)?(?:www\\.)?linkedin\\.com/in/([a-zA-Z0-9\\-_]+)").matcher(text);
+        if (mLi.find()) {
+            linkedIn = "https://linkedin.com/in/" + mLi.group(1);
+        }
+
+        // Extract GitHub
+        Matcher mGh = Pattern.compile("(?i)(?:https?://)?(?:www\\.)?github\\.com/([a-zA-Z0-9\\-_]+)").matcher(text);
+        if (mGh.find()) {
+            gitHub = "https://github.com/" + mGh.group(1);
+        }
+
+        // Extract Portfolio / Vercel
+        Matcher mPort = Pattern.compile("(?i)(?:https?://)?([a-zA-Z0-9\\-_.]+\\.(?:vercel\\.app|netlify\\.app|pages\\.dev|github\\.io))").matcher(text);
+        if (mPort.find()) {
+            portfolioUrl = "https://" + mPort.group(1);
+        }
+
+        // Extract Candidate Name from top lines
+        String[] lines = text.split("\\r?\\n");
+        for (int i = 0; i < Math.min(lines.length, 5); i++) {
+            String l = lines[i].trim();
+            if (l.isEmpty() || l.contains("@") || l.contains("http") || l.length() > 40) continue;
+            String lLower = l.toLowerCase();
+            if (lLower.contains("resume") || lLower.contains("curriculum") || lLower.contains("summary") || lLower.contains("page")) continue;
+            if (l.matches("^[a-zA-Z\\s\\.\\-]+$") && l.split("\\s+").length >= 2) {
+                candidateName = l;
+                break;
+            }
+        }
+
+        // 2. Extract Experience
         double yoe = 2.5;
-        Matcher mExp = Pattern.compile("(\\d+(?:\\.\\d+)?)\\+?\\s*(?:years?|yrs)", Pattern.CASE_INSENSITIVE).matcher(text);
+        Matcher mExp = Pattern.compile("(\\d+(?:\\.\\d+)?)\\+?\\s*(?:years?|yrs)(?:\\s+of)?\\s+(?:experience|exp)?", Pattern.CASE_INSENSITIVE).matcher(text);
         if (mExp.find()) {
             try {
                 yoe = Double.parseDouble(mExp.group(1));
             } catch (Exception ignored) {}
+        } else {
+            Matcher mDate = Pattern.compile("(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\\s*(\\d{4})\\s*[–\\-]\\s*Present", Pattern.CASE_INSENSITIVE).matcher(text);
+            if (mDate.find()) {
+                try {
+                    int startYear = Integer.parseInt(mDate.group(1));
+                    yoe = Math.max(1.0, 2026 - startYear + 0.5);
+                } catch (Exception ignored) {}
+            }
         }
 
-        // 2. Extract Skills
+        // 3. Extract Skills (Comprehensive modern engineering catalog)
         String[] skillCatalog = {
-            "Java", "Spring Boot", "Microservices", "Spring Security", "JPA", "Hibernate",
-            "Python", "FastAPI", "Django", "Flask", "C++", "JavaScript", "TypeScript",
-            "Angular", "React", "Node.js", "SQL", "PostgreSQL", "MySQL", "MongoDB",
-            "Redis", "Kafka", "Docker", "Kubernetes", "AWS", "Azure", "GCP",
-            "Git", "REST APIs", "DSA", "System Design", "CI/CD", "Linux"
+            "Angular 22", "Angular", "AngularJS", "Signals", "Zoneless", "TypeScript", "JavaScript", "HTML5", "CSS3",
+            "Java", "Spring Boot", "Spring Security", "Spring Data JPA", "Hibernate", "Microservices", "REST APIs",
+            "FFmpeg", "HLS Streaming", "Kafka", "Redis", "Python", "FastAPI", "Django", "Flask", "C++",
+            "SQL", "PostgreSQL", "MySQL", "pgvector", "MongoDB",
+            "Azure OpenAI", "Generative AI", "LangChain", "RAG", "Embeddings", "Vector Search", "Prompt Engineering",
+            "Microsoft Azure", "Azure", "AWS", "Docker", "CI/CD", "Git", "PuTTY", "Linux",
+            "OAuth 2.0", "MFA", "Multi-Factor Authentication", "OWASP", "AES-128", "RSA-OAEP", "ECDH",
+            "Data Structures", "Algorithms", "DSA", "System Design", "OOP"
         };
-        List<String> matchedSkills = new ArrayList<>();
+        java.util.Set<String> matchedSkills = new java.util.LinkedHashSet<>();
         for (String skill : skillCatalog) {
             Pattern p = Pattern.compile("\\b" + Pattern.quote(skill) + "\\b", Pattern.CASE_INSENSITIVE);
             if (p.matcher(text).find()) {
@@ -248,23 +394,29 @@ public class HireService {
             }
         }
         String skillsStr = matchedSkills.isEmpty()
-                ? "Java, Spring Boot, Microservices, SQL, Git, REST APIs"
+                ? "Java, Spring Boot, Angular, TypeScript, Microservices, SQL, Git, REST APIs"
                 : String.join(", ", matchedSkills);
 
-        // 3. Extract Role & Company
-        String role = "Software Engineer";
+        // 4. Extract Role & Company
+        String role = "Software Developer";
         if (lower.contains("senior software engineer") || lower.contains("senior backend") || lower.contains("sde 2") || lower.contains("sde ii")) {
             role = "Senior Software Engineer";
         } else if (lower.contains("lead") || lower.contains("architect")) {
             role = "Technical Lead / Architect";
+        } else if (lower.contains("full-stack") || lower.contains("full stack") || lower.contains("fullstack")) {
+            role = "Full-Stack Software Developer";
         } else if (lower.contains("backend developer") || lower.contains("backend engineer")) {
             role = "Backend Software Engineer";
-        } else if (lower.contains("full stack") || lower.contains("fullstack")) {
-            role = "Full Stack Engineer";
+        } else if (lower.contains("frontend developer") || lower.contains("frontend engineer")) {
+            role = "Frontend Software Developer";
         }
 
         String company = "";
-        String[] commonCompanies = {"TCS", "Tata Consultancy Services", "Infosys", "Wipro", "Accenture", "Cognizant", "Capgemini", "Amazon", "Microsoft", "Google", "Oracle", "Swiggy", "Zomato", "PhonePe", "Paytm", "HCL", "Tech Mahindra"};
+        String[] commonCompanies = {
+            "Tata Consultancy Services", "TCS", "Sunrise Mentors", "Coding Ninjas", "Infosys", "Wipro",
+            "Accenture", "Cognizant", "Capgemini", "Amazon", "Microsoft", "Google", "Oracle",
+            "Swiggy", "Zomato", "PhonePe", "Paytm", "HCL", "Tech Mahindra"
+        };
         for (String c : commonCompanies) {
             if (Pattern.compile("\\b" + Pattern.quote(c) + "\\b", Pattern.CASE_INSENSITIVE).matcher(text).find()) {
                 company = c;
@@ -272,28 +424,67 @@ public class HireService {
             }
         }
 
-        // 4. Extract Education
+        // 5. Extract Education
         String education = "B.Tech in Computer Science";
-        if (lower.contains("m.tech")) education = "M.Tech in Computer Science";
-        else if (lower.contains("mca")) education = "Master of Computer Applications (MCA)";
-        else if (lower.contains("b.e.") || lower.contains("bachelor of engineering")) education = "B.E. in Computer Engineering";
-        else if (lower.contains("b.sc")) education = "B.Sc in Computer Science";
+        if (lower.contains("information technology")) {
+            education = "B.Tech in Information Technology";
+        } else if (lower.contains("m.tech")) {
+            education = "M.Tech in Computer Science";
+        } else if (lower.contains("mca")) {
+            education = "Master of Computer Applications (MCA)";
+        } else if (lower.contains("b.e.") || lower.contains("bachelor of engineering")) {
+            education = "B.E. in Computer Engineering";
+        }
+        if (lower.contains("madan mohan malaviya") || lower.contains("mmmut")) {
+            education += " - MMMUT Gorakhpur";
+        }
 
-        // 5. Extract Certifications
+        // 6. Extract Certifications
         List<String> certs = new ArrayList<>();
-        if (lower.contains("aws certified")) certs.add("AWS Certified Developer");
+        if (lower.contains("azure ai engineer")) certs.add("Microsoft Certified: Azure AI Engineer Associate");
+        if (lower.contains("azure ai fundamentals") || lower.contains("ai-900")) certs.add("Azure AI Fundamentals (AI-900)");
+        if (lower.contains("aws certified cloud") || lower.contains("cloud practitioner")) certs.add("AWS Certified Cloud Practitioner");
+        else if (lower.contains("aws certified")) certs.add("AWS Certified Developer");
+        if (lower.contains("nptel")) certs.add("NPTEL Getting Started with Competitive Programming");
+        if (lower.contains("mta") && lower.contains("python")) certs.add("MTA: Introduction to Programming Using Python");
         if (lower.contains("oracle certified") || lower.contains("ocp")) certs.add("Oracle Certified Java SE Developer");
         if (lower.contains("kubernetes") || lower.contains("cka")) certs.add("Certified Kubernetes Administrator (CKA)");
         String certsStr = String.join(", ", certs);
 
-        // 6. Build Headline & Summary
-        String headline = String.format("%s | %s", role, matchedSkills.stream().limit(4).collect(Collectors.joining(", ")));
-        String summary = String.format(
-                "Software engineering professional with %.1f+ years of experience in building scalable backend systems, microservices, and high-performance APIs with %s.",
-                yoe, matchedSkills.stream().limit(3).collect(Collectors.joining(", "))
-        );
+        // 7. Extract Headline
+        String headline = "";
+        for (int i = 0; i < Math.min(lines.length, 6); i++) {
+            String l = lines[i].trim();
+            if ((l.toLowerCase().contains("developer") || l.toLowerCase().contains("engineer"))
+                    && l.length() > 15 && l.length() < 90 && !l.toLowerCase().startsWith("experience")) {
+                headline = l;
+                break;
+            }
+        }
+        if (headline.isEmpty()) {
+            headline = String.format("%s | %s", role, matchedSkills.stream().limit(4).collect(Collectors.joining(", ")));
+        }
+
+        // 8. Extract or Synthesize Summary
+        String summary = "";
+        Matcher mSumm = Pattern.compile("(?i)(?:Professional\\s+Summary|Executive\\s+Summary|Summary)[\\s\\n\\r:]+([\\s\\S]{30,450}?)(?=(?:Technical\\s+Skills|Experience|Work\\s+Experience|Skills|Education|Projects|Certifications|$))").matcher(text);
+        if (mSumm.find()) {
+            summary = mSumm.group(1).replaceAll("\\s+", " ").trim();
+        }
+        if (summary.isEmpty() || summary.length() < 20) {
+            summary = String.format(
+                    "Software engineering professional with %.1f+ years of experience building enterprise web applications, high-performance microservices, and Generative AI features using %s.",
+                    yoe, matchedSkills.stream().limit(4).collect(Collectors.joining(", "))
+            );
+        }
 
         return new ExtractedProfileDto(
+                candidateName,
+                email,
+                phone,
+                linkedIn,
+                gitHub,
+                portfolioUrl,
                 headline,
                 yoe,
                 company,
@@ -305,7 +496,8 @@ public class HireService {
                 skillsStr,
                 certsStr,
                 education,
-                summary
+                summary,
+                text
         );
     }
 

@@ -95,6 +95,12 @@ public final class HireDtos {
     public record ExtractResumeRequest(String resumeText) {}
 
     public record ExtractedProfileDto(
+            String candidateName,
+            String email,
+            String phone,
+            String linkedIn,
+            String gitHub,
+            String portfolioUrl,
             String headline,
             double yearsOfExperience,
             String currentCompany,
@@ -106,7 +112,44 @@ public final class HireDtos {
             String skills,
             String certifications,
             String education,
-            String resumeSummary) {}
+            String resumeSummary,
+            String rawExtractedText) {
+
+        public ExtractedProfileDto(
+                String headline,
+                double yearsOfExperience,
+                String currentCompany,
+                String currentRole,
+                String currentCtc,
+                String expectedCtc,
+                int noticePeriodDays,
+                String preferredLocations,
+                String skills,
+                String certifications,
+                String education,
+                String resumeSummary) {
+            this(
+                    "",
+                    "",
+                    "",
+                    "",
+                    "",
+                    "",
+                    headline,
+                    yearsOfExperience,
+                    currentCompany,
+                    currentRole,
+                    currentCtc,
+                    expectedCtc,
+                    noticePeriodDays,
+                    preferredLocations,
+                    skills,
+                    certifications,
+                    education,
+                    resumeSummary,
+                    "");
+        }
+    }
 
     private HireDtos() {}
 }

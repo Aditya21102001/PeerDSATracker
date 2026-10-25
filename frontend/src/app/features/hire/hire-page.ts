@@ -120,6 +120,7 @@ export class HirePage implements OnInit {
   protected readonly resumeInputMode = signal<'file' | 'paste'>('file');
   protected readonly resumeRawText = signal<string>('');
   protected readonly uploadedFileName = signal<string>('');
+  protected readonly selectedResumeFile = signal<File | null>(null);
   protected readonly extractingResume = signal<boolean>(false);
   protected readonly isDraggingResume = signal<boolean>(false);
   protected readonly extractedReviewPending = signal<boolean>(false);
@@ -459,45 +460,35 @@ export class HirePage implements OnInit {
 
   protected processResumeFile(file: File): void {
     this.uploadedFileName.set(file.name);
-    const reader = new FileReader();
+    this.selectedResumeFile.set(file);
+    this.extractingResume.set(true);
+    this.showToast(`Analyzing "${file.name}" with PDFBox parser...`, 'info');
 
-    if (file.name.endsWith('.txt') || file.name.endsWith('.md') || file.type.startsWith('text/')) {
-      reader.onload = () => {
-        const text = (reader.result as string) || '';
-        this.resumeRawText.set(text);
-        this.showToast(`Loaded "${file.name}" (${file.size} bytes). Ready to extract profile!`, 'info');
-      };
-      reader.readAsText(file);
-    } else {
-      // Binary (PDF / Word / Docx): Extract readable text strings
-      reader.onload = () => {
-        const buffer = reader.result as ArrayBuffer;
-        const bytes = new Uint8Array(buffer);
-        let extractedAscii = '';
-        let currentWord = '';
-        for (let i = 0; i < bytes.length; i++) {
-          const charCode = bytes[i];
-          if ((charCode >= 32 && charCode <= 126) || charCode === 10 || charCode === 13 || charCode === 9) {
-            currentWord += String.fromCharCode(charCode);
-          } else {
-            if (currentWord.length > 2) {
-              extractedAscii += currentWord + ' ';
-            }
-            currentWord = '';
+    this.hire.extractProfileFromFile(file).subscribe({
+      next: (extracted: ExtractedProfile) => {
+        this.extractingResume.set(false);
+        this.extractedReviewPending.set(true);
+        this.extractionSuccess.set(true);
+
+        if (extracted.rawExtractedText) {
+          this.resumeRawText.set(extracted.rawExtractedText);
+        }
+
+        this.applyExtractedProfile(extracted);
+        this.showToast(`Successfully extracted profile from "${file.name}"! Review and edit below.`, 'success');
+
+        setTimeout(() => {
+          const formEl = document.getElementById('profile-edit-section');
+          if (formEl) {
+            formEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
           }
-        }
-        if (currentWord.length > 2) extractedAscii += currentWord;
-
-        const cleanText = extractedAscii.replace(/[^\x20-\x7E\n\r\t]/g, ' ').replace(/\s{3,}/g, ' \n');
-        if (cleanText.trim().length > 30) {
-          this.resumeRawText.set(cleanText);
-          this.showToast(`Extracted readable text from "${file.name}". Ready to analyze!`, 'info');
-        } else {
-          this.showToast(`Selected "${file.name}". For highest accuracy, you can also paste text directly.`, 'info');
-        }
-      };
-      reader.readAsArrayBuffer(file);
-    }
+        }, 150);
+      },
+      error: () => {
+        this.extractingResume.set(false);
+        this.showToast(`Could not extract resume from "${file.name}". You can paste raw text to analyze.`, 'error');
+      },
+    });
   }
 
   protected loadSampleResume(type: 'java' | 'dsa' | 'angular'): void {
@@ -518,38 +509,32 @@ export class HirePage implements OnInit {
   // AI Profile Extraction from Resume
   protected extractProfileFromResume(): void {
     const text = this.resumeRawText().trim();
-    if (!text && !this.uploadedFileName()) {
+    const file = this.selectedResumeFile();
+
+    if (!text && !file) {
       this.showToast('Please upload a resume file or paste your resume text first.', 'error');
       return;
     }
 
     this.extractingResume.set(true);
-    this.hire.extractResume(text).subscribe({
+
+    const extraction$ = text
+      ? this.hire.extractResume(text)
+      : this.hire.extractProfileFromFile(file!);
+
+    extraction$.subscribe({
       next: (extracted: ExtractedProfile) => {
         this.extractingResume.set(false);
         this.extractedReviewPending.set(true);
         this.extractionSuccess.set(true);
 
-        // Populate the profile form with extracted data for user review and editing
-        this.profileForm = {
-          headline: extracted.headline || this.profileForm.headline || '',
-          yearsOfExperience: Math.max(0, Math.min(50, extracted.yearsOfExperience ?? this.profileForm.yearsOfExperience ?? 0)),
-          currentCompany: extracted.currentCompany || this.profileForm.currentCompany || '',
-          currentRole: extracted.currentRole || this.profileForm.currentRole || '',
-          currentCtc: extracted.currentCtc || this.profileForm.currentCtc || '',
-          expectedCtc: extracted.expectedCtc || this.profileForm.expectedCtc || '',
-          noticePeriodDays: Math.max(0, Math.min(180, extracted.noticePeriodDays ?? this.profileForm.noticePeriodDays ?? 30)),
-          preferredLocations: extracted.preferredLocations || this.profileForm.preferredLocations || '',
-          resumeUrl: this.profileForm.resumeUrl || '',
-          resumeSummary: extracted.resumeSummary || this.profileForm.resumeSummary || '',
-          skills: extracted.skills || this.profileForm.skills || '',
-          certifications: extracted.certifications || this.profileForm.certifications || '',
-          education: extracted.education || this.profileForm.education || '',
-        };
+        if (extracted.rawExtractedText && !text) {
+          this.resumeRawText.set(extracted.rawExtractedText);
+        }
 
+        this.applyExtractedProfile(extracted);
         this.showToast('Profile extracted! Please review and edit the fields below, then click Save.', 'success');
 
-        // Smooth scroll to the form for review and editing
         setTimeout(() => {
           const formEl = document.getElementById('profile-edit-section');
           if (formEl) {
@@ -562,6 +547,24 @@ export class HirePage implements OnInit {
         this.showToast('Could not extract resume. Check format or try pasting text.', 'error');
       },
     });
+  }
+
+  private applyExtractedProfile(extracted: ExtractedProfile): void {
+    this.profileForm = {
+      headline: extracted.headline || this.profileForm.headline || '',
+      yearsOfExperience: Math.max(0, Math.min(50, extracted.yearsOfExperience ?? this.profileForm.yearsOfExperience ?? 0)),
+      currentCompany: extracted.currentCompany || this.profileForm.currentCompany || '',
+      currentRole: extracted.currentRole || this.profileForm.currentRole || '',
+      currentCtc: extracted.currentCtc || this.profileForm.currentCtc || '',
+      expectedCtc: extracted.expectedCtc || this.profileForm.expectedCtc || '',
+      noticePeriodDays: Math.max(0, Math.min(180, extracted.noticePeriodDays ?? this.profileForm.noticePeriodDays ?? 30)),
+      preferredLocations: extracted.preferredLocations || this.profileForm.preferredLocations || '',
+      resumeUrl: extracted.portfolioUrl || this.profileForm.resumeUrl || '',
+      resumeSummary: extracted.resumeSummary || this.profileForm.resumeSummary || '',
+      skills: extracted.skills || this.profileForm.skills || '',
+      certifications: extracted.certifications || this.profileForm.certifications || '',
+      education: extracted.education || this.profileForm.education || '',
+    };
   }
 
   protected dismissReviewBanner(): void {

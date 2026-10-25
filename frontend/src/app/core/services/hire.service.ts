@@ -19,6 +19,12 @@ export class HireService {
     return this.http.post<ExtractedProfile>('/api/hire/extract-resume', { resumeText });
   }
 
+  extractProfileFromFile(file: File): Observable<ExtractedProfile> {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.http.post<ExtractedProfile>('/api/hire/extract-resume-file', formData);
+  }
+
   getProfile(): Observable<CandidateProfile> {
     return this.http.get<CandidateProfile>('/api/hire/profile');
   }

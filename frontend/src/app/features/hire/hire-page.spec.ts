@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { of } from 'rxjs';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, beforeEach } from 'vitest';
 import {
   ApplyAllResult,
   CandidateProfile,
@@ -153,6 +153,31 @@ describe('HirePage — Naukri-style Career Portal & 1-Click Auto Apply', () => {
       });
     },
     listApplications: () => of(mockApplications),
+    syncRealJobs: () =>
+      of({
+        totalActiveJobs: 5,
+        newJobsFetched: 2,
+        directEmailJobsCount: 1,
+        atsJobsCount: 4,
+        sourceSummary: 'Remotive (2), Arbeitnow (3)',
+        message: 'Synced 2 new live openings',
+      }),
+    extractProfileFromFile: (file: File) =>
+      of({
+        headline: 'Lead Java Cloud Architect | 6 YOE',
+        yearsOfExperience: 6.0,
+        currentCompany: 'Infosys',
+        currentRole: 'Technical Lead',
+        currentCtc: '₹22 LPA',
+        expectedCtc: '₹36 LPA',
+        noticePeriodDays: 30,
+        preferredLocations: 'Bengaluru, Remote',
+        skills: 'Java, Spring Boot, Microservices, AWS, Docker, Kubernetes',
+        certifications: 'AWS Certified Solutions Architect',
+        education: 'B.Tech in Computer Science',
+        resumeSummary: 'Experienced technical lead specializing in cloud systems.',
+        rawExtractedText: 'Sample extracted text from resume',
+      }),
     extractResume: (text: string) =>
       of({
         headline: 'Lead Java Cloud Architect | 6 YOE',

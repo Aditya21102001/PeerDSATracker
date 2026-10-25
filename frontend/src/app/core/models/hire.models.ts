@@ -33,6 +33,12 @@ export interface SaveCandidateProfileRequest {
 }
 
 export interface ExtractedProfile {
+  candidateName?: string;
+  email?: string;
+  phone?: string;
+  linkedIn?: string;
+  gitHub?: string;
+  portfolioUrl?: string;
   headline: string;
   yearsOfExperience: number;
   currentCompany: string;
@@ -45,6 +51,7 @@ export interface ExtractedProfile {
   certifications: string;
   education: string;
   resumeSummary: string;
+  rawExtractedText?: string;
 }
 
 
