@@ -254,13 +254,32 @@
 
         <div class="certs-list">
           @for (cert of certifications; track cert.name) {
-            <div class="cert-card">
-              <div class="cert-icon">📜</div>
-              <div class="cert-info">
-                <h4>{{ cert.name }}</h4>
-                <span class="cert-issuer">{{ cert.issuer }}</span>
+            <div class="cert-card" [style.--cert-accent]="cert.badgeColor">
+              <div class="cert-icon-box">
+                <span class="cert-emoji">{{ cert.icon || '📜' }}</span>
               </div>
-              <span class="cert-badge">✓ Verified</span>
+              <div class="cert-info">
+                <div class="cert-title-row">
+                  <h4>{{ cert.name }}</h4>
+                </div>
+                <div class="cert-meta">
+                  <span class="cert-issuer">{{ cert.issuer }}</span>
+                  @if (cert.issued) {
+                    <span class="cert-bullet">•</span>
+                    <span class="cert-issued-tag">{{ cert.issued }}</span>
+                  }
+                </div>
+                @if (cert.skills && cert.skills.length > 0) {
+                  <div class="cert-pills">
+                    @for (skill of cert.skills; track skill) {
+                      <span class="cert-pill">{{ skill }}</span>
+                    }
+                  </div>
+                }
+              </div>
+              <div class="cert-status">
+                <span class="cert-badge">✓ Verified</span>
+              </div>
             </div>
           }
         </div>

@@ -30,6 +30,9 @@ interface Certification {
   issuer: string;
   badgeColor: string;
   verified: boolean;
+  issued?: string;
+  icon?: string;
+  skills?: string[];
 }
 
 @Component({
@@ -47,16 +50,16 @@ export class PortfolioPage {
 
   protected readonly developerInfo = {
     name: 'Aditya Yadav',
-    headline: 'Software Developer | Full-Stack (Angular, Spring Boot) & Generative AI',
+    headline: 'Software Developer at TCS | Full-Stack | Java | Spring Boot | Angular | Generative AI',
     subHeadline: 'Lead Architect & Owner of PeerDSATracker',
-    location: 'Gorakhpur, Uttar Pradesh, India',
+    location: 'Noida, Uttar Pradesh, India',
     email: 'adityakumaryadav21102001@gmail.com',
-    phone: '+91 9217665318',
+    phone: '+91 6394111914',
     linkedIn: 'https://linkedin.com/in/aditya-yadav-9b4a48192',
     github: 'https://github.com/Aditya21102001',
     summary:
-      'Full-Stack Software Developer with 3 years of experience building enterprise web applications on modern Angular (v22, zoneless and signals-based), TypeScript, Java, and Spring Boot. Delivered Generative AI features on Azure OpenAI serving 10,000+ concurrent users, and adaptive HLS video streaming that runs inside a 512 MB container.',
-    degree: 'B.Tech in Information Technology (CGPA: 8.32 / 10)',
+      'Full-Stack Software Developer with 3+ years of experience building enterprise web applications on modern Angular (v22, zoneless and signals-based), TypeScript, Java, and Spring Boot. Delivered Generative AI features on Azure OpenAI serving 10,000+ concurrent users, and adaptive HLS video streaming that runs inside a 512 MB container.',
+    degree: 'B.Tech in Information Technology',
     college: 'Madan Mohan Malaviya University of Technology (MMMUT), Gorakhpur',
     graduationYear: '2019 – 2023',
   };
@@ -150,17 +153,29 @@ export class PortfolioPage {
       ],
     },
     {
-      role: 'Software Development Intern',
+      role: 'Software Developer',
       company: 'Sunrise Mentors Pvt. Ltd. (Coding Ninjas)',
-      period: 'Mar 2023 – Jun 2023',
-      location: 'India',
+      period: 'Feb 2023 – Jul 2023',
+      location: 'Gurugram, Haryana, India',
       badge: 'Internship',
       points: [
-        'Developed high-traffic Help & Support and Referral modules in Django and Angular, serving 100,000+ active users.',
+        'Worked on fixing critical issues and developing user-facing features across Frontend and Backend affecting 100,000+ users.',
+        'Engineered full-stack features using Ruby on Rails, Angular, and PostgreSQL with optimized query execution.',
         'Drove a 25% increase in user engagement through faster issue resolution and automated referral workflows.',
-        'Implemented optimized database queries and modular clientside state management.',
       ],
-      techStack: ['Django', 'Python', 'Angular', 'REST APIs', 'MySQL'],
+      techStack: ['Ruby on Rails', 'Angular', 'PostgreSQL', 'REST APIs', 'MySQL'],
+    },
+    {
+      role: 'Coding Problem Setter',
+      company: 'iMocha',
+      period: 'Sep 2022 – Nov 2022',
+      location: 'Pune, Maharashtra, India',
+      badge: 'Problem Setter',
+      points: [
+        'Created and reviewed coding problems on Data Structures and Algorithms across varying difficulty levels.',
+        'Constructed comprehensive test cases, boundary tests, and optimal runtime benchmarks to assess DSA competencies for technical evaluations.',
+      ],
+      techStack: ['Data Structures', 'Algorithms', 'C++', 'Java', 'Problem Setting', 'Benchmarking'],
     },
   ];
 
@@ -219,6 +234,14 @@ export class PortfolioPage {
       color: '#06b6d4',
     },
     {
+      title: 'CodeChef 4★',
+      rating: 'Max Rating 1820',
+      solved: 'Div 1 / Div 2 Contests',
+      platform: 'CodeChef',
+      icon: '⭐',
+      color: '#a855f7',
+    },
+    {
       title: 'TCS CodeVita Season 10',
       rating: 'Global Rank 229',
       solved: 'Top 0.3% out of 100,000+ Participants Worldwide',
@@ -238,34 +261,94 @@ export class PortfolioPage {
 
   protected readonly certifications: Certification[] = [
     {
-      name: 'Microsoft Certified: Azure AI Engineer Associate',
-      issuer: 'Microsoft',
-      badgeColor: '#0078d4',
-      verified: true,
-    },
-    {
-      name: 'Microsoft Certified: Azure AI Fundamentals (AI-900)',
-      issuer: 'Microsoft',
-      badgeColor: '#0078d4',
-      verified: true,
-    },
-    {
-      name: 'AWS Certified Cloud Practitioner',
-      issuer: 'Amazon Web Services',
+      name: 'Amazon Web Services Cloud Practitioner',
+      issuer: 'Amazon Web Services (AWS)',
       badgeColor: '#ff9900',
+      icon: '☁️',
       verified: true,
+      issued: 'AWS Certified',
+      skills: ['Cloud Architecture', 'Security & Compliance', 'VPC & Networking', 'IAM'],
     },
     {
-      name: 'Getting Started with Competitive Programming',
-      issuer: 'NPTEL (National Programme on Technology Enhanced Learning)',
-      badgeColor: '#10b981',
+      name: 'Generative AI for Beginners',
+      issuer: 'Microsoft / Cloud & AI',
+      badgeColor: '#8b5cf6',
+      icon: '🤖',
       verified: true,
+      issued: 'Microsoft AI',
+      skills: ['Generative AI', 'Large Language Models (LLMs)', 'Prompt Engineering', 'Azure OpenAI'],
+    },
+    {
+      name: 'Angular - The Complete Guide',
+      issuer: 'Udemy / Maximilian Schwarzmüller',
+      badgeColor: '#dd0031',
+      icon: '🅰️',
+      verified: true,
+      issued: 'Comprehensive Guide',
+      skills: ['Angular 22', 'Signals & Zoneless', 'RxJS', 'Components & Routing', 'Enterprise Architecture'],
     },
     {
       name: 'MTA: Introduction to Programming Using Python',
       issuer: 'Microsoft Technology Associate',
-      badgeColor: '#6366f1',
+      badgeColor: '#38bdf8',
+      icon: '🐍',
       verified: true,
+      issued: 'Microsoft Certified',
+      skills: ['Python Core', 'Data Structures', 'Algorithmic Logic', 'I/O Operations'],
+    },
+    {
+      name: 'Software development Trainee',
+      issuer: 'Professional Development Credential',
+      badgeColor: '#0284c7',
+      icon: '💻',
+      verified: true,
+      issued: 'Industry Certified',
+      skills: ['Full-Stack SDLC', 'REST APIs', 'Microservices', 'Clean Architecture'],
+    },
+    {
+      name: 'Microsoft Certified: Azure AI Engineer Associate (AI-102)',
+      issuer: 'Microsoft',
+      badgeColor: '#0078d4',
+      icon: '🤖',
+      verified: true,
+      issued: 'Issued 2024',
+      skills: ['Azure OpenAI', 'RAG Pipelines', 'Cognitive Services', 'Vector Search'],
+    },
+    {
+      name: 'AWS Certified Developer – Associate (DVA-C02)',
+      issuer: 'Amazon Web Services',
+      badgeColor: '#ff9900',
+      icon: '⚡',
+      verified: true,
+      issued: 'Issued 2024',
+      skills: ['Serverless', 'AWS Lambda', 'DynamoDB', 'API Gateway', 'S3 & IAM'],
+    },
+    {
+      name: 'GitHub Copilot Certified (GH-300 & GH-600)',
+      issuer: 'GitHub / Microsoft',
+      badgeColor: '#8b5cf6',
+      icon: '🐙',
+      verified: true,
+      issued: 'Issued 2024',
+      skills: ['AI-Assisted Engineering', 'Prompt Engineering', 'SDLC Acceleration'],
+    },
+    {
+      name: 'Oracle Certified Professional: Java SE Developer',
+      issuer: 'Oracle Corporation',
+      badgeColor: '#ea580c',
+      icon: '☕',
+      verified: true,
+      issued: 'Issued 2023',
+      skills: ['Java 17 / 21', 'Concurrency & Multi-Threading', 'JVM Internals', 'Streams API'],
+    },
+    {
+      name: 'Getting Started with Competitive Programming',
+      issuer: 'NPTEL (IIT Gandhinagar / MoE)',
+      badgeColor: '#10b981',
+      icon: '⚔️',
+      verified: true,
+      issued: 'Elite Certificate',
+      skills: ['Advanced DSA', 'Dynamic Programming', 'Graph Theory', 'Time Complexity'],
     },
   ];
 
