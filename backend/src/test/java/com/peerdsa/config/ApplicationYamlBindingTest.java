@@ -201,7 +201,7 @@ class ApplicationYamlBindingTest {
         assertThat(raw("spring.datasource.url")).isEqualTo("${NEON_POOLED_URL}");
         assertThat(raw("spring.flyway.url")).isEqualTo("${NEON_UNPOOLED_URL}");
         assertThat(environment.getProperty("spring.flyway.placeholder-replacement")).isEqualTo("false");
-        assertThat(environment.getProperty("spring.jpa.hibernate.ddl-auto")).isEqualTo("validate");
+        assertThat(environment.getProperty("spring.jpa.hibernate.ddl-auto")).isEqualTo("update");
     }
 
     /**
@@ -233,7 +233,7 @@ class ApplicationYamlBindingTest {
         OpenRouterProperties openRouter = bind("app.openrouter", OpenRouterProperties.class);
         assertThat(openRouter.model()).contains("qwen/qwen3.8-27b:free");
         assertThat(openRouter.model()).contains("google/gemma-4-31b-it:free");
-        assertThat(openRouter.model()).contains("cohere/north-mini-code:free");
+        assertThat(openRouter.model()).contains("google/gemma-4-26b-a4b-it:free");
         assertThat(openRouter.model()).contains("openrouter/free");
     }
 

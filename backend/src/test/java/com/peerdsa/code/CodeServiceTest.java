@@ -152,11 +152,28 @@ class CodeServiceTest {
         org.mockito.Mockito.doThrow(new org.springframework.web.client.RestClientException("Connection refused"))
                 .when(analytics).execute(any());
 
+        codeService.setWandboxClient(org.springframework.web.client.RestClient.builder()
+                .requestFactory(new org.springframework.http.client.ClientHttpRequestFactory() {
+                    @Override
+                    public org.springframework.http.client.ClientHttpRequest createRequest(java.net.URI uri, org.springframework.http.HttpMethod httpMethod) {
+                        return new org.springframework.mock.http.client.MockClientHttpRequest(httpMethod, uri) {
+                            @Override
+                            protected org.springframework.http.client.ClientHttpResponse executeInternal() {
+                                return new org.springframework.mock.http.client.MockClientHttpResponse(
+                                        "{\"status\":\"0\",\"program_output\":\"hello fallback\\n\"}".getBytes(java.nio.charset.StandardCharsets.UTF_8),
+                                        org.springframework.http.HttpStatus.OK);
+                            }
+                        };
+                    }
+                })
+                .baseUrl("https://wandbox.org")
+                .build());
+
         ExecuteResult result = codeService.run("python", "print('hello fallback')", "");
-        if (result != null && result.ran()) {
-            assertThat(result.stdout()).contains("hello fallback");
-            assertThat(result.version()).isEqualTo("wandbox");
-        }
+        assertThat(result).isNotNull();
+        assertThat(result.ran()).isTrue();
+        assertThat(result.stdout()).contains("hello fallback");
+        assertThat(result.version()).isEqualTo("wandbox");
     }
 
     private static void setField(Object target, String fieldName, Object value) throws Exception {

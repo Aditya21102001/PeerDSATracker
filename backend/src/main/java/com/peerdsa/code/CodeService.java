@@ -104,6 +104,7 @@ public class CodeService {
     private final UserRepository users;
     private final OpenRouterClient openRouter;
     private final ObjectMapper mapper;
+    private RestClient wandboxClient;
 
     public CodeService(
             CodeSubmissionRepository submissions,
@@ -136,6 +137,10 @@ public class CodeService {
         this.users = users;
         this.openRouter = openRouterProvider != null ? openRouterProvider.getIfAvailable() : null;
         this.mapper = mapper != null ? mapper : new ObjectMapper();
+    }
+
+    void setWandboxClient(RestClient wandboxClient) {
+        this.wandboxClient = wandboxClient;
     }
 
     @Transactional(readOnly = true)
@@ -422,16 +427,19 @@ public class CodeService {
         );
 
         try {
-            var httpClient = java.net.http.HttpClient.newBuilder()
-                    .connectTimeout(Duration.ofSeconds(10))
-                    .build();
-            var requestFactory = new JdkClientHttpRequestFactory(httpClient);
-            requestFactory.setReadTimeout(Duration.ofSeconds(25));
+            RestClient wandbox = this.wandboxClient;
+            if (wandbox == null) {
+                var httpClient = java.net.http.HttpClient.newBuilder()
+                        .connectTimeout(Duration.ofSeconds(10))
+                        .build();
+                var requestFactory = new JdkClientHttpRequestFactory(httpClient);
+                requestFactory.setReadTimeout(Duration.ofSeconds(25));
 
-            RestClient wandbox = RestClient.builder()
-                    .baseUrl("https://wandbox.org")
-                    .requestFactory(requestFactory)
-                    .build();
+                wandbox = RestClient.builder()
+                        .baseUrl("https://wandbox.org")
+                        .requestFactory(requestFactory)
+                        .build();
+            }
 
             String raw = wandbox.post()
                     .uri("/api/compile.json")
@@ -459,9 +467,10 @@ public class CodeService {
                     : null;
 
             String compileOutput = (compilerError != null && !compilerError.isBlank()) ? compilerError : null;
+            boolean ran = exitCode == 0 && (compilerError == null || compilerError.isBlank());
 
             return new ExecuteResult(
-                    true,
+                    ran,
                     language,
                     "wandbox",
                     programOutput,
