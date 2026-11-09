@@ -826,3 +826,57 @@
   from { opacity: 0.85; transform: scale(0.98); }
   to { opacity: 1; transform: scale(1); }
 }
+
+/* =========================================================
+   RESPONSIVE OVERRIDES — video-tour-modal
+   ========================================================= */
+
+@media (pointer: coarse) {
+  .btn-close,
+  .action-btn,
+  .chapter-item,
+  .player-btn {
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 48rem) {
+  .video-tour-overlay {
+    padding: 0.5rem;
+    align-items: flex-end;
+  }
+
+  .modal-dialog {
+    max-height: 95dvh;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  }
+
+  .tour-header {
+    padding: var(--sp-2) var(--sp-3);
+  }
+
+  .tour-title {
+    font-size: clamp(0.95rem, 3.5vw, var(--fs-md));
+    word-break: break-word;
+    overflow-wrap: break-word;
+  }
+
+  .chapters-sidebar,
+  .tour-sidebar {
+    max-height: 35dvh;
+    overflow-y: auto;
+  }
+}
+
+@media (max-width: 30rem) {
+  .video-tour-overlay {
+    padding: 0;
+  }
+
+  .modal-dialog {
+    max-height: 100dvh;
+    border-radius: 0;
+    height: 100dvh;
+  }
+}
+

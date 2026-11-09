@@ -960,7 +960,7 @@
 
 .history-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr));
   gap: var(--sp-4);
 }
 
@@ -1098,3 +1098,68 @@
     border-color: rgba(255, 255, 255, 0.2);
   }
 }
+
+/* =========================================================
+   RESPONSIVE OVERRIDES — proctored-test-page
+   ========================================================= */
+
+@media (pointer: coarse) {
+  .btn-primary,
+  .btn-secondary,
+  .btn-ghost,
+  .option-btn,
+  .q-nav-btn {
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 48rem) {
+  .proctored-test-page,
+  .test-shell {
+    overflow-x: clip;
+  }
+
+  .test-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--sp-3);
+  }
+
+  .test-layout {
+    grid-template-columns: 1fr !important;
+  }
+
+  .question-nav-grid {
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 2.5rem), 1fr));
+  }
+
+  .test-sidebar {
+    order: 2;
+  }
+
+  .question-text,
+  .option-label,
+  .test-title {
+    word-break: break-word;
+    overflow-wrap: break-word;
+    min-width: 0;
+  }
+
+  .test-footer {
+    flex-wrap: wrap;
+    gap: var(--sp-2);
+
+    .btn {
+      flex: 1 1 auto;
+    }
+  }
+
+  .timer-display {
+    font-size: clamp(1rem, 4vw, 1.5rem);
+  }
+
+  .history-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+

@@ -255,7 +255,7 @@ header {
 
 .tiles {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(10.5rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 10.5rem), 1fr));
   gap: var(--sp-3);
 }
 
@@ -436,7 +436,7 @@ h3 {
 
 .topics {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
   gap: var(--sp-5);
 
   ul {

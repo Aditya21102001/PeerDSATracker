@@ -219,7 +219,7 @@ header {
 /* Article Cards Grid */
 .article-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr));
   gap: var(--sp-4);
 }
 
@@ -595,7 +595,7 @@ textarea {
 
   .more-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 14rem), 1fr));
     gap: var(--sp-2);
   }
 
@@ -1087,7 +1087,7 @@ textarea {
 
 .coach-metrics-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
   gap: var(--sp-3);
 }
 
@@ -1191,7 +1191,7 @@ textarea {
 
 .recs-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
   gap: var(--sp-3);
 }
 
@@ -1435,3 +1435,108 @@ textarea {
   from { opacity: 0; }
   to { opacity: 1; }
 }
+
+/* =========================================================
+   RESPONSIVE OVERRIDES — blog-page
+   ========================================================= */
+
+/* Coarse pointer (touch devices) */
+@media (pointer: coarse) {
+  .article-card,
+  .btn-primary,
+  .btn-secondary,
+  .tab-btn,
+  .filter-chip,
+  .subject-nav-card {
+    min-height: 44px;
+  }
+}
+
+/* Mobile — ≤ 48rem (768px) */
+@media (max-width: 48rem) {
+  .blog-page {
+    overflow-x: clip;
+  }
+
+  .blog-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--sp-3);
+  }
+
+  .blog-nav,
+  .article-filter-bar {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    flex-wrap: nowrap;
+  }
+
+  .blog-nav::-webkit-scrollbar,
+  .article-filter-bar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .article-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .reader {
+    padding: var(--sp-4) var(--sp-3);
+    max-width: 100%;
+  }
+
+  .editor {
+    padding: var(--sp-4) var(--sp-3);
+  }
+
+  .reading-hud-bar {
+    flex-wrap: wrap;
+    gap: var(--sp-2);
+    padding: var(--sp-2) var(--sp-3);
+  }
+
+  .hud-status-desc {
+    white-space: normal;
+    max-width: 12rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .coach-toast {
+    bottom: 1rem;
+    right: 1rem;
+    left: 1rem;
+    width: auto;
+    max-width: none;
+  }
+
+  .article-card-title,
+  .article-title {
+    word-break: break-word;
+    overflow-wrap: break-word;
+    min-width: 0;
+  }
+
+  .coach-drawer,
+  .article-coach-panel {
+    width: 100%;
+    max-width: 100%;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  }
+
+  .section-title,
+  .section-heading {
+    font-size: clamp(1.1rem, 4vw, 1.4rem);
+  }
+}
+
+/* Small mobile — ≤ 30rem (480px) */
+@media (max-width: 30rem) {
+  .coach-toast {
+    font-size: 0.85rem;
+    padding: var(--sp-2);
+  }
+}
+

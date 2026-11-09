@@ -603,3 +603,70 @@ header {
     .sub-time { color: var(--text-faint); }
   }
 }
+
+/* =========================================================
+   RESPONSIVE OVERRIDES — code-editor
+   ========================================================= */
+
+@media (pointer: coarse) {
+  .btn-run,
+  .btn-submit,
+  .btn-code-back,
+  .tab-btn,
+  .lang-btn {
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 48rem) {
+  .code {
+    overflow-x: clip;
+    padding: var(--sp-3) var(--sp-2) var(--sp-5);
+  }
+
+  header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--sp-2);
+
+    nav {
+      width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      flex-wrap: nowrap;
+      scrollbar-width: none;
+      &::-webkit-scrollbar { display: none; }
+    }
+  }
+
+  .problem-pane {
+    padding: var(--sp-4) var(--sp-3);
+    max-height: 50dvh;
+  }
+
+  .editor-host {
+    min-height: 18rem;
+  }
+
+  .console {
+    min-height: 12rem;
+  }
+
+  .console-tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    &::-webkit-scrollbar { display: none; }
+  }
+
+  .problem-pane .problem-header h1 {
+    font-size: clamp(1.15rem, 4.5vw, var(--fs-xl));
+    word-break: break-word;
+    overflow-wrap: break-word;
+  }
+
+  .submission-row {
+    flex-wrap: wrap;
+  }
+}
+

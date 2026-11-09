@@ -487,7 +487,7 @@
 // ------------------------------------------------------------- Jobs Grid & Cards
 .jobs-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(21rem, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 21rem), 1fr));
   gap: var(--sp-4);
 }
 
@@ -1253,7 +1253,7 @@
 }
 
 .meter-bar-container {
-  width: 180px;
+  width: min(180px, 100%);
   height: 8px;
   background: var(--surface-raised);
   border-radius: 999px;
@@ -1317,13 +1317,13 @@
 
 .form-grid-3 {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
   gap: var(--sp-4);
 }
 
 .form-grid-2 {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
   gap: var(--sp-4);
 }
 
@@ -1447,7 +1447,7 @@
 
 .pipeline-stats-row {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr));
   gap: var(--sp-3);
 }
 
@@ -2141,7 +2141,7 @@
 
   .copilot-fields-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
     gap: var(--sp-3, 0.75rem);
     margin-bottom: var(--sp-4, 1rem);
   }
@@ -2308,3 +2308,170 @@
   }
 }
 
+
+/* =========================================================
+   RESPONSIVE OVERRIDES — hire-page
+   ========================================================= */
+
+/* Coarse pointer (touch devices) — improve tap targets */
+@media (pointer: coarse) {
+  .tab-btn {
+    min-height: 44px;
+  }
+  .btn-apply-one,
+  .btn-extract,
+  .btn-banner-save,
+  .btn-primary,
+  .btn-secondary,
+  .btn-outline {
+    min-height: 44px;
+  }
+}
+
+/* Mobile — ≤ 48rem (768px) */
+@media (max-width: 48rem) {
+  .hire-page {
+    padding: var(--sp-4) var(--sp-3) var(--sp-6);
+    overflow-x: clip;
+  }
+
+  .hire-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--sp-3);
+  }
+
+  .hire-nav,
+  .tab-bar {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    flex-wrap: nowrap;
+    padding-bottom: var(--sp-1);
+  }
+
+  .hire-nav::-webkit-scrollbar,
+  .tab-bar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .jobs-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-strength-card {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--sp-3);
+  }
+
+  .meter-bar-container {
+    width: 100%;
+    max-width: 180px;
+  }
+
+  .app-card-main {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--sp-2);
+  }
+
+  .app-right-meta {
+    flex-wrap: wrap;
+    gap: var(--sp-2);
+  }
+
+  .modal-backdrop {
+    padding: 0.75rem;
+    align-items: flex-end;
+  }
+
+  .modal-card {
+    max-height: 95dvh;
+    overflow-y: auto;
+    width: 100%;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  }
+
+  .ats-copilot-modal .modal-body,
+  .modal-body {
+    padding: 1rem;
+  }
+
+  .footer-actions {
+    flex-wrap: wrap;
+    gap: var(--sp-2);
+  }
+
+  .banner-cta-row {
+    flex-direction: column;
+    gap: var(--sp-3);
+  }
+
+  .banner-cta-row .btn,
+  .banner-cta-row button {
+    width: 100%;
+  }
+
+  .form-submit-row {
+    justify-content: stretch;
+  }
+
+  .form-submit-row .btn,
+  .form-submit-row button {
+    width: 100%;
+  }
+
+  .pipeline-stats-row {
+    flex-wrap: wrap;
+    gap: var(--sp-3);
+  }
+
+  .pipeline-stats-row > * {
+    flex: 1 1 calc(50% - var(--sp-2));
+    min-width: 0;
+  }
+
+  .job-card {
+    word-break: break-word;
+    overflow-wrap: break-word;
+  }
+
+  .job-card-title,
+  .job-card-company,
+  .app-card-title {
+    word-break: break-word;
+    overflow-wrap: break-word;
+    min-width: 0;
+  }
+
+  /* Skill tags / badge strips */
+  .skill-tags,
+  .badge-strip {
+    flex-wrap: wrap;
+    gap: var(--sp-1);
+  }
+
+  /* Section headings */
+  .section-title,
+  .section-heading {
+    font-size: clamp(1.1rem, 4vw, 1.5rem);
+  }
+}
+
+/* Small mobile — ≤ 30rem (480px) */
+@media (max-width: 30rem) {
+  .modal-backdrop {
+    padding: 0;
+  }
+
+  .modal-card {
+    border-radius: 0;
+    max-height: 100dvh;
+  }
+
+  .pipeline-stats-row > * {
+    flex: 1 1 100%;
+  }
+}

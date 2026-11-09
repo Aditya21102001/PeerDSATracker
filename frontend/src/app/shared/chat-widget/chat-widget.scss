@@ -394,11 +394,25 @@ header {
     width: auto;
     max-width: none;
     height: min(32rem, 76vh);
+    height: min(32rem, 76dvh);
   }
 
   .fab {
     right: var(--sp-3);
     bottom: var(--sp-3);
+  }
+}
+
+@media (pointer: coarse) {
+  .fab {
+    min-width: 48px;
+    min-height: 48px;
+  }
+
+  .tools button,
+  .composer button {
+    min-height: 40px;
+    min-width: 40px;
   }
 }
 

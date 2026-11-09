@@ -6,6 +6,8 @@
 .welcome-shell {
   width: 100%;
   min-height: 100vh;
+  min-height: 100dvh;
+  overflow-x: clip;
   display: flex;
   flex-direction: column;
   animation: page-in var(--t-slow) var(--ease) both;
@@ -499,6 +501,8 @@
   display: flex;
   gap: var(--sp-2);
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x mandatory;
   padding-bottom: var(--sp-2);
   scrollbar-width: thin;
 
@@ -512,6 +516,8 @@
     border: 1px solid var(--border);
     cursor: pointer;
     white-space: nowrap;
+    flex-shrink: 0;
+    scroll-snap-align: start;
     transition: all var(--t-fast) var(--ease);
 
     &:hover {
@@ -892,8 +898,10 @@
   justify-content: center;
   align-items: center;
   gap: 4px;
-  height: 2.1rem;
-  width: 2.2rem;
+  height: 2.25rem;
+  width: 2.25rem;
+  min-height: 44px;
+  min-width: 44px;
   color: var(--text);
   transition: background var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease);
 
@@ -936,16 +944,23 @@
   top: 0;
   right: 0;
   bottom: 0;
-  width: min(84vw, 22rem);
+  width: min(88vw, 22rem);
+  height: 100vh;
+  height: 100dvh;
+  max-height: 100dvh;
   background: var(--surface);
   border-left: 1px solid var(--border);
   box-shadow: var(--shadow-lg);
   z-index: 56;
   display: flex;
   flex-direction: column;
-  padding: var(--sp-4);
+  padding: max(var(--sp-4), env(safe-area-inset-top, var(--sp-4)))
+           max(var(--sp-4), env(safe-area-inset-right, var(--sp-4)))
+           max(var(--sp-4), env(safe-area-inset-bottom, var(--sp-4)))
+           max(var(--sp-4), env(safe-area-inset-left, var(--sp-4)));
   gap: var(--sp-3);
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   animation: slide-in-right var(--t-base) var(--ease);
 }
 
@@ -1075,15 +1090,76 @@
 }
 
 /* --- Responsive Adjustments ---------------------------------------------- */
-@media (max-width: 48rem) {
+
+/* Coarse pointer (touch devices) — ensure comfortable tap targets */
+@media (pointer: coarse) {
+  .btn-hero-primary,
+  .btn-hero-secondary,
+  .btn-hero-tertiary,
+  .btn-cta,
+  .btn-signin,
+  .step-pill,
+  .table-link,
+  .mobile-menu-btn,
+  .drawer-close,
+  .drawer-link,
+  .guide-link,
+  .drawer-btn {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .mobile-menu-btn {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .drawer-close {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
+/* Tablet & Compact Desktop — ≤ 64rem (1024px) */
+@media (max-width: 64rem) {
+  .public-nav {
+    padding: 0.65rem calc(var(--sp-4) + 2.5rem) 0.65rem var(--sp-4);
+    gap: var(--sp-2);
+  }
+
   .nav-links {
-    display: none; /* Middle links collapse into mobile drawer navigation */
+    gap: var(--sp-2);
+
+    .nav-link {
+      font-size: 0.8125rem;
+      padding: 0.2rem 0.35rem;
+    }
+  }
+
+  .stats-strip {
+    grid-template-columns: repeat(3, 1fr);
+
+    .stat-item:nth-child(4),
+    .stat-item:nth-child(5) {
+      grid-column: span 1;
+    }
+  }
+}
+
+/* Medium Tablet / Small Laptop — ≤ 58rem (928px) — collapse header nav links into hamburger */
+@media (max-width: 58rem) {
+  .nav-links {
+    display: none; /* Collapse into drawer so top nav never overflows or wraps */
   }
 
   .mobile-menu-btn {
     display: flex;
   }
+}
 
+/* Mobile & Tablet Portrait — ≤ 48rem (768px) */
+@media (max-width: 48rem) {
   .public-nav {
     padding: 0.55rem calc(var(--sp-2) + 2.4rem) 0.55rem var(--sp-3);
     gap: var(--sp-2);
@@ -1131,6 +1207,11 @@
     .hero-sub {
       font-size: clamp(0.95rem, 2.5vw, 1.125rem);
     }
+
+    .hero-reassurance {
+      gap: var(--sp-2) var(--sp-3);
+      font-size: 0.75rem;
+    }
   }
 
   .stats-strip {
@@ -1154,6 +1235,16 @@
 
   .feature-box {
     padding: var(--sp-4);
+
+    h3 {
+      font-size: clamp(1.15rem, 4vw, 1.4rem);
+    }
+  }
+
+  .feature-action .btn {
+    width: 100%;
+    text-align: center;
+    justify-content: center;
   }
 
   .job-mini-card {
@@ -1162,6 +1253,28 @@
 
   .guide-card {
     padding: var(--sp-4);
+
+    h3 {
+      font-size: clamp(1.1rem, 3.5vw, 1.25rem);
+    }
+  }
+
+  .guides-footer .btn,
+  .career-footer .btn {
+    width: 100%;
+    max-width: 24rem;
+  }
+
+  .step-detail-card {
+    padding: var(--sp-4) var(--sp-3);
+  }
+
+  .step-card-header {
+    gap: var(--sp-2);
+
+    h3 {
+      font-size: clamp(1.05rem, 3.5vw, 1.25rem);
+    }
   }
 
   /* Problems table stays interactive on phones */
@@ -1209,9 +1322,93 @@
 
   .closer-card {
     padding: var(--sp-5) var(--sp-3);
+
+    h2 {
+      font-size: clamp(1.4rem, 4.5vw, 2rem);
+    }
   }
 }
 
+/* Narrow Tablets & Phablets — ≤ 36rem (576px) */
+@media (max-width: 36rem) {
+  /* Hide signin in top header (it's already in the mobile drawer and throughout page) */
+  .public-nav .btn-signin {
+    display: none;
+  }
+
+  .step-card-header {
+    flex-direction: column;
+    align-items: stretch;
+
+    .btn {
+      width: 100%;
+      text-align: center;
+      justify-content: center;
+    }
+  }
+}
+
+/* Card-based Problems View for Smaller Phones — ≤ 34rem (544px) */
+@media (max-width: 34rem) {
+  .problems-table {
+    border: none;
+    background: transparent;
+    gap: var(--sp-2);
+
+    .problem-row.header {
+      display: none;
+    }
+
+    .problem-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      grid-template-areas:
+        "title title"
+        "diff action";
+      align-items: center;
+      gap: var(--sp-2);
+      padding: var(--sp-3);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--surface);
+
+      .col-name {
+        grid-area: title;
+        font-size: var(--fs-sm);
+        font-weight: 600;
+        line-height: 1.35;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+        min-width: 0;
+      }
+
+      .col-diff {
+        grid-area: diff;
+        justify-self: start;
+      }
+
+      .col-xp {
+        display: none;
+      }
+
+      .col-action {
+        grid-area: action;
+        justify-self: end;
+
+        .table-link {
+          padding: 0.3rem 0.65rem;
+          background: var(--surface-2);
+          border: 1px solid var(--border);
+          border-radius: var(--radius-sm);
+          font-size: 0.75rem;
+          white-space: nowrap;
+        }
+      }
+    }
+  }
+}
+
+/* Small mobile — ≤ 32rem (512px) */
 @media (max-width: 32rem) {
   .nav-brand .brand-badge {
     display: none; /* Hide badge on narrow phones so brand & actions have room */
@@ -1259,6 +1456,56 @@
       flex: 1;
       text-align: center;
     }
+  }
+
+  .job-mini-card .job-top {
+    flex-wrap: wrap;
+    gap: var(--sp-2);
+
+    .match-badge {
+      margin-left: 0;
+    }
+  }
+}
+
+/* Extra small screens (≤ 24rem / 384px - iPhone SE, small Galaxy) */
+@media (max-width: 24rem) {
+  .public-nav {
+    padding-left: var(--sp-2);
+    padding-right: calc(var(--sp-2) + 2.2rem);
+  }
+
+  .nav-brand .brand-link {
+    font-size: 1rem;
+  }
+
+  .server-status {
+    padding: 0.2rem 0.35rem;
+  }
+
+  .btn-cta {
+    padding: 0.3rem 0.45rem;
+    font-size: 0.7rem;
+  }
+
+  .hero-section .hero-title {
+    font-size: 1.55rem;
+  }
+
+  .stats-strip {
+    grid-template-columns: 1fr;
+
+    .stat-item:last-child {
+      grid-column: auto;
+    }
+  }
+
+  .guide-card {
+    padding: var(--sp-3);
+  }
+
+  .feature-box {
+    padding: var(--sp-3);
   }
 }
 

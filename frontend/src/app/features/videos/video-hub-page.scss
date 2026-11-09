@@ -759,7 +759,7 @@ textarea,
 /* --- Video Grid --- */
 .video-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
   gap: var(--sp-4);
 }
 
@@ -916,7 +916,7 @@ textarea,
 /* --- Playlists Grid --- */
 .playlists-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
   gap: var(--sp-4);
 }
 
@@ -1327,7 +1327,7 @@ textarea,
 
     .watch-sidebar-col {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
       gap: var(--sp-3);
     }
   }
@@ -2330,7 +2330,7 @@ textarea,
 
 .coach-metrics-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
   gap: var(--sp-3);
 }
 
@@ -2469,7 +2469,7 @@ textarea,
 
 .recs-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
   gap: var(--sp-3);
 }
 
@@ -3424,5 +3424,147 @@ textarea,
     transform: scale(1);
   }
 }
+
+/* =========================================================
+   RESPONSIVE OVERRIDES — video-hub-page
+   ========================================================= */
+
+/* Coarse pointer (touch devices) */
+@media (pointer: coarse) {
+  .video-tab-btn,
+  .filter-chip,
+  .sort-btn,
+  .btn-primary,
+  .btn-secondary,
+  .playlist-item {
+    min-height: 44px;
+  }
+}
+
+/* Mobile — ≤ 48rem (768px) */
+@media (max-width: 48rem) {
+  .video-hub-page {
+    overflow-x: clip;
+  }
+
+  /* Page header */
+  .video-hub-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--sp-3);
+  }
+
+  /* Tab nav — horizontally scrollable */
+  .video-hub-nav,
+  .video-tab-bar {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    flex-wrap: nowrap;
+    padding-bottom: var(--sp-1);
+  }
+
+  .video-hub-nav::-webkit-scrollbar,
+  .video-tab-bar::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Grids fall to single column if narrow */
+  .video-grid,
+  .videos-grid,
+  .playlist-grid,
+  .recommended-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Sidebar layout: stack sidebar below content */
+  .video-layout,
+  .video-main-layout {
+    grid-template-columns: 1fr !important;
+    grid-template-rows: auto;
+  }
+
+  .video-sidebar {
+    order: 2;
+    max-height: none;
+    position: static;
+  }
+
+  /* Video player */
+  .video-player-wrap,
+  .player-container {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+  }
+
+  /* HUD bar */
+  .study-hud-bar,
+  .hud-bar {
+    flex-wrap: wrap;
+    gap: var(--sp-2);
+    padding: var(--sp-2) var(--sp-3);
+  }
+
+  .hud-status-desc {
+    white-space: normal;
+    max-width: 10rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Controls row */
+  .coach-controls,
+  .hud-controls {
+    flex-wrap: wrap;
+    gap: var(--sp-2);
+  }
+
+  /* Cards */
+  .video-card-title,
+  .video-title {
+    word-break: break-word;
+    overflow-wrap: break-word;
+    min-width: 0;
+  }
+
+  /* Filter bar */
+  .filter-bar,
+  .search-filter-row {
+    flex-direction: column;
+    gap: var(--sp-2);
+  }
+
+  .filter-chips {
+    flex-wrap: wrap;
+    gap: var(--sp-1);
+  }
+
+  /* Section headings */
+  .section-title,
+  .section-heading {
+    font-size: clamp(1.1rem, 4vw, 1.4rem);
+  }
+
+  /* Note editor area */
+  .notes-panel,
+  .coach-notes {
+    max-height: 40dvh;
+    overflow-y: auto;
+  }
+}
+
+/* Small mobile — ≤ 30rem (480px) */
+@media (max-width: 30rem) {
+  .video-hub-header h1,
+  .page-title {
+    font-size: clamp(1.2rem, 5vw, 1.6rem);
+  }
+
+  .hud-status-desc {
+    display: none;
+  }
+}
+
 
 

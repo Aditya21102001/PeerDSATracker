@@ -176,7 +176,7 @@
 
 .tracks-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 1fr));
   gap: var(--sp-4);
 }
 
@@ -918,7 +918,7 @@
 
 .history-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr));
   gap: var(--sp-4);
 }
 
@@ -1108,3 +1108,81 @@
     margin-bottom: 0;
   }
 }
+
+/* =========================================================
+   RESPONSIVE OVERRIDES — interview-page (supplemental)
+   ========================================================= */
+
+@media (pointer: coarse) {
+  .question-btn,
+  .tab-btn,
+  .btn-primary,
+  .btn-secondary,
+  .track-card,
+  .btn-action {
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 48rem) {
+  .interview-page {
+    overflow-x: clip;
+    padding: var(--sp-4) var(--sp-3) var(--sp-6);
+  }
+
+  .interview-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--sp-3);
+  }
+
+  .interview-nav,
+  .tab-strip {
+    width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap;
+  }
+
+  .interview-nav::-webkit-scrollbar,
+  .tab-strip::-webkit-scrollbar {
+    display: none;
+  }
+
+  .question-title,
+  .answer-text {
+    word-break: break-word;
+    overflow-wrap: break-word;
+    min-width: 0;
+  }
+
+  .interview-layout {
+    grid-template-columns: 1fr !important;
+  }
+
+  .filter-bar {
+    flex-wrap: wrap;
+    gap: var(--sp-2);
+  }
+
+  .tracks-grid,
+  .history-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .session-card {
+    padding: var(--sp-4);
+  }
+
+  .action-row {
+    flex-wrap: wrap;
+    gap: var(--sp-2);
+
+    .btn {
+      flex: 1 1 auto;
+      min-width: 8rem;
+    }
+  }
+}
+
