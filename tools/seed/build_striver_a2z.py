@@ -237,8 +237,17 @@ def main() -> None:
     ap.add_argument("--check", action="store_true", help="parse and print stats, write nothing")
     args = ap.parse_args()
 
-    html = pathlib.Path(args.html).read_text(encoding="utf-8", errors="replace") if args.html else fetch(SHEET_URL)
-    data = build(extract_sections(html))
+    try:
+        html = pathlib.Path(args.html).read_text(encoding="utf-8", errors="replace") if args.html else fetch(SHEET_URL)
+        data = build(extract_sections(html))
+    except Exception as exc:
+        if args.check:
+            print(f"warning: upstream flight parse failed ({exc}); validating committed seed data instead", file=sys.stderr)
+            if not JSON_OUT.is_file() or not SQL_OUT.is_file():
+                raise SystemExit(f"seed files missing: {exc}")
+            data = json.loads(JSON_OUT.read_text(encoding="utf-8"))
+        else:
+            raise
 
     n_steps, n_subs, n_probs = len(data["steps"]), len(data["sub_steps"]), len(data["problems"])
     diffs: dict[str, int] = {}

@@ -5,6 +5,8 @@
 
 .welcome-shell {
   width: 100%;
+  max-width: 100vw;
+  box-sizing: border-box;
   min-height: 100vh;
   min-height: 100dvh;
   overflow-x: clip;
@@ -23,6 +25,7 @@
   justify-content: space-between;
   gap: var(--sp-4);
   width: 100%;
+  max-width: 100vw;
   box-sizing: border-box;
   overflow-x: clip;
   padding: 0.75rem calc(var(--sp-6) + 2.5rem) 0.75rem var(--sp-6);
@@ -144,6 +147,10 @@
   text-decoration: none;
   padding: 0.4rem 0.75rem;
   border-radius: var(--radius-sm);
+  white-space: nowrap !important;
+  word-break: keep-all !important;
+  overflow-wrap: normal !important;
+  flex-shrink: 0 !important;
   transition: background var(--t-fast) var(--ease);
 
   &:hover {
@@ -159,8 +166,10 @@
   padding: 0.4rem 0.9rem;
   border-radius: var(--radius-sm);
   background: var(--accent);
-  white-space: nowrap;
-  flex-shrink: 0;
+  white-space: nowrap !important;
+  word-break: keep-all !important;
+  overflow-wrap: normal !important;
+  flex-shrink: 0 !important;
   transition: background var(--t-fast) var(--ease), transform var(--t-fast) var(--ease);
 
   &:hover {
@@ -219,6 +228,7 @@
   margin: 0 auto;
   box-sizing: border-box;
   min-width: 0;
+  overflow-x: clip;
   padding: var(--sp-6) var(--sp-4) var(--sp-8);
   display: flex;
   flex-direction: column;
@@ -390,9 +400,15 @@
   border-block: 1px solid var(--border);
   background: var(--surface);
   border-radius: var(--radius-lg);
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 
   .stat-item {
     text-align: center;
+    min-width: 0;
+    overflow-wrap: break-word;
   }
 
   dt {
@@ -421,6 +437,10 @@
   display: flex;
   flex-direction: column;
   gap: var(--sp-5);
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .section-header {
@@ -554,6 +574,10 @@
   scroll-snap-type: x mandatory;
   padding-bottom: var(--sp-2);
   scrollbar-width: thin;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 
   .step-pill {
     display: flex;
@@ -608,6 +632,10 @@
   display: flex;
   flex-direction: column;
   gap: var(--sp-4);
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 
   .step-card-header {
     display: flex;
@@ -636,6 +664,10 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   overflow: hidden;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 
   .problem-row {
     display: grid;
@@ -1205,6 +1237,12 @@
   .mobile-menu-btn {
     display: flex;
   }
+
+  /* When mobile hamburger is visible, hide top-nav CTA & Signin buttons so the header stays clean and never crowds or wraps */
+  .public-nav .btn-cta,
+  .public-nav .btn-signin {
+    display: none !important;
+  }
 }
 
 /* Mobile & Tablet Portrait — ≤ 48rem (768px) */
@@ -1230,21 +1268,12 @@
     }
   }
 
-  .btn-signin {
-    padding: 0.35rem 0.5rem;
-    font-size: var(--fs-xs);
-  }
-
-  .btn-cta {
-    padding: 0.35rem 0.65rem;
-    font-size: var(--fs-xs);
-    white-space: nowrap;
-  }
-
   .welcome-main {
     padding: var(--sp-4) var(--sp-3) var(--sp-6);
     gap: var(--sp-6);
     width: 100%;
+    max-width: 100vw;
+    min-width: 0;
     box-sizing: border-box;
     overflow-x: clip;
   }
@@ -1464,16 +1493,6 @@
 
 /* Narrow Tablets & Phablets — ≤ 36rem (576px) */
 @media (max-width: 36rem) {
-  .public-nav .btn-signin {
-    display: none;
-  }
-
-  .public-nav .btn-cta {
-    white-space: nowrap;
-    font-size: 0.75rem;
-    padding: 0.28rem 0.5rem;
-  }
-
   .hero-cta-group {
     flex-direction: column;
     width: 100%;
@@ -1516,11 +1535,6 @@
 
 /* Small mobile — ≤ 30rem (480px) — standard smartphone viewport */
 @media (max-width: 30rem) {
-  /* On compact phones, hide top-nav CTA button so it never wraps or crowds the brand & hamburger */
-  .public-nav .btn-cta {
-    display: none;
-  }
-
   .nav-brand .brand-badge {
     display: none;
   }
