@@ -133,17 +133,8 @@
 }
 
 @keyframes pulse-warm {
-
-  0%,
-  100% {
-    opacity: 0.4;
-    transform: scale(0.9);
-  }
-
-  50% {
-    opacity: 1;
-    transform: scale(1.15);
-  }
+  0%, 100% { opacity: 0.4; transform: scale(0.9); }
+  50% { opacity: 1; transform: scale(1.15); }
 }
 
 .btn-signin {
@@ -487,21 +478,10 @@
     box-shadow: var(--shadow-md);
   }
 
-  &.dsa {
-    border-top: 4px solid #6366f1;
-  }
-
-  &.java {
-    border-top: 4px solid #f97316;
-  }
-
-  &.spring {
-    border-top: 4px solid #22c55e;
-  }
-
-  &.angular {
-    border-top: 4px solid #ef4444;
-  }
+  &.dsa { border-top: 4px solid #6366f1; }
+  &.java { border-top: 4px solid #f97316; }
+  &.spring { border-top: 4px solid #22c55e; }
+  &.angular { border-top: 4px solid #ef4444; }
 
   .guide-card-top {
     display: flex;
@@ -990,11 +970,9 @@
   .bar.open:nth-child(1) {
     transform: translateY(6px) rotate(45deg);
   }
-
   .bar.open:nth-child(2) {
     opacity: 0;
   }
-
   .bar.open:nth-child(3) {
     transform: translateY(-6px) rotate(-45deg);
   }
@@ -1025,7 +1003,10 @@
   z-index: 70;
   display: flex;
   flex-direction: column;
-  padding: max(var(--sp-4), env(safe-area-inset-top, var(--sp-4))) max(var(--sp-4), env(safe-area-inset-right, var(--sp-4))) max(var(--sp-4), env(safe-area-inset-bottom, var(--sp-4))) max(var(--sp-4), env(safe-area-inset-left, var(--sp-4)));
+  padding: max(var(--sp-4), env(safe-area-inset-top, var(--sp-4)))
+           max(var(--sp-4), env(safe-area-inset-right, var(--sp-4)))
+           max(var(--sp-4), env(safe-area-inset-bottom, var(--sp-4)))
+           max(var(--sp-4), env(safe-area-inset-left, var(--sp-4)));
   gap: var(--sp-3);
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
@@ -1093,8 +1074,7 @@
     color: var(--text);
     transition: background var(--t-fast) var(--ease);
 
-    &:hover,
-    &:active {
+    &:hover, &:active {
       background: var(--surface-2);
     }
 
@@ -1148,27 +1128,20 @@
   from {
     transform: translateX(100%);
   }
-
   to {
     transform: translateX(0);
   }
 }
 
 @keyframes fade-in {
-  from {
-    opacity: 0;
-  }
-
-  to {
-    opacity: 1;
-  }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 /* --- Responsive Adjustments ---------------------------------------------- */
 
 /* Coarse pointer (touch devices) — ensure comfortable tap targets */
 @media (pointer: coarse) {
-
   .btn-hero-primary,
   .btn-hero-secondary,
   .btn-hero-tertiary,
@@ -1226,8 +1199,7 @@
 /* Medium Tablet / Small Laptop — ≤ 58rem (928px) — collapse header nav links into hamburger */
 @media (max-width: 58rem) {
   .nav-links {
-    display: none;
-    /* Collapse into drawer so top nav never overflows or wraps */
+    display: none; /* Collapse into drawer so top nav never overflows or wraps */
   }
 
   .mobile-menu-btn {
@@ -1544,7 +1516,6 @@
 
 /* Small mobile — ≤ 30rem (480px) — standard smartphone viewport */
 @media (max-width: 30rem) {
-
   /* On compact phones, hide top-nav CTA button so it never wraps or crowds the brand & hamburger */
   .public-nav .btn-cta {
     display: none;
@@ -1582,7 +1553,6 @@
 
   .notice-actions {
     width: 100%;
-
     .btn {
       flex: 1;
       text-align: center;
@@ -1643,3 +1613,4 @@
     font-size: 1.3rem;
   }
 }
+
