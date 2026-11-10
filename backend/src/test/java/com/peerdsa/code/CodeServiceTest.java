@@ -159,9 +159,11 @@ class CodeServiceTest {
                         return new org.springframework.mock.http.client.MockClientHttpRequest(httpMethod, uri) {
                             @Override
                             protected org.springframework.http.client.ClientHttpResponse executeInternal() {
-                                return new org.springframework.mock.http.client.MockClientHttpResponse(
+                                var response = new org.springframework.mock.http.client.MockClientHttpResponse(
                                         "{\"status\":\"0\",\"program_output\":\"hello fallback\\n\"}".getBytes(java.nio.charset.StandardCharsets.UTF_8),
                                         org.springframework.http.HttpStatus.OK);
+                                response.getHeaders().setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
+                                return response;
                             }
                         };
                     }

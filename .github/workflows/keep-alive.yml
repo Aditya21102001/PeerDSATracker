@@ -1,0 +1,25 @@
+name: Keep Render Backend Alive
+
+on:
+  schedule:
+    # Every 10 minutes (Render spins down after 15 min of inactivity)
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    name: Ping Services to Prevent Spin-Down
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Backend Health Endpoint
+        run: |
+          echo "Pinging Spring Boot backend health endpoint..."
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 45 https://peerdsatracker.onrender.com/actuator/health || true)
+          echo "Backend HTTP response: $STATUS"
+
+      - name: Ping Analytics Health Endpoint
+        run: |
+          echo "Pinging FastAPI analytics service..."
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 45 https://peerdsatracker-1.onrender.com/health || true)
+          echo "Analytics HTTP response: $STATUS"
+

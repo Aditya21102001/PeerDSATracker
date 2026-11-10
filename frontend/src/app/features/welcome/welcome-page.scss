@@ -22,6 +22,9 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--sp-4);
+  width: 100%;
+  box-sizing: border-box;
+  overflow-x: clip;
   padding: 0.75rem calc(var(--sp-6) + 2.5rem) 0.75rem var(--sp-6);
   background: var(--surface);
   border-bottom: 1px solid var(--border);
@@ -34,6 +37,7 @@
   display: flex;
   align-items: center;
   gap: var(--sp-2);
+  flex-shrink: 0;
 
   .brand-link {
     display: flex;
@@ -92,6 +96,8 @@
   display: flex;
   align-items: center;
   gap: var(--sp-3);
+  flex-shrink: 0;
+  min-width: 0;
 }
 
 .server-status {
@@ -127,8 +133,17 @@
 }
 
 @keyframes pulse-warm {
-  0%, 100% { opacity: 0.4; transform: scale(0.9); }
-  50% { opacity: 1; transform: scale(1.15); }
+
+  0%,
+  100% {
+    opacity: 0.4;
+    transform: scale(0.9);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
 }
 
 .btn-signin {
@@ -153,6 +168,8 @@
   padding: 0.4rem 0.9rem;
   border-radius: var(--radius-sm);
   background: var(--accent);
+  white-space: nowrap;
+  flex-shrink: 0;
   transition: background var(--t-fast) var(--ease), transform var(--t-fast) var(--ease);
 
   &:hover {
@@ -206,8 +223,11 @@
 
 /* --- Main Layout --------------------------------------------------------- */
 .welcome-main {
+  width: 100%;
   max-width: 68rem;
   margin: 0 auto;
+  box-sizing: border-box;
+  min-width: 0;
   padding: var(--sp-6) var(--sp-4) var(--sp-8);
   display: flex;
   flex-direction: column;
@@ -220,12 +240,22 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
   gap: var(--sp-4);
   padding: var(--sp-6) 0 var(--sp-4);
 
   .hero-badge {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
+    text-align: center;
+    flex-wrap: wrap;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-wrap: break-word;
     gap: 0.4rem;
     padding: 0.35rem 0.9rem;
     border-radius: 9999px;
@@ -247,6 +277,12 @@
     line-height: 1.15;
     color: var(--text);
     margin: 0;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    min-width: 0;
+    overflow-wrap: break-word;
+    word-break: break-word;
   }
 
   .gradient-text {
@@ -260,8 +296,13 @@
     font-size: var(--fs-lg);
     line-height: 1.6;
     color: var(--text-muted);
+    width: 100%;
     max-width: 46rem;
-    margin: 0;
+    margin: 0 auto;
+    box-sizing: border-box;
+    min-width: 0;
+    overflow-wrap: break-word;
+    word-break: break-word;
   }
 
   .hero-cta-group {
@@ -269,6 +310,10 @@
     flex-wrap: wrap;
     align-items: center;
     justify-content: center;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    min-width: 0;
     gap: var(--sp-3);
     margin-top: var(--sp-2);
   }
@@ -282,6 +327,9 @@
     border-radius: var(--radius-md);
     background: linear-gradient(135deg, var(--accent) 0%, #4338ca 100%);
     box-shadow: 0 4px 14px rgba(91, 91, 214, 0.35);
+    box-sizing: border-box;
+    min-width: 0;
+    overflow-wrap: break-word;
     transition: transform var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
 
     &:hover {
@@ -299,6 +347,9 @@
     border-radius: var(--radius-md);
     background: var(--surface);
     border: 1px solid var(--border-control);
+    box-sizing: border-box;
+    min-width: 0;
+    overflow-wrap: break-word;
     transition: background var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease);
 
     &:hover {
@@ -313,6 +364,8 @@
     color: var(--text-muted);
     text-decoration: none;
     padding: 0.85rem 1rem;
+    box-sizing: border-box;
+    min-width: 0;
 
     &:hover {
       color: var(--text);
@@ -324,11 +377,16 @@
     flex-wrap: wrap;
     align-items: center;
     justify-content: center;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    min-width: 0;
     gap: var(--sp-4);
     font-size: 0.8125rem;
     font-weight: 500;
     color: var(--text-faint);
     margin-top: var(--sp-2);
+    text-align: center;
   }
 }
 
@@ -429,10 +487,21 @@
     box-shadow: var(--shadow-md);
   }
 
-  &.dsa { border-top: 4px solid #6366f1; }
-  &.java { border-top: 4px solid #f97316; }
-  &.spring { border-top: 4px solid #22c55e; }
-  &.angular { border-top: 4px solid #ef4444; }
+  &.dsa {
+    border-top: 4px solid #6366f1;
+  }
+
+  &.java {
+    border-top: 4px solid #f97316;
+  }
+
+  &.spring {
+    border-top: 4px solid #22c55e;
+  }
+
+  &.angular {
+    border-top: 4px solid #ef4444;
+  }
 
   .guide-card-top {
     display: flex;
@@ -921,9 +990,11 @@
   .bar.open:nth-child(1) {
     transform: translateY(6px) rotate(45deg);
   }
+
   .bar.open:nth-child(2) {
     opacity: 0;
   }
+
   .bar.open:nth-child(3) {
     transform: translateY(-6px) rotate(-45deg);
   }
@@ -935,7 +1006,7 @@
   background: rgba(0, 0, 0, 0.55);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
-  z-index: 55;
+  z-index: 69;
   animation: fade-in var(--t-fast) var(--ease);
 }
 
@@ -951,13 +1022,10 @@
   background: var(--surface);
   border-left: 1px solid var(--border);
   box-shadow: var(--shadow-lg);
-  z-index: 56;
+  z-index: 70;
   display: flex;
   flex-direction: column;
-  padding: max(var(--sp-4), env(safe-area-inset-top, var(--sp-4)))
-           max(var(--sp-4), env(safe-area-inset-right, var(--sp-4)))
-           max(var(--sp-4), env(safe-area-inset-bottom, var(--sp-4)))
-           max(var(--sp-4), env(safe-area-inset-left, var(--sp-4)));
+  padding: max(var(--sp-4), env(safe-area-inset-top, var(--sp-4))) max(var(--sp-4), env(safe-area-inset-right, var(--sp-4))) max(var(--sp-4), env(safe-area-inset-bottom, var(--sp-4))) max(var(--sp-4), env(safe-area-inset-left, var(--sp-4)));
   gap: var(--sp-3);
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
@@ -1025,7 +1093,8 @@
     color: var(--text);
     transition: background var(--t-fast) var(--ease);
 
-    &:hover, &:active {
+    &:hover,
+    &:active {
       background: var(--surface-2);
     }
 
@@ -1079,20 +1148,27 @@
   from {
     transform: translateX(100%);
   }
+
   to {
     transform: translateX(0);
   }
 }
 
 @keyframes fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 /* --- Responsive Adjustments ---------------------------------------------- */
 
 /* Coarse pointer (touch devices) — ensure comfortable tap targets */
 @media (pointer: coarse) {
+
   .btn-hero-primary,
   .btn-hero-secondary,
   .btn-hero-tertiary,
@@ -1150,7 +1226,8 @@
 /* Medium Tablet / Small Laptop — ≤ 58rem (928px) — collapse header nav links into hamburger */
 @media (max-width: 58rem) {
   .nav-links {
-    display: none; /* Collapse into drawer so top nav never overflows or wraps */
+    display: none;
+    /* Collapse into drawer so top nav never overflows or wraps */
   }
 
   .mobile-menu-btn {
@@ -1161,12 +1238,16 @@
 /* Mobile & Tablet Portrait — ≤ 48rem (768px) */
 @media (max-width: 48rem) {
   .public-nav {
-    padding: 0.55rem calc(var(--sp-2) + 2.4rem) 0.55rem var(--sp-3);
+    padding: 0.55rem calc(var(--sp-2) + 2.5rem) 0.55rem var(--sp-3);
     gap: var(--sp-2);
   }
 
   .nav-brand .brand-link {
     font-size: var(--fs-md);
+  }
+
+  .nav-actions {
+    gap: var(--sp-2);
   }
 
   .server-status {
@@ -1185,19 +1266,35 @@
   .btn-cta {
     padding: 0.35rem 0.65rem;
     font-size: var(--fs-xs);
+    white-space: nowrap;
   }
 
   .welcome-main {
     padding: var(--sp-4) var(--sp-3) var(--sp-6);
     gap: var(--sp-6);
+    width: 100%;
+    box-sizing: border-box;
+    overflow-x: clip;
   }
 
   .hero-section {
     padding: var(--sp-4) 0 var(--sp-2);
+    gap: var(--sp-3);
+    width: 100%;
+    box-sizing: border-box;
+
+    .hero-badge {
+      font-size: 0.75rem;
+      padding: 0.25rem 0.65rem;
+      max-width: 100%;
+      text-align: center;
+    }
 
     .hero-title {
-      font-size: clamp(1.75rem, 5.5vw, 2.75rem);
+      font-size: clamp(1.6rem, 5.5vw, 2.4rem);
       line-height: 1.2;
+      width: 100%;
+      overflow-wrap: break-word;
     }
 
     .break-desktop {
@@ -1205,12 +1302,16 @@
     }
 
     .hero-sub {
-      font-size: clamp(0.95rem, 2.5vw, 1.125rem);
+      font-size: clamp(0.875rem, 3.2vw, 1.05rem);
+      line-height: 1.55;
+      width: 100%;
+      overflow-wrap: break-word;
     }
 
     .hero-reassurance {
       gap: var(--sp-2) var(--sp-3);
       font-size: 0.75rem;
+      width: 100%;
     }
   }
 
@@ -1218,23 +1319,40 @@
     grid-template-columns: repeat(2, 1fr);
     padding: var(--sp-4) var(--sp-2);
     gap: var(--sp-2);
+    width: 100%;
+    box-sizing: border-box;
+
+    .stat-item {
+      min-width: 0;
+      overflow-wrap: break-word;
+    }
 
     .stat-item:last-child {
       grid-column: span 2;
     }
 
     dt {
-      font-size: clamp(1.4rem, 4vw, 1.9rem);
+      font-size: clamp(1.3rem, 4.5vw, 1.8rem);
+    }
+
+    dd {
+      font-size: 0.75rem;
+      line-height: 1.35;
     }
   }
 
   .feature-two-col,
   .career-preview-grid {
     grid-template-columns: 1fr;
+    width: 100%;
+    box-sizing: border-box;
   }
 
   .feature-box {
     padding: var(--sp-4);
+    width: 100%;
+    box-sizing: border-box;
+    min-width: 0;
 
     h3 {
       font-size: clamp(1.15rem, 4vw, 1.4rem);
@@ -1245,14 +1363,23 @@
     width: 100%;
     text-align: center;
     justify-content: center;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
   }
 
   .job-mini-card {
     padding: var(--sp-4);
+    width: 100%;
+    box-sizing: border-box;
+    min-width: 0;
   }
 
   .guide-card {
     padding: var(--sp-4);
+    width: 100%;
+    box-sizing: border-box;
+    min-width: 0;
 
     h3 {
       font-size: clamp(1.1rem, 3.5vw, 1.25rem);
@@ -1263,10 +1390,17 @@
   .career-footer .btn {
     width: 100%;
     max-width: 24rem;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .step-detail-card {
     padding: var(--sp-4) var(--sp-3);
+    width: 100%;
+    box-sizing: border-box;
+    min-width: 0;
   }
 
   .step-card-header {
@@ -1277,83 +1411,26 @@
     }
   }
 
-  /* Problems table stays interactive on phones */
-  .problems-table .problem-row {
-    grid-template-columns: 1fr auto auto;
-    gap: var(--sp-2);
-    padding: 0.6rem var(--sp-3);
-
-    &.header {
-      .col-xp {
-        display: none;
-      }
-    }
-
-    .col-name {
-      font-size: var(--fs-xs);
-      overflow-wrap: anywhere;
-      word-break: break-word;
-      min-width: 0;
-    }
-
-    .col-diff {
-      flex-shrink: 0;
-    }
-
-    .col-xp {
-      display: none;
-    }
-
-    .col-action {
-      display: flex;
-      justify-content: flex-end;
-      flex-shrink: 0;
-
-      .table-link {
-        padding: 0.25rem 0.5rem;
-        background: var(--surface-2);
-        border: 1px solid var(--border);
-        border-radius: var(--radius-sm);
-        font-size: 0.72rem;
-        white-space: nowrap;
-      }
-    }
-  }
-
   .closer-card {
     padding: var(--sp-5) var(--sp-3);
+    width: 100%;
+    box-sizing: border-box;
 
     h2 {
       font-size: clamp(1.4rem, 4.5vw, 2rem);
+      overflow-wrap: break-word;
     }
   }
 }
 
-/* Narrow Tablets & Phablets — ≤ 36rem (576px) */
-@media (max-width: 36rem) {
-  /* Hide signin in top header (it's already in the mobile drawer and throughout page) */
-  .public-nav .btn-signin {
-    display: none;
-  }
-
-  .step-card-header {
-    flex-direction: column;
-    align-items: stretch;
-
-    .btn {
-      width: 100%;
-      text-align: center;
-      justify-content: center;
-    }
-  }
-}
-
-/* Card-based Problems View for Smaller Phones — ≤ 34rem (544px) */
-@media (max-width: 34rem) {
+/* Tablets & Large Phones — ≤ 40rem (640px) — card-based problems view */
+@media (max-width: 40rem) {
   .problems-table {
     border: none;
     background: transparent;
     gap: var(--sp-2);
+    width: 100%;
+    box-sizing: border-box;
 
     .problem-row.header {
       display: none;
@@ -1371,6 +1448,8 @@
       border: 1px solid var(--border);
       border-radius: var(--radius-md);
       background: var(--surface);
+      box-sizing: border-box;
+      width: 100%;
 
       .col-name {
         grid-area: title;
@@ -1396,7 +1475,10 @@
         justify-self: end;
 
         .table-link {
-          padding: 0.3rem 0.65rem;
+          padding: 0.35rem 0.75rem;
+          min-height: 44px;
+          display: inline-flex;
+          align-items: center;
           background: var(--surface-2);
           border: 1px solid var(--border);
           border-radius: var(--radius-sm);
@@ -1408,40 +1490,88 @@
   }
 }
 
-/* Small mobile — ≤ 32rem (512px) */
-@media (max-width: 32rem) {
-  .nav-brand .brand-badge {
-    display: none; /* Hide badge on narrow phones so brand & actions have room */
+/* Narrow Tablets & Phablets — ≤ 36rem (576px) */
+@media (max-width: 36rem) {
+  .public-nav .btn-signin {
+    display: none;
+  }
+
+  .public-nav .btn-cta {
+    white-space: nowrap;
+    font-size: 0.75rem;
+    padding: 0.28rem 0.5rem;
   }
 
   .hero-cta-group {
     flex-direction: column;
     width: 100%;
+    max-width: 28rem;
+    margin-inline: auto;
+    gap: var(--sp-2);
 
     .btn-hero-primary,
-    .btn-hero-secondary {
-      width: 100%;
-      text-align: center;
-      justify-content: center;
-      display: flex;
-      align-items: center;
-      padding: 0.75rem 1rem;
-    }
-
+    .btn-hero-secondary,
     .btn-hero-tertiary {
       width: 100%;
+      min-height: 48px;
+      box-sizing: border-box;
       text-align: center;
+      justify-content: center;
+      display: inline-flex;
+      align-items: center;
+      white-space: normal;
+      overflow-wrap: break-word;
+      word-break: break-word;
+      padding: 0.75rem 1rem;
+      font-size: clamp(0.875rem, 3.6vw, 1rem);
     }
   }
 
-  .closer-actions {
+  .step-card-header {
     flex-direction: column;
-    width: 100%;
+    align-items: stretch;
 
     .btn {
       width: 100%;
       text-align: center;
       justify-content: center;
+      min-height: 44px;
+      display: inline-flex;
+      align-items: center;
+    }
+  }
+}
+
+/* Small mobile — ≤ 30rem (480px) — standard smartphone viewport */
+@media (max-width: 30rem) {
+
+  /* On compact phones, hide top-nav CTA button so it never wraps or crowds the brand & hamburger */
+  .public-nav .btn-cta {
+    display: none;
+  }
+
+  .nav-brand .brand-badge {
+    display: none;
+  }
+
+  .hero-section .hero-title {
+    font-size: clamp(1.35rem, 5.8vw, 1.85rem);
+    line-height: 1.25;
+  }
+
+  .closer-actions {
+    flex-direction: column;
+    width: 100%;
+    max-width: 24rem;
+    margin-inline: auto;
+
+    .btn {
+      width: 100%;
+      text-align: center;
+      justify-content: center;
+      min-height: 48px;
+      display: inline-flex;
+      align-items: center;
     }
   }
 
@@ -1452,9 +1582,14 @@
 
   .notice-actions {
     width: 100%;
+
     .btn {
       flex: 1;
       text-align: center;
+      min-height: 44px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
     }
   }
 
@@ -1468,44 +1603,43 @@
   }
 }
 
-/* Extra small screens (≤ 24rem / 384px - iPhone SE, small Galaxy) */
-@media (max-width: 24rem) {
-  .public-nav {
-    padding-left: var(--sp-2);
-    padding-right: calc(var(--sp-2) + 2.2rem);
-  }
-
-  .nav-brand .brand-link {
-    font-size: 1rem;
-  }
-
-  .server-status {
-    padding: 0.2rem 0.35rem;
-  }
-
-  .btn-cta {
-    padding: 0.3rem 0.45rem;
-    font-size: 0.7rem;
-  }
-
-  .hero-section .hero-title {
-    font-size: 1.55rem;
-  }
-
+/* Extra small phones — ≤ 26rem (416px) */
+@media (max-width: 26rem) {
   .stats-strip {
     grid-template-columns: 1fr;
+    padding: var(--sp-3) var(--sp-2);
+    gap: var(--sp-2);
 
     .stat-item:last-child {
       grid-column: auto;
     }
   }
 
-  .guide-card {
-    padding: var(--sp-3);
-  }
-
-  .feature-box {
+  .guide-card,
+  .feature-box,
+  .job-mini-card,
+  .step-detail-card,
+  .g-card {
     padding: var(--sp-3);
   }
 }
 
+/* Tiny screens (≤ 22rem / 352px - iPhone SE 1st gen, small Galaxy Fold cover) */
+@media (max-width: 22rem) {
+  .public-nav {
+    padding-left: var(--sp-2);
+    padding-right: calc(var(--sp-2) + 2.4rem);
+  }
+
+  .nav-brand .brand-link {
+    font-size: 0.95rem;
+  }
+
+  .server-status {
+    padding: 0.2rem 0.35rem;
+  }
+
+  .hero-section .hero-title {
+    font-size: 1.3rem;
+  }
+}
