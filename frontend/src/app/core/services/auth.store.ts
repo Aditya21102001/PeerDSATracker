@@ -5,7 +5,7 @@ import { Observable, catchError, finalize, map, of, retry, shareReplay, switchMa
 import { isBackendUnavailable } from '../http/backend-unavailable';
 import { ChangePasswordResponse, Me, OtpRequestResponse, TokenResponse } from '../models/api.models';
 import { BackendStatus } from './backend-status';
-import { LastSignInService } from './last-sign-in.service';
+import { LastSignInService, SignInMethod } from './last-sign-in.service';
 import { TokenService } from './token.service';
 
 /**
@@ -90,6 +90,13 @@ export class AuthStore {
       }),
       switchMap((t) => this.loadMe().pipe(map(() => t))),
     );
+  }
+
+  /** Persists a token pair minted by an alternative auth ceremony (e.g. WebAuthn passkeys) and loads the user profile. */
+  establishSession(tokens: TokenResponse, method: SignInMethod): Observable<Me> {
+    this.tokens.set(tokens);
+    this.lastSignIn.remember(method);
+    return this.loadMe();
   }
 
   /**

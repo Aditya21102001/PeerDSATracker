@@ -440,3 +440,33 @@ export interface MessageView {
   body: string;
   createdAt: string;
 }
+
+/** Registered WebAuthn / Passkey metadata returned by `/api/auth/passkeys`. */
+export interface PasskeySummary {
+  id: string;
+  name: string;
+  aaguid: string;
+  deviceType: string;
+  backedUp: boolean;
+  transports: string[];
+  rpId: string;
+  registeredAt: string;
+  lastUsedAt: string | null;
+}
+
+export interface PasskeyListResponse {
+  rpId: string;
+  passkeyUserId: string | null;
+  credentials: PasskeySummary[];
+}
+
+export interface DeletePasskeyResponse {
+  rpId: string;
+  passkeyUserId: string;
+  remainingCredentialIds: string[];
+}
+
+export interface PasskeyChallengeResponse<T> {
+  challengeId: string;
+  publicKey: T;
+}

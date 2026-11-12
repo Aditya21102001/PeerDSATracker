@@ -1,7 +1,7 @@
 import { Service, signal } from '@angular/core';
 
 /** How somebody got in last time, on this device. */
-export type SignInMethod = 'password' | 'code' | 'google';
+export type SignInMethod = 'password' | 'code' | 'google' | 'passkey';
 
 const KEY = 'peerdsa.lastSignIn';
 
@@ -9,6 +9,7 @@ const LABELS: Record<SignInMethod, string> = {
   password: 'your password',
   code: 'an emailed code',
   google: 'Google',
+  passkey: 'a passkey or biometric',
 };
 
 /**
@@ -56,7 +57,9 @@ export class LastSignInService {
 function read(): SignInMethod | null {
   try {
     const stored = localStorage.getItem(KEY);
-    return stored === 'password' || stored === 'code' || stored === 'google' ? stored : null;
+    return stored === 'password' || stored === 'code' || stored === 'google' || stored === 'passkey'
+      ? stored
+      : null;
   } catch {
     return null;
   }

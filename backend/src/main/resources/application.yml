@@ -161,6 +161,11 @@ app:
     # CorsFilter would reject the request with 403. allowCredentials(true) means a
     # `*` wildcard is illegal, so the exact domain must be named.
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4300,http://localhost:4200}
+  webauthn:
+    rp-name: ${WEBAUTHN_RP_NAME:PeerDSATracker}
+    rp-id: ${WEBAUTHN_RP_ID:}
+    allowed-origins: ${WEBAUTHN_ALLOWED_ORIGINS:}
+    challenge-ttl: ${WEBAUTHN_CHALLENGE_TTL:PT5M}
   analytics:
     base-url: ${ANALYTICS_BASE_URL:http://localhost:8000}
     internal-token: ${INTERNAL_TOKEN:dev-internal-token}

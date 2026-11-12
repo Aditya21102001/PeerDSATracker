@@ -64,6 +64,10 @@ public class SecurityConfig {
         // Which sign-in methods this deployment offers. Read before anyone is signed in, by
         // definition, and it holds nothing secret.
         "/api/auth/options",
+        // Public WebAuthn assertion endpoints. Both issue/verify short-lived challenges against
+        // stored public keys without revealing account existence on /login/options.
+        "/api/auth/passkeys/login/options",
+        "/api/auth/passkeys/login/verify",
         // One-click unsubscribe from a digest footer. Public by necessity: the person most likely
         // to want out is the one who has abandoned the account and cannot sign in, and making them
         // log in first is how an unsubscribe link becomes a "report spam" click. The link is HMAC

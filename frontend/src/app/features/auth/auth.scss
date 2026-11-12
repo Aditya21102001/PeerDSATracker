@@ -291,3 +291,141 @@ button[type='submit'] {
   margin-left: var(--sp-2);
   font-size: var(--fs-xs);
 }
+
+.field-hint {
+  margin: var(--sp-1) 0 0;
+  font-size: var(--fs-xs);
+  color: var(--text-faint);
+}
+
+.passkey-btn {
+  width: 100%;
+  cursor: pointer;
+
+  .passkey-icon {
+    flex: none;
+  }
+}
+
+.passkey-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-4);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+}
+
+.passkey-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+
+  h2 {
+    margin: 0 0 var(--sp-1);
+    font-size: var(--fs-md);
+  }
+}
+
+.passkey-empty {
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+
+.passkey-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.passkey-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-3);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+}
+
+.passkey-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+}
+
+.passkey-provider-badge {
+  flex: none;
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--r-md);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-2);
+  color: var(--accent);
+}
+
+.passkey-meta {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.passkey-title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  font-size: var(--fs-sm);
+}
+
+.passkey-chip {
+  font-size: var(--fs-xs);
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+}
+
+.passkey-provider-name,
+.passkey-dates {
+  margin: 0.15rem 0 0;
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+
+.passkey-actions {
+  display: flex;
+  gap: var(--sp-3);
+  font-size: var(--fs-xs);
+  padding-left: calc(2rem + var(--sp-3));
+}
+
+.passkey-rename {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+
+  input {
+    flex: 1 1 8rem;
+    min-width: 0;
+  }
+}
+
+.danger-link {
+  color: var(--danger, var(--flame));
+}
+
+@media (max-width: 30rem) {
+  .passkey-actions {
+    padding-left: 0;
+  }
+}

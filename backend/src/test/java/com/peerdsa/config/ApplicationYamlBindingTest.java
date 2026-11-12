@@ -237,6 +237,14 @@ class ApplicationYamlBindingTest {
         assertThat(openRouter.model()).contains("openrouter/free");
     }
 
+    @Test
+    void webauthnPropertiesBindWithSaneDefaults() {
+        PasskeyProperties webauthn = bind("app.webauthn", PasskeyProperties.class);
+        assertThat(webauthn.rpName()).isEqualTo("PeerDSATracker");
+        assertThat(webauthn.challengeTtl()).isEqualTo(Duration.ofMinutes(5));
+        assertThat(webauthn.allowedOrigins()).isEmpty();
+    }
+
     // ---------------------------------------------------------------------------- helpers
 
     private <T> T bind(String prefix, Class<T> type) {

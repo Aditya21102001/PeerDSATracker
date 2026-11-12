@@ -1,8 +1,11 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
+import { PasskeySummary } from '../../core/models/api.models';
+import { resolvePasskeyProvider } from '../../core/services/aaguid-registry';
 import { AuthStore } from '../../core/services/auth.store';
 import { LastSignInService } from '../../core/services/last-sign-in.service';
+import { PasskeyService } from '../../core/services/passkey.service';
 
 /** Which proof the user is offering. */
 type Proof = 'password' | 'code';
@@ -58,6 +61,129 @@ type Proof = 'password' | 'code';
             <dd>{{ signInSummary() }}</dd>
           </div>
         </dl>
+      }
+
+      @if (passkeySupported()) {
+        <section class="passkey-section" aria-labelledby="passkeys-heading">
+          <div class="passkey-header">
+            <div>
+              <h2 id="passkeys-heading">Biometrics &amp; Passkeys</h2>
+              <p class="tagline">Sign in faster with Face ID, Touch ID, Windows Hello, or a security key.</p>
+            </div>
+            <button
+              type="button"
+              class="btn btn-sm"
+              [disabled]="passkeyBusy()"
+              (click)="addPasskey()"
+            >
+              {{ passkeyBusy() ? 'Waiting…' : 'Add passkey' }}
+            </button>
+          </div>
+
+          @if (passkeyNotice()) {
+            <p class="sent" role="status">{{ passkeyNotice() }}</p>
+          }
+          @if (passkeyError()) {
+            <p class="error" role="alert">{{ passkeyError() }}</p>
+          }
+
+          @if (passkeyLoading()) {
+            <p class="tagline">Loading registered passkeys…</p>
+          } @else if (passkeyList().length === 0) {
+            <p class="passkey-empty">No passkeys registered on this account yet.</p>
+          } @else {
+            <ul class="passkey-list">
+              @for (cred of passkeyList(); track cred.id) {
+                <li class="passkey-item">
+                  <div class="passkey-row">
+                    <span class="passkey-provider-badge" aria-hidden="true" [title]="providerFor(cred).name">
+                      @switch (providerFor(cred).badge) {
+                        @case ('apple') {
+                          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8">
+                            <path d="M12 2a4 4 0 0 1 4 4v1h1a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3v-8a3 3 0 0 1 3-3h1V6a4 4 0 0 1 4-4Z"/>
+                            <circle cx="12" cy="14" r="1.5"/>
+                          </svg>
+                        }
+                        @case ('google') {
+                          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8">
+                            <circle cx="12" cy="12" r="9"/>
+                            <path d="M12 8v4l3 2"/>
+                          </svg>
+                        }
+                        @case ('microsoft') {
+                          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8">
+                            <rect x="4" y="4" width="7" height="7" rx="1"/>
+                            <rect x="13" y="4" width="7" height="7" rx="1"/>
+                            <rect x="4" y="13" width="7" height="7" rx="1"/>
+                            <rect x="13" y="13" width="7" height="7" rx="1"/>
+                          </svg>
+                        }
+                        @case ('vault') {
+                          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8">
+                            <path d="M12 3 4 7v5c0 5 3.4 8.7 8 10 4.6-1.3 8-5 8-10V7l-8-4Z"/>
+                            <circle cx="12" cy="12" r="2"/>
+                          </svg>
+                        }
+                        @default {
+                          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8">
+                            <circle cx="7.5" cy="15.5" r="4.5"/>
+                            <path d="m11 12 9-9"/>
+                            <path d="m16 7 3 3"/>
+                          </svg>
+                        }
+                      }
+                    </span>
+
+                    <div class="passkey-meta">
+                      @if (renamingId() === cred.id) {
+                        <div class="passkey-rename">
+                          <label class="sr-only" [attr.for]="'rename-' + cred.id">Passkey name</label>
+                          <input
+                            [id]="'rename-' + cred.id"
+                            type="text"
+                            maxlength="80"
+                            [value]="renameDraft()"
+                            (input)="renameDraft.set($any($event.target).value)"
+                          />
+                          <button type="button" class="btn btn-sm" [disabled]="passkeyBusy()" (click)="saveRename(cred.id)">
+                            Save
+                          </button>
+                          <button type="button" class="btn btn-sm btn-quiet" (click)="cancelRename()">Cancel</button>
+                        </div>
+                      } @else {
+                        <div class="passkey-title">
+                          <strong>{{ cred.name }}</strong>
+                          @if (cred.deviceType === 'multiDevice') {
+                            <span class="passkey-chip">Synced</span>
+                          }
+                        </div>
+                        <p class="passkey-provider-name">{{ providerFor(cred).name }}</p>
+                      }
+                      <p class="passkey-dates">
+                        Registered {{ formatDate(cred.registeredAt) }}
+                        · Last used {{ cred.lastUsedAt ? formatDate(cred.lastUsedAt) : 'never' }}
+                      </p>
+                    </div>
+                  </div>
+
+                  @if (renamingId() !== cred.id) {
+                    <div class="passkey-actions">
+                      <button type="button" class="link" (click)="startRename(cred)">Rename</button>
+                      <button
+                        type="button"
+                        class="link danger-link"
+                        [disabled]="passkeyBusy()"
+                        (click)="deletePasskey(cred.id)"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  }
+                </li>
+              }
+            </ul>
+          }
+        </section>
       }
 
       @if (hasPassword() === false) {
@@ -170,11 +296,23 @@ export class Security {
   private readonly fb = inject(FormBuilder);
   private readonly auth = inject(AuthStore);
   private readonly lastSignIn = inject(LastSignInService);
+  private readonly passkeys = inject(PasskeyService);
 
   protected readonly busy = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly codeSent = signal(false);
   protected readonly demoCode = signal<string | null>(null);
+
+  protected readonly passkeySupported = signal(false);
+  protected readonly passkeyLoading = signal(false);
+  protected readonly passkeyBusy = signal(false);
+  protected readonly passkeyError = signal<string | null>(null);
+  protected readonly passkeyNotice = signal<string | null>(null);
+  protected readonly passkeyList = signal<PasskeySummary[]>([]);
+  protected readonly passkeyRpId = signal<string | null>(null);
+  protected readonly passkeyUserId = signal<string | null>(null);
+  protected readonly renamingId = signal<string | null>(null);
+  protected readonly renameDraft = signal('');
 
   /** The username the password ended up on; set once the change succeeds. */
   protected readonly done = signal<string | null>(null);
@@ -215,9 +353,14 @@ export class Security {
     this.usernameError.set(null);
 
     this.auth.chooseUsername(wanted).subscribe({
-      next: () => {
+      next: (me) => {
         this.savingUsername.set(false);
         this.editingUsername.set(false);
+        const rpId = this.passkeyRpId();
+        const pkUserId = this.passkeyUserId();
+        if (rpId && pkUserId) {
+          void this.passkeys.signalCurrentUserDetails(rpId, pkUserId, wanted, me.displayName ?? wanted);
+        }
       },
       error: (err) => {
         this.savingUsername.set(false);
@@ -245,7 +388,8 @@ export class Security {
     if (!user) {
       return '';
     }
-    const ways = user.hasPassword ? 'Password or an emailed code' : 'An emailed code, or Google';
+    const base = user.hasPassword ? 'Password or an emailed code' : 'An emailed code, or Google';
+    const ways = this.passkeyList().length > 0 ? `${base}, plus passkey` : base;
     const last = this.lastSignIn.lastMethodLabel();
     return last ? `${ways} · last used ${last} on this device` : ways;
   });
@@ -266,6 +410,108 @@ export class Security {
     } else if (!this.auth.currentUser()?.hasPassword) {
       this.proof.set('code');
     }
+
+    void this.initPasskeys();
+  }
+
+  private async initPasskeys(): Promise<void> {
+    const caps = await this.passkeys.getCapabilities();
+    if (!caps.webAuthnSupported) {
+      return;
+    }
+    this.passkeySupported.set(true);
+    await this.refreshPasskeys();
+  }
+
+  private async refreshPasskeys(): Promise<void> {
+    this.passkeyLoading.set(true);
+    this.passkeyError.set(null);
+    try {
+      const res = await this.passkeys.listPasskeys();
+      this.passkeyList.set(res.credentials);
+      this.passkeyRpId.set(res.rpId);
+      this.passkeyUserId.set(res.passkeyUserId);
+    } catch {
+      this.passkeyError.set('Could not load your registered passkeys right now.');
+    } finally {
+      this.passkeyLoading.set(false);
+    }
+  }
+
+  protected async addPasskey(): Promise<void> {
+    this.passkeyError.set(null);
+    this.passkeyNotice.set(null);
+    this.passkeyBusy.set(true);
+    try {
+      const created = await this.passkeys.registerPasskey({ promotion: false });
+      this.passkeyNotice.set(`Added passkey "${created.name}".`);
+      await this.refreshPasskeys();
+    } catch (err: unknown) {
+      if (!(err instanceof DOMException && (err.name === 'NotAllowedError' || err.name === 'AbortError'))) {
+        const msg = (err as { error?: { message?: string }; message?: string })?.error?.message;
+        this.passkeyError.set(msg ?? 'Could not register a passkey on this device.');
+      }
+    } finally {
+      this.passkeyBusy.set(false);
+    }
+  }
+
+  protected startRename(cred: PasskeySummary): void {
+    this.renamingId.set(cred.id);
+    this.renameDraft.set(cred.name);
+    this.passkeyError.set(null);
+  }
+
+  protected cancelRename(): void {
+    this.renamingId.set(null);
+    this.renameDraft.set('');
+  }
+
+  protected async saveRename(id: string): Promise<void> {
+    const nextName = this.renameDraft().trim();
+    if (!nextName) {
+      this.passkeyError.set('Passkey name cannot be blank.');
+      return;
+    }
+    this.passkeyBusy.set(true);
+    this.passkeyError.set(null);
+    try {
+      const updated = await this.passkeys.renamePasskey(id, nextName);
+      this.passkeyList.update((items) => items.map((c) => (c.id === id ? updated : c)));
+      this.renamingId.set(null);
+    } catch (err: unknown) {
+      const msg = (err as { error?: { message?: string } })?.error?.message;
+      this.passkeyError.set(msg ?? 'Could not rename that passkey.');
+    } finally {
+      this.passkeyBusy.set(false);
+    }
+  }
+
+  protected async deletePasskey(id: string): Promise<void> {
+    this.passkeyBusy.set(true);
+    this.passkeyError.set(null);
+    this.passkeyNotice.set(null);
+    try {
+      await this.passkeys.deletePasskey(id);
+      this.passkeyList.update((items) => items.filter((c) => c.id !== id));
+      this.passkeyNotice.set('Passkey removed.');
+    } catch {
+      this.passkeyError.set('Could not delete that passkey.');
+    } finally {
+      this.passkeyBusy.set(false);
+    }
+  }
+
+  protected providerFor(cred: PasskeySummary) {
+    return resolvePasskeyProvider(cred.aaguid, cred.deviceType);
+  }
+
+  protected formatDate(iso: string): string {
+    const date = new Date(iso);
+    if (Number.isNaN(date.getTime())) {
+      return iso;
+    }
+    return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(date);
   }
 
   protected sendCode(): void {

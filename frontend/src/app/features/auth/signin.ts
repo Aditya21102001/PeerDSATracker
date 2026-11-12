@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AbstractControl, FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -6,6 +6,7 @@ import { environment } from '../../../environments/environment';
 import { AuthOptionsService } from '../../core/services/auth-options.service';
 import { AuthStore } from '../../core/services/auth.store';
 import { LastSignInService } from '../../core/services/last-sign-in.service';
+import { PasskeyService } from '../../core/services/passkey.service';
 
 @Component({
   selector: 'app-signin',
@@ -45,10 +46,15 @@ import { LastSignInService } from '../../core/services/last-sign-in.service';
             id="identifier"
             type="text"
             formControlName="identifier"
-            autocomplete="username"
+            autocomplete="username webauthn"
+            autofocus
+            aria-describedby="identifier-passkey-hint"
             autocapitalize="none"
             spellcheck="false"
           />
+          <p id="identifier-passkey-hint" class="field-hint">
+            Enter your username or email, or pick a saved passkey when offered.
+          </p>
           @if (showError('identifier')) {
             <p class="field-error" role="alert">Enter your username or email address.</p>
           }
@@ -84,6 +90,23 @@ import { LastSignInService } from '../../core/services/last-sign-in.service';
         Signed up with Google, or never set a password?
         <a routerLink="/code">Sign in with a code</a>
       </p>
+
+      @if (passkeySupported()) {
+        <button
+          type="button"
+          class="btn btn-ghost provider passkey-btn"
+          [disabled]="busy() || passkeyBusy()"
+          (click)="signInWithPasskey()"
+        >
+          <svg class="passkey-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 10a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/>
+            <path d="M6 21v-2a4 4 0 0 1 4-4h2"/>
+            <circle cx="17.5" cy="17.5" r="2.5"/>
+            <path d="M19.5 19.5 22 22"/>
+          </svg>
+          <span>{{ passkeyBusy() ? 'Waiting for passkey…' : 'Continue with Biometrics / Passkey' }}</span>
+        </button>
+      }
 
       @if (googleEnabled()) {
         <!-- A plain link, not a fetch: this is a full-page navigation that has to leave the SPA
@@ -123,6 +146,8 @@ export class Signin {
   protected readonly route = inject(ActivatedRoute);
   private readonly lastSignIn = inject(LastSignInService);
   private readonly options = inject(AuthOptionsService);
+  private readonly passkeys = inject(PasskeyService);
+  private readonly destroyRef = inject(DestroyRef);
 
   /**
    * Read from this browser, never from the server. An endpoint that answered "that address uses
@@ -133,6 +158,8 @@ export class Signin {
   protected readonly lastMethodLabel = this.lastSignIn.lastMethodLabel;
 
   protected readonly busy = signal(false);
+  protected readonly passkeyBusy = signal(false);
+  protected readonly passkeySupported = signal(false);
   protected readonly error = signal<string | null>(null);
   private readonly submitted = signal(false);
 
@@ -163,6 +190,62 @@ export class Signin {
 
     // Fire-and-forget: the cached answer is already rendering, and this only corrects it.
     this.options.refresh();
+
+    this.destroyRef.onDestroy(() => this.passkeys.abortConditionalUi());
+    void this.initPasskeys();
+  }
+
+  private async initPasskeys(): Promise<void> {
+    const caps = await this.passkeys.getCapabilities();
+    this.passkeySupported.set(caps.webAuthnSupported);
+    if (caps.conditionalGet) {
+      void this.listenConditionalPasskey();
+    }
+  }
+
+  private async listenConditionalPasskey(): Promise<void> {
+    try {
+      const me = await this.passkeys.startConditionalUi();
+      if (me) {
+        this.navigateAfterSignIn();
+      }
+    } catch (err: unknown) {
+      if (!(err instanceof DOMException && err.name === 'NotAllowedError')) {
+        this.error.set(this.passkeyErrorMessage(err));
+      }
+    }
+  }
+
+  protected async signInWithPasskey(): Promise<void> {
+    this.error.set(null);
+    this.passkeyBusy.set(true);
+    try {
+      await this.passkeys.signInWithPasskey();
+      this.passkeyBusy.set(false);
+      this.navigateAfterSignIn();
+    } catch (err: unknown) {
+      this.passkeyBusy.set(false);
+      if (err instanceof DOMException && (err.name === 'NotAllowedError' || err.name === 'AbortError')) {
+        void this.listenConditionalPasskey();
+        return;
+      }
+      this.error.set(this.passkeyErrorMessage(err));
+    }
+  }
+
+  private navigateAfterSignIn(): void {
+    const redirect = this.route.snapshot.queryParamMap.get('redirect');
+    const target = redirect && redirect.startsWith('/') && !redirect.startsWith('//') ? redirect : '/dashboard';
+    void this.router.navigateByUrl(target);
+  }
+
+  private passkeyErrorMessage(err: unknown): string {
+    const status = (err as { status?: number })?.status;
+    if (status === 404) {
+      return 'That passkey is no longer registered on this account. Try another passkey or sign in with your password.';
+    }
+    const serverMsg = (err as { error?: { message?: string } })?.error?.message;
+    return serverMsg ?? 'Biometric or passkey sign-in could not be completed.';
   }
 
   protected showError(name: 'identifier' | 'password'): boolean {
