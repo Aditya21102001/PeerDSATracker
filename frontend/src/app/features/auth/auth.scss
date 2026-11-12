@@ -330,6 +330,12 @@ button[type='submit'] {
   }
 }
 
+.passkey-add-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+
 .passkey-empty {
   margin: 0;
   font-size: var(--fs-sm);

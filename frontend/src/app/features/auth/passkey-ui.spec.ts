@@ -25,7 +25,7 @@ describe('Passkey UI integration on Signin and Security', () => {
     localStorage.clear();
   });
 
-  it('renders Continue with Biometrics / Passkey button and webauthn autocomplete on Signin', async () => {
+  it('renders Continue with Face ID / Fingerprint / Passkey button and webauthn autocomplete on Signin', async () => {
     (window as unknown as Record<string, unknown>)['PublicKeyCredential'] = {
       getClientCapabilities: vi.fn().mockResolvedValue({
         userVerifyingPlatformAuthenticator: true,
@@ -51,6 +51,7 @@ describe('Passkey UI integration on Signin and Security', () => {
       fixture.detectChanges();
       const btn = fixture.nativeElement.querySelector('.passkey-btn') as HTMLButtonElement | null;
       expect(btn).not.toBeNull();
+      expect(btn?.textContent).toContain('Face ID / Fingerprint');
     });
 
     const identifier = fixture.nativeElement.querySelector('#identifier') as HTMLInputElement;

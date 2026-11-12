@@ -12,6 +12,7 @@ import {
 import { ActivityService } from '../../core/services/activity.service';
 import { AuthStore } from '../../core/services/auth.store';
 import { InsightsService } from '../../core/services/insights.service';
+import { PasskeyService } from '../../core/services/passkey.service';
 import { TourService } from '../../core/services/tour.service';
 import { VideoTourService } from '../../core/services/video-tour.service';
 import { HeatmapCalendar } from '../../shared/heatmap-calendar';
@@ -59,13 +60,40 @@ import { Spinner } from '../../shared/spinner';
           <a id="dash-nav-messages" routerLink="/messages" class="dash-nav-pill">💬 Messages</a>
           <a id="dash-nav-leaderboard" routerLink="/leaderboard" class="dash-nav-pill">🏆 Leaderboard</a>
           <a id="dash-nav-profile" routerLink="/profile" class="dash-nav-pill">👤 Platforms</a>
-          <a id="dash-nav-security" routerLink="/security" class="dash-nav-pill">🔐 Password</a>
+          <a id="dash-nav-security" routerLink="/security" class="dash-nav-pill">🔐 Biometrics &amp; Security</a>
           <a id="dash-nav-guide" routerLink="/guide" class="dash-nav-pill">🧭 Guide</a>
           <a id="dash-nav-architecture" routerLink="/architecture" class="dash-nav-pill highlight-arch" title="View interactive Archify system architecture">🏛️ Architecture</a>
           <button id="dash-btn-video-tour" type="button" class="dash-nav-pill video-tour-btn" (click)="videoTour.open()" title="Watch 2-minute video tour">🎬 Tour</button>
           <button id="dash-btn-signout" type="button" class="dash-nav-pill sign-out" (click)="signOut()">🚪 Sign out</button>
         </nav>
       </header>
+
+      @if (showBiometricPromo()) {
+        <section class="card biometric-promo" aria-label="Biometric sign-in setup">
+          <div class="biometric-promo-copy">
+            <h2>Sign in faster with Face ID or Fingerprint</h2>
+            <p>
+              Save a passkey on this device so you can unlock PeerDSATracker with biometrics next time.
+            </p>
+            @if (biometricError()) {
+              <p class="error" role="alert">{{ biometricError() }}</p>
+            }
+          </div>
+          <div class="biometric-promo-actions">
+            <button
+              type="button"
+              class="btn btn-sm"
+              [disabled]="biometricBusy()"
+              (click)="enableBiometricsNow()"
+            >
+              {{ biometricBusy() ? 'Waiting…' : 'Enable Face ID / Fingerprint' }}
+            </button>
+            <button type="button" class="btn btn-sm btn-ghost" (click)="dismissBiometricPromo()">
+              Not now
+            </button>
+          </div>
+        </section>
+      }
 
       @if (loading()) {
         <app-spinner label="Loading your dashboard…" />
@@ -253,8 +281,13 @@ export class Dashboard {
   private readonly activity = inject(ActivityService);
   private readonly insights = inject(InsightsService);
   private readonly auth = inject(AuthStore);
+  private readonly passkeys = inject(PasskeyService);
   private readonly tour = inject(TourService);
   protected readonly videoTour = inject(VideoTourService);
+
+  protected readonly showBiometricPromo = signal(false);
+  protected readonly biometricBusy = signal(false);
+  protected readonly biometricError = signal<string | null>(null);
 
   /** Captured once at construction: templates must not call new Date(). */
   protected readonly today = new Date();
@@ -357,6 +390,50 @@ export class Dashboard {
     // First visit only: walk a new user through the app. Deferred so the intro card shows
     // while the dashboard data above is still loading. Replayable from the Guide.
     queueMicrotask(() => this.tour.autoStartOnce());
+    void this.checkBiometricPromo();
+  }
+
+  private async checkBiometricPromo(): Promise<void> {
+    try {
+      if (localStorage.getItem('peerdsa.passkeyPromoDismissed') === '1') {
+        return;
+      }
+      const caps = await this.passkeys.getCapabilities();
+      if (!caps.platformAuthenticator) {
+        return;
+      }
+      const list = await this.passkeys.listPasskeys();
+      if (list.credentials.length === 0) {
+        this.showBiometricPromo.set(true);
+      }
+    } catch {
+      // Optional enhancement: ignore silently on transient failures.
+    }
+  }
+
+  protected async enableBiometricsNow(): Promise<void> {
+    this.biometricBusy.set(true);
+    this.biometricError.set(null);
+    try {
+      await this.passkeys.registerPasskey({ promotion: true });
+      this.showBiometricPromo.set(false);
+    } catch (err: unknown) {
+      if (!(err instanceof DOMException && (err.name === 'NotAllowedError' || err.name === 'AbortError'))) {
+        const msg = (err as { error?: { message?: string } })?.error?.message;
+        this.biometricError.set(msg ?? 'Could not enable biometrics on this device.');
+      }
+    } finally {
+      this.biometricBusy.set(false);
+    }
+  }
+
+  protected dismissBiometricPromo(): void {
+    this.showBiometricPromo.set(false);
+    try {
+      localStorage.setItem('peerdsa.passkeyPromoDismissed', '1');
+    } catch {
+      // Ignore storage quota errors.
+    }
   }
 
   protected criteriaLabel(badge: BadgeView): string {

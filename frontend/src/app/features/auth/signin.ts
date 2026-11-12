@@ -1,10 +1,11 @@
-import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { Component, DestroyRef, effect, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AbstractControl, FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { environment } from '../../../environments/environment';
 import { AuthOptionsService } from '../../core/services/auth-options.service';
 import { AuthStore } from '../../core/services/auth.store';
+import { BackendStatus } from '../../core/services/backend-status';
 import { LastSignInService } from '../../core/services/last-sign-in.service';
 import { PasskeyService } from '../../core/services/passkey.service';
 
@@ -101,11 +102,14 @@ import { PasskeyService } from '../../core/services/passkey.service';
           <svg class="passkey-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M12 10a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/>
             <path d="M6 21v-2a4 4 0 0 1 4-4h2"/>
-            <circle cx="17.5" cy="17.5" r="2.5"/>
-            <path d="M19.5 19.5 22 22"/>
+            <path d="M16 14.5a3.5 3.5 0 0 1 3.5 3.5v1"/>
+            <path d="M14 18a2 2 0 0 1 4 0v2"/>
           </svg>
-          <span>{{ passkeyBusy() ? 'Waiting for passkey…' : 'Continue with Biometrics / Passkey' }}</span>
+          <span>{{ passkeyBusy() ? 'Waiting for Face ID / Fingerprint…' : 'Continue with Face ID / Fingerprint / Passkey' }}</span>
         </button>
+        @if (passkeyHint()) {
+          <p class="last-method" role="status">{{ passkeyHint() }}</p>
+        }
       }
 
       @if (googleEnabled()) {
@@ -147,6 +151,7 @@ export class Signin {
   private readonly lastSignIn = inject(LastSignInService);
   private readonly options = inject(AuthOptionsService);
   private readonly passkeys = inject(PasskeyService);
+  private readonly backendStatus = inject(BackendStatus);
   private readonly destroyRef = inject(DestroyRef);
 
   /**
@@ -159,9 +164,17 @@ export class Signin {
 
   protected readonly busy = signal(false);
   protected readonly passkeyBusy = signal(false);
-  protected readonly passkeySupported = signal(false);
+  protected readonly passkeySupported = signal(
+    typeof window !== 'undefined' &&
+      typeof window.PublicKeyCredential !== 'undefined' &&
+      typeof navigator !== 'undefined' &&
+      !!navigator.credentials,
+  );
+  protected readonly passkeyHint = signal<string | null>(null);
   protected readonly error = signal<string | null>(null);
   private readonly submitted = signal(false);
+  private conditionalEligible = false;
+  private conditionalArmed = false;
 
   /**
    * Asked of the backend rather than hard-coded, so the button cannot appear on a deployment with
@@ -192,25 +205,40 @@ export class Signin {
     this.options.refresh();
 
     this.destroyRef.onDestroy(() => this.passkeys.abortConditionalUi());
+    effect(() => {
+      if (this.backendStatus.isReady() && this.conditionalEligible && !this.conditionalArmed) {
+        void this.listenConditionalPasskey();
+      }
+    });
     void this.initPasskeys();
   }
 
   private async initPasskeys(): Promise<void> {
     const caps = await this.passkeys.getCapabilities();
     this.passkeySupported.set(caps.webAuthnSupported);
-    if (caps.conditionalGet) {
+    this.conditionalEligible = caps.conditionalGet;
+    if (caps.conditionalGet && this.backendStatus.current() !== 'warming') {
       void this.listenConditionalPasskey();
     }
   }
 
   private async listenConditionalPasskey(): Promise<void> {
+    this.conditionalArmed = true;
     try {
       const me = await this.passkeys.startConditionalUi();
       if (me) {
         this.navigateAfterSignIn();
       }
     } catch (err: unknown) {
-      if (!(err instanceof DOMException && err.name === 'NotAllowedError')) {
+      this.conditionalArmed = false;
+      const status = (err as { status?: number })?.status;
+      if (
+        !(err instanceof DOMException && err.name === 'NotAllowedError') &&
+        status !== 0 &&
+        status !== 502 &&
+        status !== 503 &&
+        status !== 504
+      ) {
         this.error.set(this.passkeyErrorMessage(err));
       }
     }
@@ -218,6 +246,7 @@ export class Signin {
 
   protected async signInWithPasskey(): Promise<void> {
     this.error.set(null);
+    this.passkeyHint.set(null);
     this.passkeyBusy.set(true);
     try {
       await this.passkeys.signInWithPasskey();
@@ -226,7 +255,14 @@ export class Signin {
     } catch (err: unknown) {
       this.passkeyBusy.set(false);
       if (err instanceof DOMException && (err.name === 'NotAllowedError' || err.name === 'AbortError')) {
-        void this.listenConditionalPasskey();
+        if (err.name === 'NotAllowedError') {
+          this.passkeyHint.set(
+            'No Face ID, Fingerprint, or passkey was selected. Sign in with Google or your password first, then turn on Biometric Unlock in Account Security.',
+          );
+        }
+        if (this.conditionalEligible) {
+          void this.listenConditionalPasskey();
+        }
         return;
       }
       this.error.set(this.passkeyErrorMessage(err));

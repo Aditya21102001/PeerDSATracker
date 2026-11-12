@@ -153,7 +153,7 @@ export class MobileNav {
     { path: '/notes', label: 'Notes', icon: '✎' },
     { path: '/blog', label: 'Articles', icon: '▤' },
     { path: '/profile', label: 'Platforms', icon: '🔗' },
-    { path: '/security', label: 'Password', icon: '🔒' },
+    { path: '/security', label: 'Biometrics', icon: '🔒' },
     { path: '/architecture', label: 'Architecture', icon: '🏛️' },
     { path: '/guide', label: 'Guide', icon: '?' },
   ];

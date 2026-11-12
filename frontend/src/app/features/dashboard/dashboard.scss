@@ -290,7 +290,11 @@ header {
 
   &.tile-streak {
     border-top: 3px solid var(--flame);
-    &::before { background: var(--flame); }
+
+    &::before {
+      background: var(--flame);
+    }
+
     &:hover {
       border-color: var(--flame);
       box-shadow: 0 8px 24px -4px rgba(224, 79, 39, 0.25);
@@ -299,7 +303,11 @@ header {
 
   &.tile-longest {
     border-top: 3px solid var(--medium);
-    &::before { background: var(--medium); }
+
+    &::before {
+      background: var(--medium);
+    }
+
     &:hover {
       border-color: var(--medium);
       box-shadow: 0 8px 24px -4px rgba(180, 83, 9, 0.25);
@@ -308,7 +316,11 @@ header {
 
   &.tile-xp {
     border-top: 3px solid var(--xp);
-    &::before { background: var(--xp); }
+
+    &::before {
+      background: var(--xp);
+    }
+
     &:hover {
       border-color: var(--xp);
       box-shadow: 0 8px 24px -4px rgba(167, 89, 9, 0.25);
@@ -317,7 +329,11 @@ header {
 
   &.tile-badges {
     border-top: 3px solid var(--success);
-    &::before { background: var(--success); }
+
+    &::before {
+      background: var(--success);
+    }
+
     &:hover {
       border-color: var(--success);
       box-shadow: 0 8px 24px -4px rgba(21, 128, 61, 0.25);
@@ -530,6 +546,7 @@ h3 {
     .rec-action-btn {
       font-weight: 700;
       box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+
       &:hover {
         transform: translateY(-1px);
         box-shadow: 0 4px 10px rgba(91, 91, 214, 0.35);
@@ -640,3 +657,29 @@ h3 {
   }
 }
 
+.biometric-promo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  flex-wrap: wrap;
+  border-color: rgba(99, 102, 241, 0.4);
+  background: var(--surface-2);
+
+  h2 {
+    margin: 0 0 var(--sp-1);
+    font-size: var(--fs-md);
+  }
+
+  p {
+    margin: 0;
+    font-size: var(--fs-sm);
+    color: var(--text-muted);
+  }
+}
+
+.biometric-promo-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}

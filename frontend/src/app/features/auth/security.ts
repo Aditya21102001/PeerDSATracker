@@ -67,16 +67,26 @@ type Proof = 'password' | 'code';
         <section class="passkey-section" aria-labelledby="passkeys-heading">
           <div class="passkey-header">
             <div>
-              <h2 id="passkeys-heading">Biometrics &amp; Passkeys</h2>
-              <p class="tagline">Sign in faster with Face ID, Touch ID, Windows Hello, or a security key.</p>
+              <h2 id="passkeys-heading">Face ID, Fingerprint &amp; Passkeys</h2>
+              <p class="tagline">Sign in with your device's Face ID, fingerprint sensor, Windows Hello, or a security key.</p>
             </div>
+          </div>
+          <div class="passkey-add-actions">
             <button
               type="button"
               class="btn btn-sm"
               [disabled]="passkeyBusy()"
-              (click)="addPasskey()"
+              (click)="addPasskey(true)"
             >
-              {{ passkeyBusy() ? 'Waiting…' : 'Add passkey' }}
+              {{ passkeyBusy() ? 'Waiting…' : 'Enable Face ID / Fingerprint' }}
+            </button>
+            <button
+              type="button"
+              class="btn btn-sm btn-ghost"
+              [disabled]="passkeyBusy()"
+              (click)="addPasskey(false)"
+            >
+              Add Security Key / Passkey
             </button>
           </div>
 
@@ -438,13 +448,13 @@ export class Security {
     }
   }
 
-  protected async addPasskey(): Promise<void> {
+  protected async addPasskey(platformOnly = false): Promise<void> {
     this.passkeyError.set(null);
     this.passkeyNotice.set(null);
     this.passkeyBusy.set(true);
     try {
-      const created = await this.passkeys.registerPasskey({ promotion: false });
-      this.passkeyNotice.set(`Added passkey "${created.name}".`);
+      const created = await this.passkeys.registerPasskey({ promotion: platformOnly });
+      this.passkeyNotice.set(`Added "${created.name}". You can now sign in with biometrics/passkey on this device.`);
       await this.refreshPasskeys();
     } catch (err: unknown) {
       if (!(err instanceof DOMException && (err.name === 'NotAllowedError' || err.name === 'AbortError'))) {
