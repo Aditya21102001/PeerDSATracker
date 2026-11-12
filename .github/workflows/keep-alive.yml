@@ -27,9 +27,3 @@ jobs:
           STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 45 https://peerdsatracker.onrender.com/api/meta || true)
           echo "Backend /api/meta response: $STATUS"
 
-      - name: Ping Analytics Health Endpoint
-        run: |
-          echo "Pinging FastAPI analytics service..."
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 45 https://peerdsatracker-1.onrender.com/health || true)
-          echo "Analytics /health response: $STATUS"
-
