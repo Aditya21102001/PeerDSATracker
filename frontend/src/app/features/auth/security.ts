@@ -71,6 +71,14 @@ type Proof = 'password' | 'code';
               <p class="tagline">Sign in with your device's Face ID, fingerprint sensor, Windows Hello, or a security key.</p>
             </div>
           </div>
+
+          @if (hasPasskeys()) {
+            <div class="passkey-status-banner" role="status">
+              <span class="badge-icon" aria-hidden="true">✓</span>
+              <span>Biometric sign-in is active on your account (stored in Google Password Manager / device)</span>
+            </div>
+          }
+
           <div class="passkey-add-actions">
             <button
               type="button"
@@ -78,7 +86,7 @@ type Proof = 'password' | 'code';
               [disabled]="passkeyBusy()"
               (click)="addPasskey(true)"
             >
-              {{ passkeyBusy() ? 'Waiting…' : 'Enable Face ID / Fingerprint' }}
+              {{ passkeyBusy() ? 'Waiting…' : (hasPasskeys() ? 'Add Another Device (Face ID / Fingerprint)' : 'Enable Face ID / Fingerprint') }}
             </button>
             <button
               type="button"
@@ -319,6 +327,7 @@ export class Security {
   protected readonly passkeyError = signal<string | null>(null);
   protected readonly passkeyNotice = signal<string | null>(null);
   protected readonly passkeyList = signal<PasskeySummary[]>([]);
+  protected readonly hasPasskeys = computed(() => this.passkeyList().length > 0);
   protected readonly passkeyRpId = signal<string | null>(null);
   protected readonly passkeyUserId = signal<string | null>(null);
   protected readonly renamingId = signal<string | null>(null);
@@ -457,7 +466,9 @@ export class Security {
       this.passkeyNotice.set(`Added "${created.name}". You can now sign in with biometrics/passkey on this device.`);
       await this.refreshPasskeys();
     } catch (err: unknown) {
-      if (!(err instanceof DOMException && (err.name === 'NotAllowedError' || err.name === 'AbortError'))) {
+      if (err instanceof DOMException && err.name === 'InvalidStateError') {
+        this.passkeyNotice.set('Face ID / Fingerprint is already active on this device in Google Password Manager. You are all set to sign in!');
+      } else if (!(err instanceof DOMException && (err.name === 'NotAllowedError' || err.name === 'AbortError'))) {
         const msg = (err as { error?: { message?: string }; message?: string })?.error?.message;
         this.passkeyError.set(msg ?? 'Could not register a passkey on this device.');
       }

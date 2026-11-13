@@ -418,7 +418,9 @@ export class Dashboard {
       await this.passkeys.registerPasskey({ promotion: true });
       this.showBiometricPromo.set(false);
     } catch (err: unknown) {
-      if (!(err instanceof DOMException && (err.name === 'NotAllowedError' || err.name === 'AbortError'))) {
+      if (err instanceof DOMException && err.name === 'InvalidStateError') {
+        this.showBiometricPromo.set(false);
+      } else if (!(err instanceof DOMException && (err.name === 'NotAllowedError' || err.name === 'AbortError'))) {
         const msg = (err as { error?: { message?: string } })?.error?.message;
         this.biometricError.set(msg ?? 'Could not enable biometrics on this device.');
       }
