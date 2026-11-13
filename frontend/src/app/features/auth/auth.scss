@@ -301,9 +301,19 @@ button[type='submit'] {
 .passkey-btn {
   width: 100%;
   cursor: pointer;
+  white-space: normal;
+  text-align: center;
+  line-height: 1.35;
+  box-sizing: border-box;
 
   .passkey-icon {
-    flex: none;
+    flex: 0 0 1.125rem;
+    width: 1.125rem;
+    height: 1.125rem;
+  }
+
+  span {
+    text-wrap: balance;
   }
 }
 

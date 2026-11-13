@@ -105,7 +105,7 @@ import { PasskeyService } from '../../core/services/passkey.service';
             <path d="M16 14.5a3.5 3.5 0 0 1 3.5 3.5v1"/>
             <path d="M14 18a2 2 0 0 1 4 0v2"/>
           </svg>
-          <span>{{ passkeyBusy() ? 'Waiting for Face ID / Fingerprint…' : 'Continue with Face ID / Fingerprint / Passkey' }}</span>
+          <span>{{ passkeyBusy() ? 'Waiting for Face ID / Fingerprint…' : 'Continue with Face ID / Fingerprint' }}</span>
         </button>
         @if (passkeyHint()) {
           <p class="last-method" role="status">{{ passkeyHint() }}</p>
