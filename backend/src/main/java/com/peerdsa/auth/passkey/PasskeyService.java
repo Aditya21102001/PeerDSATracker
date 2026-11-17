@@ -599,15 +599,15 @@ public class PasskeyService {
 
     private static String defaultCredentialName(boolean multiDevice, String transports) {
         if (transports.contains("internal")) {
-            return multiDevice ? "Synced Passkey" : "Device Biometric";
+            return multiDevice ? "Synced Fingerprint / Biometric Passkey" : "Device Fingerprint / Biometric";
         }
         if (transports.contains("usb") || transports.contains("nfc")) {
             return "Security Key";
         }
         if (transports.contains("hybrid") || transports.contains("ble")) {
-            return "Cross-Device Passkey";
+            return "Phone Fingerprint / Passkey";
         }
-        return "Passkey";
+        return "Fingerprint / Biometric Passkey";
     }
 
     private static String firstNonBlank(String... candidates) {

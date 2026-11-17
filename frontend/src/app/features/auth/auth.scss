@@ -427,6 +427,13 @@ button[type='submit'] {
   background: var(--surface-2);
   color: var(--text-muted);
   border: 1px solid var(--border);
+
+  &.biometric-chip {
+    background: rgba(59, 130, 246, 0.12);
+    color: var(--accent);
+    border-color: rgba(59, 130, 246, 0.35);
+    font-weight: 500;
+  }
 }
 
 .passkey-provider-name,

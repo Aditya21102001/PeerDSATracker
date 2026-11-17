@@ -100,12 +100,17 @@ import { PasskeyService } from '../../core/services/passkey.service';
           (click)="signInWithPasskey()"
         >
           <svg class="passkey-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M12 10a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/>
-            <path d="M6 21v-2a4 4 0 0 1 4-4h2"/>
-            <path d="M16 14.5a3.5 3.5 0 0 1 3.5 3.5v1"/>
-            <path d="M14 18a2 2 0 0 1 4 0v2"/>
+            <path d="M12 10a2 2 0 0 0-2 2c0 1.02-.1 2.51-.26 4"/>
+            <path d="M14 13.12c0 2.38 0 6.38-1 8.88"/>
+            <path d="M17.29 21.02c.12-.6.43-2.3.5-3.02"/>
+            <path d="M2 12a10 10 0 0 1 18-6"/>
+            <path d="M2 16h.01"/>
+            <path d="M21.8 16c.2-2 .131-5.354 0-6"/>
+            <path d="M5 19.5C5.5 18 6 15 6 12a6 6 0 0 1 .34-2"/>
+            <path d="M8.65 22c.21-.66.45-1.32.57-2"/>
+            <path d="M9 6.8a6 6 0 0 1 9 5.2v2"/>
           </svg>
-          <span>{{ passkeyBusy() ? 'Waiting for Face ID / Fingerprint…' : 'Continue with Face ID / Fingerprint' }}</span>
+          <span>{{ passkeyBusy() ? 'Scanning Face ID / Fingerprint…' : 'Sign in with Face ID / Fingerprint' }}</span>
         </button>
         @if (passkeyHint()) {
           <p class="last-method" role="status">{{ passkeyHint() }}</p>
