@@ -1,0 +1,193 @@
+/* ==========================================================================
+   Biometric & Passkey Component Styles
+   Includes responsive flexbox rules preventing icon/text clipping on mobile.
+   ========================================================================== */
+
+/* 1. Sign-In Page Biometric Button */
+.passkey-btn {
+  width: 100%;
+  cursor: pointer;
+  white-space: normal; /* Prevents text overflow on narrow viewports */
+  text-align: center;
+  line-height: 1.35;
+  box-sizing: border-box;
+
+  .passkey-icon {
+    flex: 0 0 1.125rem; /* Strict fixed size prevents flex centering distortion */
+    width: 1.125rem;
+    height: 1.125rem;
+  }
+
+  span {
+    text-wrap: balance; /* Wraps headline cleanly across 2 lines on small screens */
+  }
+}
+
+.passkey-hint {
+  margin: var(--sp-2, 0.5rem) 0 0;
+  font-size: var(--fs-xs, 0.75rem);
+  color: var(--text-muted, #94a3b8);
+  text-align: center;
+}
+
+/* 2. Account Security Section */
+.passkey-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3, 0.75rem);
+  padding: var(--sp-4, 1rem);
+  background: var(--surface-2, #1e293b);
+  border: 1px solid var(--border, #334155);
+  border-radius: var(--r-md, 0.5rem);
+}
+
+.passkey-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-3, 0.75rem);
+  flex-wrap: wrap;
+
+  h2 {
+    margin: 0 0 var(--sp-1, 0.25rem);
+    font-size: var(--fs-md, 1.125rem);
+  }
+
+  .tagline {
+    margin: 0;
+    color: var(--text-muted, #94a3b8);
+    font-size: var(--fs-xs, 0.75rem);
+  }
+}
+
+/* Active Confirmation Status Banner */
+.passkey-status-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2, 0.5rem);
+  padding: var(--sp-2, 0.5rem) var(--sp-3, 0.75rem);
+  background: rgba(34, 197, 94, 0.12);
+  border: 1px solid rgba(34, 197, 94, 0.35);
+  border-radius: var(--r-md, 0.5rem);
+  color: var(--success, #22c55e);
+  font-size: var(--fs-xs, 0.75rem);
+  font-weight: 500;
+
+  .badge-icon {
+    font-weight: bold;
+    font-size: var(--fs-sm, 0.875rem);
+  }
+}
+
+.passkey-add-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2, 0.5rem);
+}
+
+.passkey-empty {
+  margin: 0;
+  font-size: var(--fs-sm, 0.875rem);
+  color: var(--text-muted, #94a3b8);
+}
+
+.passkey-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2, 0.5rem);
+}
+
+.passkey-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2, 0.5rem);
+  padding: var(--sp-3, 0.75rem);
+  background: var(--surface, #0f172a);
+  border: 1px solid var(--border, #334155);
+  border-radius: var(--r-md, 0.5rem);
+}
+
+.passkey-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3, 0.75rem);
+}
+
+.passkey-provider-badge {
+  flex: none;
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--r-md, 0.5rem);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-2, #1e293b);
+  color: var(--accent, #6366f1);
+}
+
+.passkey-meta {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.passkey-title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--sp-2, 0.5rem);
+  font-size: var(--fs-sm, 0.875rem);
+}
+
+.passkey-chip {
+  font-size: var(--fs-xs, 0.75rem);
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: var(--surface-2, #1e293b);
+  color: var(--text-muted, #94a3b8);
+  border: 1px solid var(--border, #334155);
+
+  &.biometric-chip {
+    background: rgba(99, 102, 241, 0.12);
+    color: var(--accent, #6366f1);
+    border-color: rgba(99, 102, 241, 0.35);
+    font-weight: 500;
+  }
+}
+
+.passkey-provider-name,
+.passkey-dates {
+  margin: 0.15rem 0 0;
+  font-size: var(--fs-xs, 0.75rem);
+  color: var(--text-muted, #94a3b8);
+}
+
+.passkey-actions {
+  display: flex;
+  gap: var(--sp-3, 0.75rem);
+  font-size: var(--fs-xs, 0.75rem);
+  padding-left: calc(2rem + var(--sp-3, 0.75rem));
+}
+
+.passkey-rename {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2, 0.5rem);
+
+  input {
+    flex: 1 1 8rem;
+    min-width: 0;
+  }
+}
+
+.danger-link {
+  color: var(--danger, #ef4444);
+}
+
+@media (max-width: 30rem) {
+  .passkey-actions {
+    padding-left: 0;
+  }
+}

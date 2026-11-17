@@ -1,0 +1,148 @@
+<!-- Biometrics & Security Panel Component (HTML Template) -->
+<!-- Handles:
+     1. Status badge when biometrics are active
+     2. Context-aware enrollment button ("Enable..." vs "Add Another Device...")
+     3. External security key fallback button
+     4. Passkey list with AAGUID provider badges, renaming, and deletion
+-->
+
+@if (passkeySupported()) {
+  <section class="passkey-section" aria-labelledby="passkeys-heading">
+    <div class="passkey-header">
+      <div>
+        <h2 id="passkeys-heading">Face ID, Fingerprint &amp; Passkeys</h2>
+        <p class="tagline">Sign in with your device's Face ID, fingerprint sensor, Windows Hello, or a security key.</p>
+      </div>
+    </div>
+
+    @if (hasPasskeys()) {
+      <div class="passkey-status-banner" role="status">
+        <span class="badge-icon" aria-hidden="true">✓</span>
+        <span>Biometric sign-in is active on your account (stored in Google Password Manager / device)</span>
+      </div>
+    }
+
+    <div class="passkey-add-actions">
+      <button
+        type="button"
+        class="btn btn-sm"
+        [disabled]="passkeyBusy()"
+        (click)="addPasskey(true)"
+      >
+        {{ passkeyBusy() ? 'Waiting…' : (hasPasskeys() ? 'Add Another Device (Face ID / Fingerprint)' : 'Enable Face ID / Fingerprint') }}
+      </button>
+      <button
+        type="button"
+        class="btn btn-sm btn-ghost"
+        [disabled]="passkeyBusy()"
+        (click)="addPasskey(false)"
+      >
+        Add Security Key / Passkey
+      </button>
+    </div>
+
+    @if (passkeyNotice()) {
+      <p class="sent" role="status">{{ passkeyNotice() }}</p>
+    }
+    @if (passkeyError()) {
+      <p class="error" role="alert">{{ passkeyError() }}</p>
+    }
+
+    @if (passkeyLoading()) {
+      <p class="tagline">Loading registered passkeys…</p>
+    } @else if (passkeyList().length === 0) {
+      <p class="passkey-empty">No passkeys registered on this account yet.</p>
+    } @else {
+      <ul class="passkey-list">
+        @for (cred of passkeyList(); track cred.id) {
+          <li class="passkey-item">
+            <div class="passkey-row">
+              <span class="passkey-provider-badge" aria-hidden="true" [title]="providerFor(cred).name">
+                @switch (providerFor(cred).badge) {
+                  @case ('apple') {
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8">
+                      <path d="M12 2a4 4 0 0 1 4 4v1h1a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3v-8a3 3 0 0 1 3-3h1V6a4 4 0 0 1 4-4Z"/>
+                      <circle cx="12" cy="14" r="1.5"/>
+                    </svg>
+                  }
+                  @case ('google') {
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M12 10a2 2 0 0 0-2 2c0 1.02-.1 2.51-.26 4"/>
+                      <path d="M14 13.12c0 2.38 0 6.38-1 8.88"/>
+                      <path d="M17.29 21.02c.12-.6.43-2.3.5-3.02"/>
+                      <path d="M2 12a10 10 0 0 1 18-6"/>
+                      <path d="M2 16h.01"/>
+                      <path d="M21.8 16c.2-2 .131-5.354 0-6"/>
+                      <path d="M5 19.5C5.5 18 6 15 6 12a6 6 0 0 1 .34-2"/>
+                      <path d="M8.65 22c.21-.66.45-1.32.57-2"/>
+                      <path d="M9 6.8a6 6 0 0 1 9 5.2v2"/>
+                    </svg>
+                  }
+                  @case ('microsoft') {
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8">
+                      <rect x="4" y="4" width="7" height="7" rx="1"/>
+                      <rect x="13" y="4" width="7" height="7" rx="1"/>
+                      <rect x="4" y="13" width="7" height="7" rx="1"/>
+                      <rect x="13" y="13" width="7" height="7" rx="1"/>
+                    </svg>
+                  }
+                  @default {
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8">
+                      <circle cx="7.5" cy="15.5" r="4.5"/>
+                      <path d="m11 12 9-9"/>
+                      <path d="m16 7 3 3"/>
+                    </svg>
+                  }
+                }
+              </span>
+
+              <div class="passkey-meta">
+                @if (renamingId() === cred.id) {
+                  <div class="passkey-rename">
+                    <label class="sr-only" [attr.for]="'rename-' + cred.id">Passkey name</label>
+                    <input
+                      [id]="'rename-' + cred.id"
+                      type="text"
+                      maxlength="80"
+                      [value]="renameDraft()"
+                      (input)="renameDraft.set($any($event.target).value)"
+                    />
+                    <button type="button" class="btn btn-sm" [disabled]="passkeyBusy()" (click)="saveRename(cred.id)">Save</button>
+                    <button type="button" class="btn btn-sm btn-quiet" (click)="cancelRename()">Cancel</button>
+                  </div>
+                } @else {
+                  <div class="passkey-title">
+                    <strong>{{ cred.name === 'Synced Passkey' ? 'Fingerprint / Biometric Passkey' : cred.name }}</strong>
+                    <span class="passkey-chip biometric-chip">👆 Fingerprint / Biometric</span>
+                    @if (cred.deviceType === 'multiDevice') {
+                      <span class="passkey-chip">Synced</span>
+                    }
+                  </div>
+                  <p class="passkey-provider-name">Protected by device fingerprint sensor · {{ providerFor(cred).name }}</p>
+                }
+                <p class="passkey-dates">
+                  Registered {{ formatDate(cred.registeredAt) }}
+                  · Last used {{ cred.lastUsedAt ? formatDate(cred.lastUsedAt) : 'never' }}
+                </p>
+              </div>
+            </div>
+
+            @if (renamingId() !== cred.id) {
+              <div class="passkey-actions">
+                <button type="button" class="link" (click)="startRename(cred)">Rename</button>
+                <button
+                  type="button"
+                  class="link danger-link"
+                  [disabled]="passkeyBusy()"
+                  (click)="deletePasskey(cred.id)"
+                >
+                  Delete
+                </button>
+              </div>
+            }
+          </li>
+        }
+      </ul>
+    }
+  </section>
+}
